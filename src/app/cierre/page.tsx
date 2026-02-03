@@ -20,10 +20,14 @@ export default function CierreCajaPage() {
     const metricas = useMetricas(ventas);
 
     // Estados para inputs manuales
-    const [stockPollosReal, setStockPollosReal] = useState('');
+    const [pollosAderezados, setPollosAderezados] = useState('');
+    const [pollosEnCaja, setPollosEnCaja] = useState('');
     const [stockGaseosasReal, setStockGaseosasReal] = useState('');
     const [dineroCajaReal, setDineroCajaReal] = useState('');
     const [observaciones, setObservaciones] = useState('');
+
+    // Total de pollos sobrantes
+    const stockPollosReal = (parseFloat(pollosAderezados || '0') + parseFloat(pollosEnCaja || '0')).toString();
 
     const [procesando, setProcesando] = useState(false);
     const [cierreCompletado, setCierreCompletado] = useState(false);
@@ -159,7 +163,9 @@ export default function CierreCajaPage() {
    - Cuartos: ${desglosePollos.cuartos}
    - Octavos: ${desglosePollos.octavos}
    - Mostritos: ${desglosePollos.mostritos}
-❌ Sobrantes: ${stockPollosReal}
+❌ Sobrantes Total: ${stockPollosReal}
+   - 🍗 Aderezados: ${pollosAderezados || '0'}
+   - 📦 En Caja: ${pollosEnCaja || '0'}
 
 📊 *CUADRE DE STOCK*
 --------------------------------
@@ -225,13 +231,13 @@ _Generado automáticamente por Pocholo's POS_`;
     }
 
     return (
-        <div className="p-4 md:p-8 max-w-4xl mx-auto pb-32">
-            <header className="mb-8">
-                <h1 className="text-4xl font-bold text-pocholo-brown flex items-center gap-3">
+        <div className="p-3 sm:p-4 md:p-8 max-w-4xl mx-auto pb-32">
+            <header className="mb-4 sm:mb-8">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-pocholo-brown flex items-center gap-3">
                     <Lock className="text-pocholo-red" />
                     Cierre de Jornada
                 </h1>
-                <p className="text-pocholo-brown/60 mt-2">
+                <p className="text-sm sm:text-base text-pocholo-brown/60 mt-2">
                     Verifica los montos y el inventario antes de finalizar el día.
                 </p>
             </header>
@@ -323,28 +329,51 @@ _Generado automáticamente por Pocholo's POS_`;
                             <div className="space-y-6">
                                 {/* Pollos */}
                                 <div>
-                                    <div className="flex justify-between mb-2 text-sm">
+                                    <div className="flex justify-between mb-3 text-sm">
                                         <span className="text-pocholo-brown/60">Pollos (Sistema): {formatearCantidadPollos(stock?.pollos_disponibles || 0)}</span>
                                     </div>
-                                    <div className="flex gap-4 items-center">
-                                        <div className="flex-1">
-                                            <label className="text-sm font-medium text-pocholo-brown mb-1 block">
-                                                Pollos Sobrantes (Real)
-                                            </label>
-                                            <input
-                                                type="number"
-                                                step="0.125"
-                                                value={stockPollosReal}
-                                                onChange={e => setStockPollosReal(e.target.value)}
-                                                className="w-full p-3 rounded-xl border-2 border-gray-200 focus:border-pocholo-yellow focus:outline-none text-lg font-bold"
-                                                placeholder="0"
-                                            />
+
+                                    {/* Pollos Aderezados */}
+                                    <div className="mb-4">
+                                        <label className="text-sm font-medium text-pocholo-brown mb-1 block">
+                                            🍗 Pollos Aderezados (ya preparados)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            step="0.125"
+                                            value={pollosAderezados}
+                                            onChange={e => setPollosAderezados(e.target.value)}
+                                            className="w-full p-3 rounded-xl border-2 border-orange-200 bg-orange-50 focus:border-orange-400 focus:outline-none text-lg font-bold"
+                                            placeholder="0"
+                                        />
+                                    </div>
+
+                                    {/* Pollos En Caja */}
+                                    <div className="mb-3">
+                                        <label className="text-sm font-medium text-pocholo-brown mb-1 block">
+                                            📦 Pollos en Caja (crudos en refrigerador)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            step="0.125"
+                                            value={pollosEnCaja}
+                                            onChange={e => setPollosEnCaja(e.target.value)}
+                                            className="w-full p-3 rounded-xl border-2 border-blue-200 bg-blue-50 focus:border-blue-400 focus:outline-none text-lg font-bold"
+                                            placeholder="0"
+                                        />
+                                    </div>
+
+                                    {/* Total y diferencia */}
+                                    <div className="flex justify-between items-center p-3 bg-gray-100 rounded-xl">
+                                        <span className="font-medium text-pocholo-brown">Total Sobrantes:</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-bold text-lg text-pocholo-red">{stockPollosReal}</span>
+                                            {stockPollosReal && diffPollos !== 0 && (
+                                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${diffPollos > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                    {diffPollos > 0 ? '+' : ''}{formatearFraccionPollo(Math.abs(diffPollos))}
+                                                </span>
+                                            )}
                                         </div>
-                                        {stockPollosReal && diffPollos !== 0 && (
-                                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${diffPollos > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                {diffPollos > 0 ? '+' : ''}{formatearFraccionPollo(Math.abs(diffPollos))}
-                                            </span>
-                                        )}
                                     </div>
                                 </div>
 
@@ -417,7 +446,7 @@ _Generado automáticamente por Pocholo's POS_`;
             <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-md border-t border-gray-100 md:pl-72 flex justify-end z-40">
                 <motion.button
                     onClick={confirmarCierre}
-                    disabled={procesando || !stockPollosReal || !stockGaseosasReal || !dineroCajaReal}
+                    disabled={procesando || (pollosAderezados === '' && pollosEnCaja === '') || !stockGaseosasReal || !dineroCajaReal}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className="bg-pocholo-red text-white font-bold py-4 px-8 rounded-2xl shadow-lg shadow-red-200 flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700 transition-colors"

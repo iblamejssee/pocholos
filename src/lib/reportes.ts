@@ -19,7 +19,7 @@ export interface VentaPorDia {
 export type RangoTiempo = 'hoy' | 'ayer' | 'ultimos7dias' | 'mesPasado' | 'personalizado';
 
 /**
- * Obtiene todas las ventas del día actual
+ * Obtiene todas las ventas pagadas del día actual
  */
 export const obtenerVentasDelDia = async (): Promise<Venta[]> => {
     try {
@@ -28,6 +28,7 @@ export const obtenerVentasDelDia = async (): Promise<Venta[]> => {
             .from('ventas')
             .select('*')
             .eq('fecha', fechaHoy)
+            .eq('estado_pago', 'pagado')
             .order('created_at', { ascending: false });
 
         if (error) throw error;
