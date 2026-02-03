@@ -37,7 +37,16 @@ export const useInventario = (): UseInventarioResult => {
                 setStock(null);
                 setError('No se ha realizado la apertura del día');
             } else {
-                setStock(data[0]);
+                const stockData = data[0];
+
+                // Si el inventario está cerrado, no mostramos stock
+                // Esto indica que la jornada terminó y se necesita nueva apertura
+                if (stockData.estado === 'cerrado') {
+                    setStock(null);
+                    setError('La jornada ha finalizado. Realiza una nueva apertura para el siguiente día.');
+                } else {
+                    setStock(stockData);
+                }
             }
         } catch (err) {
             console.error('Error al obtener stock:', err);

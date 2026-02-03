@@ -143,6 +143,11 @@ export default function CierreCajaPage() {
             // 2. Generar mensaje de WhatsApp
             const totalEfectivoEsperado = (ventasPorMetodo['efectivo'] || 0) + (stock?.dinero_inicial || 0);
 
+            // Generar lista de platillos vendidos
+            const platillosTexto = listaPlatosVendidos.length > 0
+                ? listaPlatosVendidos.map(p => `   • ${p.nombre}: x${p.cantidad}`).join('\n')
+                : '   (Sin platillos registrados)';
+
             const mensaje = `🐔 *RESUMEN POCHOLO'S - ${new Date().toLocaleDateString('es-PE')}* 🐔
 
 💰 *VENTAS TOTALES: S/ ${metricas.totalIngresos.toFixed(2)}*
@@ -166,6 +171,10 @@ export default function CierreCajaPage() {
 ❌ Sobrantes Total: ${stockPollosReal}
    - 🍗 Aderezados: ${pollosAderezados || '0'}
    - 📦 En Caja: ${pollosEnCaja || '0'}
+
+📋 *PLATILLOS VENDIDOS*
+--------------------------------
+${platillosTexto}
 
 📊 *CUADRE DE STOCK*
 --------------------------------

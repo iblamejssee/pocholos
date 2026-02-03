@@ -79,6 +79,7 @@ export interface StockActual {
     pollos_vendidos: number;
     gaseosas_vendidas: number;
     dinero_inicial: number;
+    estado: 'abierto' | 'cerrado';
 }
 
 // Detailed beverage inventory structure
