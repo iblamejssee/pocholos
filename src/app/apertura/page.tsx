@@ -176,12 +176,12 @@ export default function AperturaPage() {
     };
 
     return (
-        <div className="p-4 md:p-8 max-w-6xl mx-auto pb-32">
-            <div className="mb-8">
-                <h1 className="text-3xl md:text-4xl font-bold text-pocholo-brown mb-2">
+        <div className="p-3 sm:p-4 md:p-8 max-w-6xl mx-auto pb-32">
+            <div className="mb-4 sm:mb-8">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-pocholo-brown mb-2">
                     Apertura del Día
                 </h1>
-                <p className="text-pocholo-brown/70">
+                <p className="text-sm sm:text-base text-pocholo-brown/70">
                     Registra el stock inicial para comenzar
                 </p>
             </div>

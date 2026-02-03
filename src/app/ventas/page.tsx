@@ -139,12 +139,12 @@ export default function MesasActivasPage() {
     const totalPedidos = mesasActivas.length + ventasParaLlevar.length;
 
     return (
-        <div className="p-8">
-            <div className="mb-8">
-                <h1 className="text-4xl font-bold text-pocholo-brown mb-2">
+        <div className="p-3 sm:p-6 lg:p-8">
+            <div className="mb-4 sm:mb-8">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-pocholo-brown mb-2">
                     Pedidos Pendientes
                 </h1>
-                <p className="text-pocholo-brown/60">
+                <p className="text-sm sm:text-base text-pocholo-brown/60">
                     Gestiona los pedidos de mesas y para llevar
                 </p>
             </div>
@@ -175,7 +175,7 @@ export default function MesasActivasPage() {
                                 <ShoppingBag className="text-amber-500" size={28} />
                                 Para Llevar ({ventasParaLlevar.length})
                             </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                                 {ventasParaLlevar.map((venta) => (
                                     <motion.div
                                         key={venta.id}
@@ -276,7 +276,7 @@ export default function MesasActivasPage() {
                                 <Users className="text-red-500" size={28} />
                                 Mesas ({mesasActivas.length})
                             </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                                 {mesasActivas.map((mesa) => (
                                     <motion.div
                                         key={mesa.id}

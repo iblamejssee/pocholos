@@ -50,15 +50,15 @@ function DashboardContent() {
   });
 
   return (
-    <div className="min-h-screen p-6 lg:p-8">
+    <div className="min-h-screen p-3 sm:p-6 lg:p-8">
       {/* Header Profesional */}
-      <div className="mb-8">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="mb-4 sm:mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-slate-800">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800">
               Panel de Control
             </h1>
-            <p className="text-slate-500 capitalize">{fechaHoy}</p>
+            <p className="text-sm sm:text-base text-slate-500 capitalize">{fechaHoy}</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl">
@@ -100,7 +100,7 @@ function DashboardContent() {
       )}
 
       {/* Métricas Principales - Diseño Profesional */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
         {/* Ingresos */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

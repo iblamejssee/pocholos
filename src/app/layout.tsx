@@ -86,18 +86,18 @@ export default function RootLayout({
               <div className="flex-1 lg:ml-64 print:ml-0 bg-slate-200 min-h-screen print:bg-white">
                 {/* Mobile Header - solo visible en móvil */}
                 <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-pocholo-red shadow-lg print:hidden">
-                  <div className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center justify-between px-3 py-2.5">
                     {/* Hamburger button */}
                     <button
                       onClick={() => setSidebarOpen(true)}
-                      className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/20 text-white hover:bg-white/30 transition-colors"
+                      className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/20 text-white hover:bg-white/30 transition-colors"
                     >
-                      <Menu size={24} />
+                      <Menu size={26} />
                     </button>
 
-                    {/* Logo */}
+                    {/* Logo - centered */}
                     <div className="flex items-center gap-2">
-                      <div className="relative w-8 h-8">
+                      <div className="relative w-10 h-10">
                         <Image
                           src="/images/logo-pocholos-icon.png"
                           alt="Pocholo's"
@@ -105,13 +105,11 @@ export default function RootLayout({
                           className="object-contain"
                         />
                       </div>
-                      <span className="text-white font-bold text-sm">Pocholo's POS</span>
+                      <span className="text-white font-bold text-base">Pocholo's POS</span>
                     </div>
 
                     {/* UserMenu mobile */}
-                    <div className="w-10">
-                      <UserMenu />
-                    </div>
+                    <UserMenu />
                   </div>
                 </div>
 

@@ -250,7 +250,7 @@ export default function ReportesPage() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
-            <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+            <div className="p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto">
 
                 {/* Header Profesional */}
                 <div className="mb-8">
