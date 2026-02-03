@@ -25,8 +25,32 @@ export const useInventario = (): UseInventarioResult => {
             setLoading(true);
             setError(null);
 
+            const fechaHoy = obtenerFechaHoy();
+
+            // Primero verificar si el inventario del día está cerrado
+            const { data: inventario, error: invError } = await supabase
+                .from('inventario_diario')
+                .select('estado')
+                .eq('fecha', fechaHoy)
+                .single();
+
+            // Si no hay inventario para hoy, no hay apertura
+            if (invError || !inventario) {
+                setStock(null);
+                setError('No se ha realizado la apertura del día');
+                return;
+            }
+
+            // Si el inventario está cerrado, no mostramos stock
+            if (inventario.estado === 'cerrado') {
+                setStock(null);
+                setError('La jornada ha finalizado. Realiza una nueva apertura para el siguiente día.');
+                return;
+            }
+
+            // Si está abierto, obtener el stock completo
             const { data, error: rpcError } = await supabase.rpc('obtener_stock_actual', {
-                fecha_consulta: obtenerFechaHoy(),
+                fecha_consulta: fechaHoy,
             });
 
             if (rpcError) {
@@ -37,16 +61,7 @@ export const useInventario = (): UseInventarioResult => {
                 setStock(null);
                 setError('No se ha realizado la apertura del día');
             } else {
-                const stockData = data[0];
-
-                // Si el inventario está cerrado, no mostramos stock
-                // Esto indica que la jornada terminó y se necesita nueva apertura
-                if (stockData.estado === 'cerrado') {
-                    setStock(null);
-                    setError('La jornada ha finalizado. Realiza una nueva apertura para el siguiente día.');
-                } else {
-                    setStock(stockData);
-                }
+                setStock({ ...data[0], estado: 'abierto' });
             }
         } catch (err) {
             console.error('Error al obtener stock:', err);
