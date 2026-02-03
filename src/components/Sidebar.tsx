@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, ShoppingCart, BarChart, Lock, ClipboardList, ChefHat, Package, Users, Boxes, LucideIcon } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Home, ShoppingCart, BarChart, Lock, ClipboardList, ChefHat, Package, Users, Boxes, LucideIcon, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasPermission } from '@/lib/roles';
@@ -18,6 +18,11 @@ interface MenuItem {
 interface MenuSection {
     title: string;
     items: MenuItem[];
+}
+
+interface SidebarProps {
+    isOpen?: boolean;
+    onClose?: () => void;
 }
 
 // Menú organizado por secciones
@@ -53,19 +58,48 @@ const menuSections: MenuSection[] = [
     }
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
     const pathname = usePathname();
     const { user, loading } = useAuth();
 
     // Esperar a que termine de cargar el usuario
     if (loading) {
         return (
-            <aside className="fixed left-0 top-0 h-screen w-64 glass-red z-50 flex items-center justify-center">
-                <div className="text-white text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-white mx-auto mb-2"></div>
-                    <p className="text-sm">Cargando menú...</p>
-                </div>
-            </aside>
+            <>
+                {/* Desktop sidebar loading */}
+                <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-64 glass-red z-50 items-center justify-center">
+                    <div className="text-white text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-white mx-auto mb-2"></div>
+                        <p className="text-sm">Cargando menú...</p>
+                    </div>
+                </aside>
+                {/* Mobile sidebar loading */}
+                <AnimatePresence>
+                    {isOpen && (
+                        <>
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="lg:hidden fixed inset-0 bg-black/50 z-40"
+                                onClick={onClose}
+                            />
+                            <motion.aside
+                                initial={{ x: '-100%' }}
+                                animate={{ x: 0 }}
+                                exit={{ x: '-100%' }}
+                                transition={{ type: 'tween', duration: 0.3 }}
+                                className="lg:hidden fixed left-0 top-0 h-screen w-72 glass-red z-50 flex items-center justify-center"
+                            >
+                                <div className="text-white text-center">
+                                    <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-white mx-auto mb-2"></div>
+                                    <p className="text-sm">Cargando menú...</p>
+                                </div>
+                            </motion.aside>
+                        </>
+                    )}
+                </AnimatePresence>
+            </>
         );
     }
 
@@ -80,12 +114,27 @@ export default function Sidebar() {
         items: section.items.filter(item => hasPermission(user.rol, item.permission))
     })).filter(section => section.items.length > 0);
 
-    return (
-        <aside className="fixed left-0 top-0 h-screen w-64 glass-red z-50 overflow-hidden flex flex-col">
+    const handleLinkClick = () => {
+        // Cerrar sidebar en móvil al hacer clic en un enlace
+        if (onClose) {
+            onClose();
+        }
+    };
+
+    const SidebarContent = () => (
+        <>
             {/* Efecto de brillo animado en el fondo */}
             <div className="absolute inset-0 opacity-20">
                 <div className="absolute top-0 left-0 w-full h-full bg-linear-to-br from-white/20 via-transparent to-transparent shine-effect" />
             </div>
+
+            {/* Botón cerrar (solo móvil) */}
+            <button
+                onClick={onClose}
+                className="lg:hidden absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"
+            >
+                <X size={20} />
+            </button>
 
             {/* Logo/Header */}
             <motion.div
@@ -106,7 +155,7 @@ export default function Sidebar() {
                             transition={{ duration: 0.3 }}
                             className="flex items-center justify-center"
                         >
-                            <div className="relative w-36 h-36">
+                            <div className="relative w-28 h-28 lg:w-36 lg:h-36">
                                 <Image
                                     src="/images/logo-pocholos-icon.png"
                                     alt="Pocholo's Chicken"
@@ -150,6 +199,7 @@ export default function Sidebar() {
                                     <Link
                                         key={item.href}
                                         href={item.href}
+                                        onClick={handleLinkClick}
                                         className="block"
                                     >
                                         <motion.div
@@ -200,6 +250,42 @@ export default function Sidebar() {
 
             {/* Efecto de borde derecho brillante */}
             <div className="absolute top-0 right-0 w-1 h-full bg-linear-to-b from-pocholo-yellow/50 via-white/30 to-pocholo-yellow/50" />
-        </aside>
+        </>
+    );
+
+    return (
+        <>
+            {/* Desktop Sidebar - siempre visible */}
+            <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-64 glass-red z-50 overflow-hidden flex-col">
+                <SidebarContent />
+            </aside>
+
+            {/* Mobile Sidebar - overlay drawer */}
+            <AnimatePresence>
+                {isOpen && (
+                    <>
+                        {/* Backdrop */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="lg:hidden fixed inset-0 bg-black/50 z-40"
+                            onClick={onClose}
+                        />
+                        {/* Drawer */}
+                        <motion.aside
+                            initial={{ x: '-100%' }}
+                            animate={{ x: 0 }}
+                            exit={{ x: '-100%' }}
+                            transition={{ type: 'tween', duration: 0.3 }}
+                            className="lg:hidden fixed left-0 top-0 h-screen w-72 glass-red z-50 overflow-hidden flex flex-col"
+                        >
+                            <SidebarContent />
+                        </motion.aside>
+                    </>
+                )}
+            </AnimatePresence>
+        </>
     );
 }

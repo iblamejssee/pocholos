@@ -269,11 +269,11 @@ export default function POSPage() {
     ];
 
     return (
-        <div className="p-6 max-w-7xl mx-auto print:hidden">
+        <div className="p-3 lg:p-6 max-w-7xl mx-auto print:hidden">
             {/* Header */}
-            <div className="mb-6">
-                <h1 className="text-3xl font-bold text-pocholo-brown mb-1">Punto de Venta</h1>
-                <p className="text-pocholo-brown/70">Busca y selecciona productos</p>
+            <div className="mb-4 lg:mb-6">
+                <h1 className="text-xl lg:text-3xl font-bold text-pocholo-brown mb-1">Punto de Venta</h1>
+                <p className="text-pocholo-brown/70 text-sm lg:text-base">Busca y selecciona productos</p>
             </div>
 
             {/* Stock Actual */}
@@ -294,7 +294,7 @@ export default function POSPage() {
                 </div>
             )}
 
-            <div className="grid lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
                 {/* Productos */}
                 <div className="lg:col-span-2">
                     {/* Barra de búsqueda */}
@@ -329,7 +329,7 @@ export default function POSPage() {
 
                     {/* Lista de Productos */}
                     <div className="glass-card rounded-2xl shadow-3d overflow-hidden">
-                        <div className="max-h-[600px] overflow-y-auto">
+                        <div className="max-h-[50vh] lg:max-h-[600px] overflow-y-auto">
                             {loading ? (
                                 <div className="p-8 text-center text-pocholo-brown/50">Cargando productos...</div>
                             ) : productosFiltrados.length === 0 ? (
@@ -376,7 +376,7 @@ export default function POSPage() {
 
                 {/* Carrito */}
                 <div className="lg:col-span-1">
-                    <div className="glass-card rounded-2xl shadow-3d-deep p-4 sticky top-6">
+                    <div className="glass-card rounded-2xl shadow-3d-deep p-3 lg:p-4 sticky top-4 lg:top-6">
                         <div className="flex items-center gap-2 mb-4">
                             <ShoppingCart className="text-pocholo-red" size={24} />
                             <h2 className="text-xl font-bold text-pocholo-brown">Carrito</h2>
