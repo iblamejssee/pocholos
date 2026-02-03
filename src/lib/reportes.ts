@@ -51,6 +51,7 @@ export const obtenerVentasPorRango = async (
         const { data, error } = await supabase
             .from('ventas')
             .select('*')
+            .eq('estado_pago', 'pagado')
             .gte('fecha', fechaInicio)
             .lte('fecha', fechaFin)
             .order('created_at', { ascending: false });
@@ -105,6 +106,7 @@ export const obtenerVentasPorDia = async (
         const { data, error } = await supabase
             .from('ventas')
             .select('fecha, total')
+            .eq('estado_pago', 'pagado')
             .gte('fecha', fechaInicio)
             .lte('fecha', fechaFin)
             .order('fecha', { ascending: true });
