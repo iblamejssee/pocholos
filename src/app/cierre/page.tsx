@@ -10,7 +10,7 @@ import { formatearCantidadPollos, formatearFraccionPollo } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import AnimatedCard from '@/components/AnimatedCard';
-import { supabase } from '@/lib/supabase';
+import { supabase, obtenerFechaHoy } from '@/lib/supabase';
 import confetti from 'canvas-confetti';
 
 export default function CierreCajaPage() {
@@ -126,7 +126,7 @@ export default function CierreCajaPage() {
                     dinero_cierre_real: parseFloat(dineroCajaReal || '0'),
                     observaciones_cierre: observaciones
                 })
-                .eq('fecha', new Date().toISOString().split('T')[0]);
+                .eq('fecha', obtenerFechaHoy());
 
             if (error) throw error;
 
