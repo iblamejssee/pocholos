@@ -1,45 +1,51 @@
-import { supabase } from './supabase';
+import { supabase, obtenerFechaHoy } from './supabase';
 
+/**
+ * Reinicia SOLO los datos del día actual
+ * No afecta el historial de días anteriores
+ */
 export async function resetearSistema(): Promise<{ success: boolean; message: string }> {
     try {
-        // 1. Eliminar todas las ventas
+        const fechaHoy = obtenerFechaHoy();
+
+        // 1. Eliminar ventas SOLO del día actual
         const { error: errorVentas } = await supabase
             .from('ventas')
             .delete()
-            .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+            .eq('fecha', fechaHoy);
 
         if (errorVentas) {
-            console.error('Error al eliminar ventas:', errorVentas);
-            throw new Error('Error al eliminar ventas');
+            console.error('Error al eliminar ventas del día:', errorVentas);
+            throw new Error('Error al eliminar ventas del día');
         }
 
-        // 2. Eliminar todos los gastos
+        // 2. Eliminar gastos SOLO del día actual
         const { error: errorGastos } = await supabase
             .from('gastos')
             .delete()
-            .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+            .eq('fecha', fechaHoy);
 
         if (errorGastos) {
-            console.error('Error al eliminar gastos:', errorGastos);
-            throw new Error('Error al eliminar gastos');
+            console.error('Error al eliminar gastos del día:', errorGastos);
+            throw new Error('Error al eliminar gastos del día');
         }
 
-        // 3. Eliminar todo el inventario diario
+        // 3. Eliminar inventario SOLO del día actual
         const { error: errorInventario } = await supabase
             .from('inventario_diario')
             .delete()
-            .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+            .eq('fecha', fechaHoy);
 
         if (errorInventario) {
-            console.error('Error al eliminar inventario:', errorInventario);
-            throw new Error('Error al eliminar inventario');
+            console.error('Error al eliminar inventario del día:', errorInventario);
+            throw new Error('Error al eliminar inventario del día');
         }
 
         // 4. Resetear todas las mesas a estado 'libre'
         const { error: errorMesas } = await supabase
             .from('mesas')
             .update({ estado: 'libre' })
-            .neq('id', 0); // Update all
+            .neq('id', 0);
 
         if (errorMesas) {
             console.error('Error al liberar mesas:', errorMesas);
@@ -48,14 +54,16 @@ export async function resetearSistema(): Promise<{ success: boolean; message: st
 
         return {
             success: true,
-            message: '✅ Sistema restablecido correctamente. Todos los datos han sido eliminados.'
+            message: '✅ Día actual restablecido. Puedes hacer una nueva apertura con los datos correctos.'
         };
 
-    } catch (error: any) {
-        console.error('Error al restablecer sistema:', error);
+    } catch (error: unknown) {
+        console.error('Error al restablecer día:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
         return {
             success: false,
-            message: `❌ Error al restablecer: ${error.message || 'Error desconocido'}`
+            message: `❌ Error al restablecer: ${errorMessage}`
         };
     }
 }
+
