@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ChefHat, ClipboardList, ShoppingCart, TrendingUp, TrendingDown, AlertCircle, Package, RotateCcw, DollarSign, Users, BarChart3, Clock, Wallet, ArrowRight, Activity, Zap } from 'lucide-react';
+import { ChefHat, ClipboardList, ShoppingCart, TrendingUp, TrendingDown, AlertCircle, Package, RotateCcw, DollarSign, Users, BarChart3, Clock, Wallet, ArrowRight, Activity, Zap, Receipt, Trash2 } from 'lucide-react';
 import { useInventario } from '@/hooks/useInventario';
 import { useVentas } from '@/hooks/useVentas';
 import { useMetricas } from '@/hooks/useMetricas';
@@ -9,8 +9,9 @@ import GastosModal from '@/components/GastosModal';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { motion } from 'framer-motion';
 import { formatearFraccionPollo } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { resetearSistema } from '@/lib/reset';
+import { supabase, obtenerFechaHoy } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 
 function DashboardContent() {
@@ -30,6 +31,23 @@ function DashboardContent() {
   const [showGastosModal, setShowGastosModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [gastosDelDia, setGastosDelDia] = useState<{ id: string; descripcion: string; monto: number; metodo_pago?: string }[]>([]);
+
+  // Cargar gastos del día
+  const cargarGastos = async () => {
+    const { data } = await supabase
+      .from('gastos')
+      .select('id, descripcion, monto, metodo_pago')
+      .eq('fecha', obtenerFechaHoy())
+      .order('created_at', { ascending: false });
+    setGastosDelDia(data || []);
+  };
+
+  useEffect(() => {
+    cargarGastos();
+  }, []);
+
+  const totalGastos = gastosDelDia.reduce((sum, g) => sum + g.monto, 0);
 
   const handleReset = async () => {
     setResetting(true);
@@ -421,12 +439,42 @@ function DashboardContent() {
             <DollarSign size={18} />
             Registrar Gasto
           </button>
+
+          {/* Lista de Gastos del Día */}
+          {gastosDelDia.length > 0 && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-100 rounded-xl">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Receipt size={16} className="text-red-600" />
+                  <span className="font-medium text-red-700 text-sm">Gastos del Día</span>
+                </div>
+                <span className="font-bold text-red-600">S/ {totalGastos.toFixed(2)}</span>
+              </div>
+              <div className="space-y-2 max-h-32 overflow-y-auto">
+                {gastosDelDia.map((gasto) => (
+                  <div key={gasto.id} className="flex justify-between items-center text-sm bg-white px-3 py-2 rounded-lg">
+                    <div>
+                      <span className="text-slate-700">{gasto.descripcion}</span>
+                      {gasto.metodo_pago && (
+                        <span className="ml-2 text-xs text-slate-400">({gasto.metodo_pago})</span>
+                      )}
+                    </div>
+                    <span className="font-medium text-red-600">S/ {gasto.monto.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </motion.div>
       </div>
 
       {/* Modal de Gastos */}
       {showGastosModal && (
-        <GastosModal isOpen={showGastosModal} onClose={() => setShowGastosModal(false)} />
+        <GastosModal
+          isOpen={showGastosModal}
+          onClose={() => setShowGastosModal(false)}
+          onGastoRegistrado={cargarGastos}
+        />
       )}
 
       {/* Modal de Reset */}
