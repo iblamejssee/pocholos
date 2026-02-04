@@ -82,11 +82,16 @@ function DashboardContent() {
       {/* Header Profesional */}
       <div className="mb-4 sm:mb-8">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800">
-              Panel de Control
-            </h1>
-            <p className="text-sm sm:text-base text-slate-500 capitalize">{fechaHoy}</p>
+          <div className="flex items-center gap-4">
+            <div className="relative w-12 h-12 hidden sm:block">
+              <img src="/images/logo-pocholos-icon.png" alt="Logo" className="w-full h-full object-contain" />
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800 flex items-center gap-2">
+                Panel de Control
+              </h1>
+              <p className="text-sm sm:text-base text-slate-500 capitalize">{fechaHoy}</p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl">

@@ -80,25 +80,36 @@ export default function LoginPage() {
                         }}
                     >
                         {/* Header */}
-                        <div className="mb-10">
+                        <div className="mb-8 text-center bg-transparent">
+                            <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ type: "spring", duration: 0.8 }}
+                                className="w-32 h-32 mx-auto mb-4 relative"
+                            >
+                                <img
+                                    src="/images/logo-pocholos.png"
+                                    alt="Pocholo's Chicken"
+                                    className="w-full h-full object-contain drop-shadow-xl"
+                                />
+                            </motion.div>
                             <motion.h1
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.2 }}
-                                className="text-5xl font-black text-pocholo-brown mb-2"
-                                style={{
-                                    textShadow: '2px 2px 0 rgba(200,16,46,0.1)'
-                                }}
+                                className="text-4xl font-black text-pocholo-brown mb-2"
                             >
                                 Bienvenidos
                             </motion.h1>
-                            <motion.div
-                                initial={{ scaleX: 0 }}
-                                animate={{ scaleX: 1 }}
-                                transition={{ delay: 0.4, duration: 0.5 }}
-                                className="h-1 w-24 bg-gradient-to-r from-pocholo-red to-pocholo-yellow rounded-full mb-3"
-                            />
-                            <p className="text-pocholo-brown/60">
+                            <div className="flex justify-center mb-3">
+                                <motion.div
+                                    initial={{ scaleX: 0 }}
+                                    animate={{ scaleX: 1 }}
+                                    transition={{ delay: 0.4, duration: 0.5 }}
+                                    className="h-1 w-24 bg-gradient-to-r from-pocholo-red to-pocholo-yellow rounded-full"
+                                />
+                            </div>
+                            <p className="text-pocholo-brown/60 font-medium">
                                 Sistema de Gestión POS
                             </p>
                         </div>

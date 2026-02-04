@@ -166,9 +166,9 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                             </div>
                         </motion.div>
                         <motion.p
-                            className="text-pocholo-yellow text-xs text-center font-semibold -mt-2"
+                            className="text-pocholo-yellow text-md text-center font-bold -mt-2 drop-shadow-md"
                         >
-                            Sistema POS
+                            Pocholo's Chicken
                         </motion.p>
                     </div>
                 </div>

@@ -99,8 +99,8 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                     >
                         {/* Header */}
                         <div className="bg-pocholo-red text-white p-5 text-center">
-                            <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
-                                <Receipt size={32} />
+                            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-2 p-2 shadow-lg">
+                                <img src="/images/logo-pocholos-icon.png" alt="Logo" className="w-full h-full object-contain" />
                             </div>
                             <h2 className="text-xl font-bold">Boleta de Venta</h2>
                             <p className="text-white/80 text-sm">{numeroBoleta}</p>
