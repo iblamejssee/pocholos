@@ -16,10 +16,19 @@ import TableSelector from '@/components/TableSelector';
 import { motion } from 'framer-motion';
 import { playKitchenBell } from '@/lib/sounds';
 import { formatearFraccionPollo } from '@/lib/utils';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 type Categoria = 'pollos' | 'especiales' | 'extras' | 'bebidas' | 'todos' | 'populares';
 
 export default function POSPage() {
+    return (
+        <ProtectedRoute>
+            <POSContent />
+        </ProtectedRoute>
+    );
+}
+
+function POSContent() {
     const [productos, setProductos] = useState<Producto[]>([]);
     const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
     const [loading, setLoading] = useState(true);

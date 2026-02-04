@@ -6,6 +6,7 @@ import { Check, Drumstick, Loader2, RefreshCw } from 'lucide-react';
 import { supabase, obtenerFechaHoy } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import type { BebidasDetalle } from '@/lib/database.types';
+import ProtectedRoute from '@/components/ProtectedRoute';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 
@@ -32,6 +33,14 @@ const MARCA_CONFIG: Record<MarcaGaseosa, { name: string; color: string; bgColor:
 };
 
 export default function AperturaPage() {
+    return (
+        <ProtectedRoute>
+            <AperturaContent />
+        </ProtectedRoute>
+    );
+}
+
+function AperturaContent() {
     const router = useRouter();
     const [pollosEnteros, setPollosEnteros] = useState('');
     const [dineroInicial, setDineroInicial] = useState('');

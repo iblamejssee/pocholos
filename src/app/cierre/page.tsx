@@ -12,8 +12,17 @@ import toast from 'react-hot-toast';
 import AnimatedCard from '@/components/AnimatedCard';
 import { supabase, obtenerFechaHoy } from '@/lib/supabase';
 import confetti from 'canvas-confetti';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function CierreCajaPage() {
+    return (
+        <ProtectedRoute>
+            <CierreCajaContent />
+        </ProtectedRoute>
+    );
+}
+
+function CierreCajaContent() {
     const router = useRouter();
     const { stock, loading } = useInventario();
     const { ventas } = useVentas();

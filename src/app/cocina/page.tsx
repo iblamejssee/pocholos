@@ -8,8 +8,17 @@ import KitchenTicketModal from '@/components/KitchenTicketModal';
 import { ChefHat, Loader2, RefreshCw, X, Save, Trash2, Plus, Minus, AlertTriangle, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function CocinaPage() {
+    return (
+        <ProtectedRoute>
+            <CocinaContent />
+        </ProtectedRoute>
+    );
+}
+
+function CocinaContent() {
     const [pedidos, setPedidos] = useState<Venta[]>([]);
     const [loading, setLoading] = useState(true);
     const [showTicketModal, setShowTicketModal] = useState(false);

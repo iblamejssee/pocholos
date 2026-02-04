@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import AnimatedCard from '@/components/AnimatedCard';
 import ReceiptModal from '@/components/ReceiptModal';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 interface MesaConVenta extends Mesa {
     venta?: Venta;
@@ -18,6 +19,14 @@ interface VentaParaLlevar extends Venta {
 }
 
 export default function MesasActivasPage() {
+    return (
+        <ProtectedRoute>
+            <MesasActivasContent />
+        </ProtectedRoute>
+    );
+}
+
+function MesasActivasContent() {
     const [mesasActivas, setMesasActivas] = useState<MesaConVenta[]>([]);
     const [ventasParaLlevar, setVentasParaLlevar] = useState<Venta[]>([]);
     const [loading, setLoading] = useState(true);

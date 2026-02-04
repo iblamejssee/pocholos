@@ -5,8 +5,17 @@ import { motion } from 'framer-motion';
 import { Users, RefreshCw, Loader2 } from 'lucide-react';
 import { useMesas } from '@/hooks/useMesas';
 import toast from 'react-hot-toast';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function MesasPage() {
+    return (
+        <ProtectedRoute>
+            <MesasContent />
+        </ProtectedRoute>
+    );
+}
+
+function MesasContent() {
     const { mesas, loading, ocuparMesa, liberarMesa, refetch } = useMesas();
     const [toggling, setToggling] = useState<number | null>(null);
 
