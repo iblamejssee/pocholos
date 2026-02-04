@@ -111,6 +111,20 @@ export default function CocinaPage() {
         if (!cancellingId) return;
 
         try {
+            // Verificar si el pedido ya está pagado
+            const { data: pedido } = await supabase
+                .from('ventas')
+                .select('estado_pago')
+                .eq('id', cancellingId)
+                .single();
+
+            if (pedido?.estado_pago === 'pagado') {
+                toast.error('No se puede eliminar un pedido ya pagado');
+                setShowCancelModal(false);
+                setCancellingId(null);
+                return;
+            }
+
             const { error } = await supabase
                 .from('ventas')
                 .delete()
