@@ -16,7 +16,17 @@ import toast from 'react-hot-toast';
 function DashboardContent() {
   const { stock, loading, error, refetch } = useInventario();
   const { ventas, refetch: refetchVentas } = useVentas();
-  const metricas = useMetricas(ventas);
+  const metricasReales = useMetricas(ventas);
+
+  // Si no hay stock activo (jornada cerrada o sin apertura), mostrar métricas en 0
+  const metricas = stock ? metricasReales : {
+    totalIngresos: 0,
+    cantidadPedidos: 0,
+    promedioPorPedido: 0,
+    pollosVendidos: 0,
+    gaseosasVendidas: 0,
+    loading: false
+  };
   const [showGastosModal, setShowGastosModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetting, setResetting] = useState(false);
