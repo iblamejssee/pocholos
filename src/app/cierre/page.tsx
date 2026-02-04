@@ -19,6 +19,10 @@ export default function CierreCajaPage() {
     const { ventas } = useVentas();
     const metricas = useMetricas(ventas);
 
+    // Estado para gastos del día
+    const [gastosDelDia, setGastosDelDia] = useState<{ descripcion: string; monto: number; metodo_pago?: string }[]>([]);
+    const totalGastos = gastosDelDia.reduce((sum, g) => sum + g.monto, 0);
+
     // Estados para inputs manuales
     const [pollosAderezados, setPollosAderezados] = useState('');
     const [pollosEnCaja, setPollosEnCaja] = useState('');
@@ -32,6 +36,18 @@ export default function CierreCajaPage() {
     const [procesando, setProcesando] = useState(false);
     const [cierreCompletado, setCierreCompletado] = useState(false);
     const [resumenWhatsApp, setResumenWhatsApp] = useState('');
+
+    // Cargar gastos del día
+    useEffect(() => {
+        const cargarGastos = async () => {
+            const { data } = await supabase
+                .from('gastos')
+                .select('descripcion, monto, metodo_pago')
+                .eq('fecha', obtenerFechaHoy());
+            setGastosDelDia(data || []);
+        };
+        cargarGastos();
+    }, []);
 
     // Agrupar ventas por método de pago
     const ventasPorMetodo = ventas.reduce((acc, venta) => {
@@ -148,6 +164,11 @@ export default function CierreCajaPage() {
                 ? listaPlatosVendidos.map(p => `   • ${p.nombre}: x${p.cantidad}`).join('\n')
                 : '   (Sin platillos registrados)';
 
+            // Generar lista de gastos
+            const gastosTexto = gastosDelDia.length > 0
+                ? gastosDelDia.map(g => `   • ${g.descripcion}: S/${g.monto.toFixed(2)} (${g.metodo_pago || 'efectivo'})`).join('\n')
+                : '   (Sin gastos registrados)';
+
             const mensaje = `🐔 *RESUMEN POCHOLO'S - ${new Date().toLocaleDateString('es-PE')}* 🐔
 
 💰 *VENTAS TOTALES: S/ ${metricas.totalIngresos.toFixed(2)}*
@@ -158,6 +179,12 @@ export default function CierreCajaPage() {
 💠 Plin: S/ ${(ventasPorMetodo['plin'] || 0).toFixed(2)}
 
 🫰 *TOTAL EFECTIVO + BASE: S/ ${totalEfectivoEsperado.toFixed(2)}*
+
+📤 *GASTOS DEL DÍA: S/ ${totalGastos.toFixed(2)}*
+--------------------------------
+${gastosTexto}
+
+💵 *EFECTIVO NETO: S/ ${(totalEfectivoEsperado - totalGastos).toFixed(2)}*
 
 🍗 *DESGLOSE DE POLLOS*
 --------------------------------

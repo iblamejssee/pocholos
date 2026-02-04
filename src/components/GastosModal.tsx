@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { X, Calendar, Plus, Loader2 } from 'lucide-react';
+import { supabase, obtenerFechaHoy } from '@/lib/supabase';
+import { X, Plus, Loader2, Banknote, Smartphone } from 'lucide-react';
 import SolIcon from '@/components/SolIcon';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -13,9 +13,12 @@ interface GastosModalProps {
     onGastoRegistrado?: () => void;
 }
 
+type MetodoPago = 'efectivo' | 'yape' | 'plin';
+
 export default function GastosModal({ isOpen, onClose, onGastoRegistrado }: GastosModalProps) {
     const [descripcion, setDescripcion] = useState('');
     const [monto, setMonto] = useState('');
+    const [metodoPago, setMetodoPago] = useState<MetodoPago>('efectivo');
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -29,14 +32,16 @@ export default function GastosModal({ isOpen, onClose, onGastoRegistrado }: Gast
                 .insert({
                     descripcion,
                     monto: parseFloat(monto),
-                    fecha: new Date().toISOString(),
+                    fecha: obtenerFechaHoy(),
+                    metodo_pago: metodoPago,
                 });
 
             if (error) throw error;
 
-            toast.success('Gasto registrado correctamente');
+            toast.success('Gasto registrado');
             setDescripcion('');
             setMonto('');
+            setMetodoPago('efectivo');
             if (onGastoRegistrado) onGastoRegistrado();
             onClose();
         } catch (error) {
@@ -46,6 +51,12 @@ export default function GastosModal({ isOpen, onClose, onGastoRegistrado }: Gast
             setLoading(false);
         }
     };
+
+    const metodosPago: { value: MetodoPago; label: string; icon: React.ReactNode }[] = [
+        { value: 'efectivo', label: 'Efectivo', icon: <Banknote size={18} /> },
+        { value: 'yape', label: 'Yape', icon: <Smartphone size={18} /> },
+        { value: 'plin', label: 'Plin', icon: <Smartphone size={18} /> },
+    ];
 
     return (
         <AnimatePresence>
@@ -73,15 +84,10 @@ export default function GastosModal({ isOpen, onClose, onGastoRegistrado }: Gast
 
                         <div className="mb-6">
                             <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center mb-4">
-                                <motion.div
-                                    whileHover={{ rotate: 360 }}
-                                    transition={{ duration: 0.6 }}
-                                >
-                                    <SolIcon className="text-pocholo-red" size={24} />
-                                </motion.div>
+                                <SolIcon className="text-pocholo-red" size={24} />
                             </div>
                             <h2 className="text-2xl font-bold text-pocholo-brown">Registrar Gasto</h2>
-                            <p className="text-pocholo-brown/60 text-sm">Registra una salida de dinero de la caja.</p>
+                            <p className="text-pocholo-brown/60 text-sm">Registra una salida de dinero.</p>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
@@ -91,7 +97,7 @@ export default function GastosModal({ isOpen, onClose, onGastoRegistrado }: Gast
                                     type="text"
                                     value={descripcion}
                                     onChange={(e) => setDescripcion(e.target.value)}
-                                    placeholder="Ej. Compra de limones, Pago de luz..."
+                                    placeholder="Ej. Compra de limones..."
                                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-pocholo-yellow focus:outline-none transition-colors"
                                     required
                                 />
@@ -110,6 +116,26 @@ export default function GastosModal({ isOpen, onClose, onGastoRegistrado }: Gast
                                         className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-gray-100 focus:border-pocholo-yellow focus:outline-none transition-colors font-mono text-lg"
                                         required
                                     />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-pocholo-brown mb-2">Pagado con</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {metodosPago.map((metodo) => (
+                                        <button
+                                            key={metodo.value}
+                                            type="button"
+                                            onClick={() => setMetodoPago(metodo.value)}
+                                            className={`flex items-center justify-center gap-2 py-3 px-2 rounded-xl border-2 transition-all ${metodoPago === metodo.value
+                                                    ? 'border-pocholo-yellow bg-pocholo-yellow/10 text-pocholo-brown font-semibold'
+                                                    : 'border-gray-100 text-gray-500 hover:border-gray-200'
+                                                }`}
+                                        >
+                                            {metodo.icon}
+                                            <span className="text-sm">{metodo.label}</span>
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
 

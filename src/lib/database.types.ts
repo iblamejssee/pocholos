@@ -33,6 +33,7 @@ export interface Gasto {
     descripcion: string;
     monto: number;
     fecha: string;
+    metodo_pago?: 'efectivo' | 'yape' | 'plin';
     created_at: string;
 }
 
