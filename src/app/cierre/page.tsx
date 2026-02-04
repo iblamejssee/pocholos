@@ -316,6 +316,24 @@ _Generado automáticamente por Pocholo's POS_`;
                                         <span className="font-bold text-2xl text-pocholo-red">S/ {metricas.totalIngresos.toFixed(2)}</span>
                                     </div>
                                 </div>
+
+                                {/* Gastos del día */}
+                                {gastosDelDia.length > 0 && (
+                                    <div className="border-t border-pocholo-brown/10 pt-3 mt-3">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="text-sm font-medium text-red-600">📤 Gastos del Día</span>
+                                            <span className="font-bold text-red-600">- S/ {totalGastos.toFixed(2)}</span>
+                                        </div>
+                                        <div className="space-y-1 max-h-24 overflow-y-auto">
+                                            {gastosDelDia.map((g, i) => (
+                                                <div key={i} className="flex justify-between text-xs text-pocholo-brown/60 bg-red-50 px-2 py-1 rounded">
+                                                    <span>{g.descripcion}</span>
+                                                    <span>S/ {g.monto.toFixed(2)}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </AnimatedCard>
@@ -372,7 +390,7 @@ _Generado automáticamente por Pocholo's POS_`;
                                     {/* Pollos Aderezados */}
                                     <div className="mb-4">
                                         <label className="text-sm font-medium text-pocholo-brown mb-1 block">
-                                            🍗 Pollos Aderezados (ya preparados)
+                                            🍗 Pollos Aderezados
                                         </label>
                                         <input
                                             type="number"
@@ -387,7 +405,7 @@ _Generado automáticamente por Pocholo's POS_`;
                                     {/* Pollos En Caja */}
                                     <div className="mb-3">
                                         <label className="text-sm font-medium text-pocholo-brown mb-1 block">
-                                            📦 Pollos en Caja (crudos en refrigerador)
+                                            📦 Pollos en Caja
                                         </label>
                                         <input
                                             type="number"
@@ -475,6 +493,9 @@ _Generado automáticamente por Pocholo's POS_`;
                             />
                         </div>
                     </AnimatedCard>
+
+                    {/* Espaciador para el botón flotante */}
+                    <div className="h-24"></div>
                 </div>
             </div>
 

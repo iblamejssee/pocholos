@@ -128,8 +128,8 @@ export default function GastosModal({ isOpen, onClose, onGastoRegistrado }: Gast
                                             type="button"
                                             onClick={() => setMetodoPago(metodo.value)}
                                             className={`flex items-center justify-center gap-2 py-3 px-2 rounded-xl border-2 transition-all ${metodoPago === metodo.value
-                                                    ? 'border-pocholo-yellow bg-pocholo-yellow/10 text-pocholo-brown font-semibold'
-                                                    : 'border-gray-100 text-gray-500 hover:border-gray-200'
+                                                ? 'border-pocholo-yellow bg-pocholo-yellow/10 text-pocholo-brown font-semibold'
+                                                : 'border-gray-100 text-gray-500 hover:border-gray-200'
                                                 }`}
                                         >
                                             {metodo.icon}
