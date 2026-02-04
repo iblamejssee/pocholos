@@ -4,11 +4,5 @@
     "framework": "nextjs",
     "regions": [
         "gru1"
-    ],
-    "crons": [
-        {
-            "path": "/api/cron/keep-alive",
-            "schedule": "0 */6 * * *"
-        }
     ]
 }
