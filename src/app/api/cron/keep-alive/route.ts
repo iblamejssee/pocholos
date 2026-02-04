@@ -1,42 +1,42 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
-export async function GET(request: Request) {
-    try {
-        // Validar autorización de Vercel Cron
-        const authHeader = request.headers.get('authorization');
-        if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-            return NextResponse.json(
-                { error: 'No autorizado' },
-                { status: 401 }
-            );
-        }
+// Esto obliga a Vercel a ejecutar el código SIEMPRE y no usar caché
+export const dynamic = 'force-dynamic';
 
-        // Conectar a Supabase
+export async function GET() {
+    try {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        // USAMOS LA SERVICE ROLE KEY (la llave secreta) para saltar el RLS
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
         if (!supabaseUrl || !supabaseKey) {
-            return NextResponse.json({ error: 'Faltan variables de entorno' }, { status: 500 });
+            return NextResponse.json(
+                { error: 'Faltan variables de entorno en Vercel' },
+                { status: 500 }
+            );
         }
 
         const supabase = createClient(supabaseUrl, supabaseKey);
 
-        // Hacer una consulta simple para mantener la BD activa
-        const { error } = await supabase.from('productos').select('id').limit(1);
+        // Hacemos una consulta rápida que sí o sí toque la DB
+        const { error } = await supabase
+            .from('productos')
+            .select('id')
+            .limit(1);
 
-        if (error) {
-            return NextResponse.json({ success: false, message: error.message }, { status: 500 });
-        }
+        if (error) throw error;
 
         return NextResponse.json({
             success: true,
-            message: 'Base de datos activa',
+            message: 'Despertador de Pocholos: DB Activa',
             timestamp: new Date().toISOString()
         });
 
-    } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
-        return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
+    } catch (err: any) {
+        return NextResponse.json(
+            { success: false, error: err.message },
+            { status: 500 }
+        );
     }
 }
