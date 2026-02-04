@@ -180,8 +180,8 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                         </div>
                     </motion.div>
 
-                    {/* Área de Impresión Térmica (58mm/80mm) */}
-                    <div className="hidden print:block font-mono text-[11px] w-[72mm] leading-tight p-2">
+                    {/* Área de Impresión Térmica - EPSON TM-T20IIIL (80mm) */}
+                    <div className="hidden print:block print-ticket font-mono text-[12px] w-[80mm] leading-snug p-[4mm]">
                         {/* Header */}
                         <div className="text-center mb-2">
                             <h1 className="text-base font-black">{config.razon_social}</h1>

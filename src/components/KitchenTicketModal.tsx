@@ -46,19 +46,20 @@ export default function KitchenTicketModal({ isOpen, onClose, venta }: KitchenTi
                 <meta charset="UTF-8">
                 <title>Comanda - Mesa ${mesaNumero || 'Para Llevar'}</title>
                 <style>
+                    /* EPSON TM-T20IIIL - 80mm thermal printer */
                     @page {
                         size: 80mm auto;
-                        margin: 0;
+                        margin: 0mm;
                     }
                     * {
                         box-sizing: border-box;
                     }
                     body {
-                        font-family: 'Courier New', monospace;
+                        font-family: 'Courier New', Courier, monospace;
                         font-size: 14px;
                         width: 80mm;
                         margin: 0 auto;
-                        padding: 3mm;
+                        padding: 2mm 4mm;
                         line-height: 1.4;
                         color: black;
                         background: white;
