@@ -10,6 +10,8 @@ export interface InventarioDiario {
     estado: 'abierto' | 'cerrado';
     stock_pollos_real?: number;
     stock_gaseosas_real?: number;
+    papas_iniciales?: number;
+    papas_finales?: number;
     dinero_cierre_real?: number;
     observaciones_cierre?: string;
     created_at: string;
@@ -79,6 +81,7 @@ export interface StockActual {
     gaseosas_iniciales: number;
     pollos_vendidos: number;
     gaseosas_vendidas: number;
+    papas_iniciales?: number;
     dinero_inicial: number;
     estado: 'abierto' | 'cerrado';
 }

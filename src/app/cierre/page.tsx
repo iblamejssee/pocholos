@@ -36,6 +36,7 @@ function CierreCajaContent() {
     const [pollosAderezados, setPollosAderezados] = useState('');
     const [pollosEnCaja, setPollosEnCaja] = useState('');
     const [stockGaseosasReal, setStockGaseosasReal] = useState('');
+    const [stockPapasFinal, setStockPapasFinal] = useState('');
     const [dineroCajaReal, setDineroCajaReal] = useState('');
     const [observaciones, setObservaciones] = useState('');
 
@@ -148,35 +149,31 @@ function CierreCajaContent() {
                     estado: 'cerrado',
                     stock_pollos_real: parseFloat(stockPollosReal || '0'),
                     stock_gaseosas_real: parseInt(stockGaseosasReal || '0'),
+                    papas_finales: parseFloat(stockPapasFinal || '0'),
                     dinero_cierre_real: parseFloat(dineroCajaReal || '0'),
                     observaciones_cierre: observaciones
                 })
                 .eq('fecha', obtenerFechaHoy());
 
-            if (error) throw error;
+            // Calcular total efectivo esperado (base + ventas efectivo - gastos efectivo)
+            const totalEfectivoEsperado = (ventasPorMetodo['efectivo'] || 0) + (stock?.dinero_inicial || 0) - totalGastos;
 
-            // 2. Liberar todas las mesas (ponerlas en estado 'libre')
-            const { error: errorMesas } = await supabase
-                .from('mesas')
-                .update({ estado: 'libre' })
-                .neq('id', 0);
-
-            if (errorMesas) {
-                console.error('Error al liberar mesas:', errorMesas);
-            }
-
-            // 2. Generar mensaje de WhatsApp
-            const totalEfectivoEsperado = (ventasPorMetodo['efectivo'] || 0) + (stock?.dinero_inicial || 0);
-
-            // Generar lista de platillos vendidos
-            const platillosTexto = listaPlatosVendidos.length > 0
-                ? listaPlatosVendidos.map(p => `   • ${p.nombre}: x${p.cantidad}`).join('\n')
-                : '   (Sin platillos registrados)';
-
-            // Generar lista de gastos
+            // Formatear gastos para el mensaje de WhatsApp
             const gastosTexto = gastosDelDia.length > 0
-                ? gastosDelDia.map(g => `   • ${g.descripcion}: S/${g.monto.toFixed(2)} (${g.metodo_pago || 'efectivo'})`).join('\n')
-                : '   (Sin gastos registrados)';
+                ? gastosDelDia.map(g => `- ${g.descripcion}: S/ ${g.monto.toFixed(2)}`).join('\n')
+                : 'No hubo gastos registrados.';
+
+            // Formatear platillos vendidos para el mensaje de WhatsApp
+            const platillosTexto = listaPlatosVendidos.length > 0
+                ? listaPlatosVendidos.map(item => `- ${item.nombre}: ${item.cantidad}`).join('\n')
+                : 'No se vendieron platillos hoy.';
+
+            if (error) {
+                console.error('Error al actualizar inventario diario:', error);
+                toast.error('Error al guardar el cierre: ' + error.message);
+                setProcesando(false);
+                return;
+            }
 
             const mensaje = `🐔 *RESUMEN POCHOLO'S - ${new Date().toLocaleDateString('es-PE')}* 🐔
 
@@ -207,6 +204,12 @@ ${gastosTexto}
 ❌ Sobrantes Total: ${stockPollosReal}
    - 🍗 Aderezados: ${pollosAderezados || '0'}
    - 📦 En Caja: ${pollosEnCaja || '0'}
+
+🥔 *INVENTARIO PAPAS*
+--------------------------------
+🥔 Iniciales: ${stock?.papas_iniciales || 0} Kg
+🥔 Finales: ${stockPapasFinal || 0} Kg
+📉 Consumo Aprox: ${((stock?.papas_iniciales || 0) - (parseFloat(stockPapasFinal) || 0)).toFixed(1)} Kg
 
 📋 *PLATILLOS VENDIDOS*
 --------------------------------
@@ -438,6 +441,32 @@ _Generado automáticamente por Pocholo's POS_`;
                                             )}
                                         </div>
                                     </div>
+                                </div>
+
+                                {/* Papas (Kg) */}
+                                <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
+                                    <div className="flex justify-between mb-2 text-sm">
+                                        <span className="text-pocholo-brown/60">Papas Iniciales: {stock?.papas_iniciales || 0} Kg</span>
+                                    </div>
+                                    <label className="text-sm font-medium text-pocholo-brown mb-1 block">
+                                        🥔 Stock Final Papas (Kg)
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={stockPapasFinal}
+                                            onChange={e => setStockPapasFinal(e.target.value)}
+                                            className="w-full p-3 rounded-xl border-2 border-amber-200 focus:border-amber-400 focus:outline-none text-lg font-bold"
+                                            placeholder="0.0"
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-pocholo-brown/40 text-sm font-bold">Kg</span>
+                                    </div>
+                                    {stock?.papas_iniciales && stockPapasFinal && (
+                                        <p className="text-xs text-amber-700 mt-2 font-medium">
+                                            📉 Consumo del día: {((stock.papas_iniciales) - (parseFloat(stockPapasFinal) || 0)).toFixed(1)} Kg
+                                        </p>
+                                    )}
                                 </div>
 
                                 {/* Gaseosas */}

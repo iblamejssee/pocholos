@@ -279,7 +279,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                             animate={{ x: 0 }}
                             exit={{ x: '-100%' }}
                             transition={{ type: 'tween', duration: 0.3 }}
-                            className="lg:hidden fixed left-0 top-0 h-screen w-72 glass-red z-50 overflow-hidden flex flex-col"
+                            className="lg:hidden fixed left-0 top-0 h-screen w-72 max-w-[85vw] glass-red z-50 overflow-hidden flex flex-col"
                         >
                             <SidebarContent />
                         </motion.aside>
