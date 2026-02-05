@@ -53,11 +53,9 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
 
             if (data) {
                 setConfig(data);
-                // Generar número de boleta
                 const numero = String(data.numero_correlativo).padStart(8, '0');
                 setNumeroBoleta(`${data.serie_boleta}-${numero}`);
 
-                // Incrementar correlativo para próxima boleta
                 await supabase
                     .from('configuracion_negocio')
                     .update({ numero_correlativo: data.numero_correlativo + 1 })
@@ -97,7 +95,7 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                         exit={{ opacity: 0, scale: 0.9 }}
                         className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh] print:hidden"
                     >
-                        {/* Header */}
+                        {/* Header Visual */}
                         <div className="bg-pocholo-red text-white p-5 text-center">
                             <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-2 p-2 shadow-lg">
                                 <img src="/images/logo-pocholos-icon.png" alt="Logo" className="w-full h-full object-contain" />
@@ -106,10 +104,9 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                             <p className="text-white/80 text-sm">{numeroBoleta}</p>
                         </div>
 
-                        {/* Vista Previa del Ticket */}
+                        {/* Vista Previa del Ticket en Pantalla */}
                         <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
                             <div className="bg-white shadow-sm border border-gray-200 p-4 rounded-xl text-sm font-mono text-gray-700">
-                                {/* Header de Boleta */}
                                 <div className="text-center border-b border-dashed border-gray-300 pb-3 mb-3">
                                     <p className="font-black text-base text-black">{config.razon_social}</p>
                                     {config.ruc && <p className="text-xs">RUC: {config.ruc}</p>}
@@ -120,7 +117,6 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                                     {mesaNumero && <p className="text-xs bg-pocholo-yellow/20 rounded px-2 py-0.5 inline-block mt-1">Mesa: {mesaNumero}</p>}
                                 </div>
 
-                                {/* Items */}
                                 <div className="space-y-1 mb-3">
                                     <div className="flex justify-between text-xs font-bold text-gray-500 border-b pb-1">
                                         <span>CANT. DESCRIPCIÓN</span>
@@ -136,24 +132,16 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                                                     <span>{cantidad}x {item.nombre || 'Producto'}</span>
                                                     <span className="font-semibold">S/ {subtotal.toFixed(2)}</span>
                                                 </div>
-                                                {(item as any).detalles?.parte && (
-                                                    <p className="text-xs text-gray-500 pl-4">└ {(item as any).detalles.parte.toUpperCase()}</p>
-                                                )}
-                                                {(item as any).detalles?.notas && (
-                                                    <p className="text-xs text-gray-500 pl-4 italic">└ {(item as any).detalles.notas}</p>
-                                                )}
                                             </div>
                                         );
                                     })}
                                 </div>
 
-                                {/* Total */}
                                 <div className="border-t-2 border-black pt-2 flex justify-between text-lg font-black text-black">
                                     <span>TOTAL</span>
                                     <span>S/ {total.toFixed(2)}</span>
                                 </div>
 
-                                {/* Footer */}
                                 <div className="text-center mt-4 pt-3 border-t border-dashed border-gray-300">
                                     <p className="text-xs">{config.mensaje_boleta}</p>
                                     <p className="text-[10px] text-gray-400 mt-1">La Pasión Hecha Sazón</p>
@@ -161,101 +149,83 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                             </div>
                         </div>
 
-                        {/* Botones */}
                         <div className="p-4 border-t border-gray-100 grid grid-cols-2 gap-3 bg-white">
-                            <button
-                                onClick={onClose}
-                                className="py-3 px-4 rounded-xl font-semibold text-gray-500 hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
-                            >
-                                <X size={20} />
-                                Cerrar
+                            <button onClick={onClose} className="py-3 px-4 rounded-xl font-semibold text-gray-500 hover:bg-gray-100 transition-colors flex items-center justify-center gap-2">
+                                <X size={20} /> Cerrar
                             </button>
-                            <button
-                                onClick={handlePrint}
-                                className="py-3 px-4 rounded-xl font-bold text-white bg-pocholo-red hover:bg-red-700 shadow-lg transition-all flex items-center justify-center gap-2"
-                            >
-                                <Printer size={20} />
-                                Imprimir
+                            <button onClick={handlePrint} className="py-3 px-4 rounded-xl font-bold text-white bg-pocholo-red hover:bg-red-700 shadow-lg transition-all flex items-center justify-center gap-2">
+                                <Printer size={20} /> Imprimir
                             </button>
                         </div>
                     </motion.div>
 
-                    {/* Área de Impresión Térmica - EPSON TM-T20IIIL (80mm) */}
-                    <div className="hidden print:block print-ticket font-mono text-[12px] w-[80mm] leading-snug p-[4mm]">
-                        {/* Header */}
-                        <div className="text-center mb-2">
-                            <h1 className="text-base font-black">{config.razon_social}</h1>
-                            {config.ruc && <p>RUC: {config.ruc}</p>}
-                            {config.direccion && <p className="text-[10px]">{config.direccion}</p>}
-                            {config.telefono && <p className="text-[10px]">Tel: {config.telefono}</p>}
+                    {/* ÁREA DE IMPRESIÓN OPTIMIZADA (Para Advance / Epson 80mm) */}
+                    <div className="hidden print:block print-ticket font-sans text-[11px] w-[80mm] leading-tight print:p-0 print:m-0 text-black">
+                        
+                        {/* Logo en Impresión */}
+                        <div className="text-center mb-1">
+                            <img src="/images/logo-pocholos-icon.png" alt="Logo" className="w-10 h-10 mx-auto mb-1 object-contain" />
+                            <h1 className="text-sm font-black uppercase">{config.razon_social}</h1>
+                            {config.ruc && <p className="text-[10px]">RUC: {config.ruc}</p>}
+                            {config.direccion && <p className="text-[9px]">{config.direccion}</p>}
+                            {config.telefono && <p className="text-[9px]">Tel: {config.telefono}</p>}
                         </div>
 
                         <div className="border-b border-black border-dashed my-1"></div>
 
-                        {/* Número de Boleta */}
-                        <div className="text-center font-bold my-1">
-                            <p className="text-sm">BOLETA DE VENTA</p>
-                            <p>{numeroBoleta}</p>
+                        <div className="text-center font-bold">
+                            <p className="text-[11px]">BOLETA DE VENTA</p>
+                            <p className="text-xs">{numeroBoleta}</p>
                         </div>
 
                         <div className="border-b border-black border-dashed my-1"></div>
 
-                        {/* Fecha y Mesa */}
-                        <div className="flex justify-between text-[10px] my-1">
-                            <span>Fecha: {fechaFormateada}</span>
-                            <span>Hora: {horaFormateada}</span>
+                        <div className="flex justify-between text-[9px]">
+                            <span>FECHA: {fechaFormateada}</span>
+                            <span>HORA: {horaFormateada}</span>
                         </div>
                         {mesaNumero && (
-                            <p className="text-center text-[10px] font-bold">MESA: {mesaNumero}</p>
+                            <p className="text-center font-bold text-[10px] mt-1">MESA: {mesaNumero}</p>
                         )}
 
                         <div className="border-b border-black border-dashed my-1"></div>
 
-                        {/* Items */}
-                        <div className="my-1">
-                            <div className="flex justify-between font-bold text-[10px]">
-                                <span>CANT DESCRIPCIÓN</span>
+                        {/* Items de Venta */}
+                        <div className="w-full">
+                            <div className="flex justify-between font-bold text-[10px] mb-1">
+                                <span>CANT  DESCRIPCIÓN</span>
                                 <span>P.TOTAL</span>
                             </div>
-                        </div>
-
-                        <div className="space-y-1 my-1">
-                            {items.map((item, idx) => {
-                                const cantidad = Number(item.cantidad) || 0;
-                                const precio = Number(item.precio) || 0;
-                                const subtotal = Number((item as any).subtotal) || (cantidad * precio);
-                                return (
-                                    <div key={idx}>
-                                        <div className="flex justify-between">
-                                            <span className="flex-1">{cantidad} {item.nombre || 'Producto'}</span>
-                                            <span>{subtotal.toFixed(2)}</span>
+                            <div className="space-y-1">
+                                {items.map((item, idx) => {
+                                    const cantidad = Number(item.cantidad) || 0;
+                                    const precio = Number(item.precio) || 0;
+                                    const subtotal = Number((item as any).subtotal) || (cantidad * precio);
+                                    return (
+                                        <div key={idx} className="flex justify-between items-start leading-none">
+                                            <span className="flex-1 pr-2">{cantidad} {item.nombre?.toUpperCase()}</span>
+                                            <span className="font-bold">{subtotal.toFixed(2)}</span>
                                         </div>
-                                        {(item as any).detalles?.parte && (
-                                            <p className="text-[9px] pl-2">({(item as any).detalles.parte})</p>
-                                        )}
-                                        {(item as any).detalles?.notas && (
-                                            <p className="text-[9px] pl-2 italic">*{(item as any).detalles.notas}</p>
-                                        )}
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
 
                         <div className="border-b border-black border-dashed my-1"></div>
 
-                        {/* Total */}
-                        <div className="flex justify-between text-sm font-black my-2">
+                        {/* Total Final */}
+                        <div className="flex justify-between text-sm font-black py-1">
                             <span>TOTAL A PAGAR:</span>
                             <span>S/ {total.toFixed(2)}</span>
                         </div>
 
                         <div className="border-b border-black border-dashed my-1"></div>
 
-                        {/* Pie de página */}
-                        <div className="text-center mt-2 text-[10px]">
-                            <p>{config.mensaje_boleta}</p>
-                            <p className="mt-1">La Pasión Hecha Sazón</p>
-                            <p className="text-[8px] mt-2">---</p>
+                        {/* Footer de Impresión */}
+                        <div className="text-center mt-2 pb-4">
+                            <p className="text-[10px] italic">{config.mensaje_boleta}</p>
+                            <p className="text-[9px] font-bold mt-1">LA PASIÓN HECHA SAZÓN</p>
+                            <p className="text-[8px] mt-2">SISTEMA POCHOLO'S V1.0</p>
                         </div>
                     </div>
                 </div>
