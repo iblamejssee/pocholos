@@ -86,7 +86,7 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm print:p-0 print:bg-white print:static print:block">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm print:absolute print:inset-0 print:p-0 print:m-0 print:bg-white print:block">
 
                     {/* Contenedor Principal (Visible en Pantalla) */}
                     <motion.div
