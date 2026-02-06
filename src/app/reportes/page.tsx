@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { DollarSign, ShoppingBag, TrendingUp, TrendingDown, Calendar, Download, Star, Clock, CreditCard, Home, Package, ChevronLeft, ChevronRight, X, Filter, BarChart3 } from 'lucide-react';
+import { DollarSign, ShoppingBag, TrendingUp, TrendingDown, Calendar, Download, Star, Clock, CreditCard, Home, Package, ChevronLeft, ChevronRight, X, Filter, BarChart3, Printer } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import {
     obtenerVentasPorRango,
@@ -25,6 +25,7 @@ import { es } from 'date-fns/locale';
 import { formatearFraccionPollo } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import ReceiptModal from '@/components/ReceiptModal';
 
 type TipoRango = 'dia' | 'rango';
 
@@ -40,6 +41,9 @@ export default function ReportesPage() {
     const [ventas, setVentas] = useState<Venta[]>([]);
     const [ventasPorDia, setVentasPorDia] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+
+    const [showReceipt, setShowReceipt] = useState(false);
+    const [selectedVenta, setSelectedVenta] = useState<Venta | null>(null);
 
     const metricas = useMetricas(ventas);
     const [topProductos, setTopProductos] = useState<EstadisticaProducto[]>([]);
@@ -839,6 +843,7 @@ export default function ReportesPage() {
                                                 <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Productos</th>
                                                 <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Pago</th>
                                                 <th className="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
+                                                <th className="px-6 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Acciones</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
@@ -871,6 +876,18 @@ export default function ReportesPage() {
                                                     <td className="px-6 py-4 text-right font-bold text-slate-800">
                                                         S/ {v.total.toFixed(2)}
                                                     </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedVenta(v);
+                                                                setShowReceipt(true);
+                                                            }}
+                                                            className="p-2 text-slate-400 hover:text-pocholo-red hover:bg-red-50 rounded-lg transition-all"
+                                                            title="Imprimir Boleta"
+                                                        >
+                                                            <Printer size={18} />
+                                                        </button>
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -896,6 +913,20 @@ export default function ReportesPage() {
                     </>
                 )}
             </div>
+
+            {/* Modal de Boleta */}
+            {selectedVenta && (
+                <ReceiptModal
+                    isOpen={showReceipt}
+                    onClose={() => {
+                        setShowReceipt(false);
+                        setSelectedVenta(null);
+                    }}
+                    items={selectedVenta.items}
+                    total={selectedVenta.total}
+                    orderId={selectedVenta.id}
+                />
+            )}
         </div>
     );
 }
