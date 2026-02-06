@@ -1,5 +1,5 @@
 import { supabase, obtenerFechaHoy } from './supabase';
-import type { Venta } from './database.types';
+import type { Venta, InventarioDiario, Gasto } from './database.types';
 import { startOfDay, endOfDay, subDays, startOfMonth, endOfMonth, format } from 'date-fns';
 
 export interface Metricas {
@@ -416,5 +416,51 @@ export const obtenerComparativaSemanal = async (): Promise<ComparativaSemanal> =
             porcentajeCambio: 0,
             esPositivo: true
         };
+    }
+};
+
+/**
+ * 📦 Obtiene el inventario diario por rango de fechas
+ */
+export const obtenerInventarioPorRango = async (
+    fechaInicio: string,
+    fechaFin: string
+): Promise<InventarioDiario[]> => {
+    try {
+        const { data, error } = await supabase
+            .from('inventario_diario')
+            .select('*')
+            .gte('fecha', fechaInicio)
+            .lte('fecha', fechaFin)
+            .order('fecha', { ascending: true });
+
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error('Error al obtener inventario por rango:', error);
+        return [];
+    }
+};
+
+/**
+ * 📤 Obtiene los gastos por rango de fechas
+ */
+export const obtenerGastosPorRango = async (
+    fechaInicio: string,
+    fechaFin: string
+): Promise<Gasto[]> => {
+    try {
+        const { data, error } = await supabase
+            .from('gastos')
+            .select('*')
+            .gte('fecha', fechaInicio)
+            .lte('fecha', fechaFin)
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error('Error al obtener gastos por rango:', error);
+        return [];
     }
 };

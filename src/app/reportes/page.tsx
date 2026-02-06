@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { DollarSign, ShoppingBag, TrendingUp, TrendingDown, Calendar, Download, Star, Clock, CreditCard, Home, Package, ChevronLeft, ChevronRight, X, Filter, BarChart3, Printer } from 'lucide-react';
+import { DollarSign, ShoppingBag, TrendingUp, TrendingDown, Calendar, Download, Star, Clock, CreditCard, Home, Package, ChevronLeft, ChevronRight, X, Filter, BarChart3, Printer, FileText } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import {
     obtenerVentasPorRango,
@@ -12,6 +12,8 @@ import {
     calcularDistribucionTipoVenta,
     obtenerComparativaSemanal,
     obtenerVentasPorHora,
+    obtenerInventarioPorRango,
+    obtenerGastosPorRango,
     type EstadisticaProducto,
     type DesgloseMetodoPago,
     type ConsumoPollosDia,
@@ -19,13 +21,14 @@ import {
     type ComparativaSemanal
 } from '@/lib/reportes';
 import { useMetricas } from '@/hooks/useMetricas';
-import type { Venta } from '@/lib/database.types';
+import type { Venta, InventarioDiario, Gasto } from '@/lib/database.types';
 import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addMonths, subMonths, isSameDay, isWithinInterval, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { formatearFraccionPollo } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReceiptModal from '@/components/ReceiptModal';
+import AdminReportModal from '@/components/AdminReportModal';
 
 type TipoRango = 'dia' | 'rango';
 
@@ -44,6 +47,10 @@ export default function ReportesPage() {
 
     const [showReceipt, setShowReceipt] = useState(false);
     const [selectedVenta, setSelectedVenta] = useState<Venta | null>(null);
+
+    const [showAdminReport, setShowAdminReport] = useState(false);
+    const [inventarios, setInventarios] = useState<InventarioDiario[]>([]);
+    const [gastos, setGastos] = useState<Gasto[]>([]);
 
     const metricas = useMetricas(ventas);
     const [topProductos, setTopProductos] = useState<EstadisticaProducto[]>([]);
@@ -131,30 +138,25 @@ export default function ReportesPage() {
 
             console.log('[Reportes] Consultando rango:', { inicio, fin, tipoRango });
 
-            const ventasData = await obtenerVentasPorRango(inicio, fin);
-            console.log('[Reportes] Ventas obtenidas:', ventasData.length, ventasData);
+            const [ventasData, inventariosData, gastosData, ventasDia, comp] = await Promise.all([
+                obtenerVentasPorRango(inicio, fin),
+                obtenerInventarioPorRango(inicio, fin),
+                obtenerGastosPorRango(inicio, fin),
+                obtenerVentasPorDia(inicio, fin),
+                obtenerComparativaSemanal()
+            ]);
+
             setVentas(ventasData);
-
-            const ventasDia = await obtenerVentasPorDia(inicio, fin);
+            setInventarios(inventariosData);
+            setGastos(gastosData);
             setVentasPorDia(ventasDia);
-
-            const top = calcularTopProductos(ventasData);
-            setTopProductos(top);
-
-            const desglose = calcularDesgloseMetodoPago(ventasData);
-            setDesgloseMetodoPago(desglose);
-
-            const pollos = calcularConsumoPollosPorDia(ventasData);
-            setConsumoPollos(pollos);
-
-            const distribucion = calcularDistribucionTipoVenta(ventasData);
-            setDistribucionTipo(distribucion);
-
-            const horasData = obtenerVentasPorHora(ventasData);
-            setVentasPorHora(horasData);
-
-            const comp = await obtenerComparativaSemanal();
             setComparativa(comp);
+
+            setTopProductos(calcularTopProductos(ventasData));
+            setDesgloseMetodoPago(calcularDesgloseMetodoPago(ventasData));
+            setConsumoPollos(calcularConsumoPollosPorDia(ventasData));
+            setDistribucionTipo(calcularDistribucionTipoVenta(ventasData));
+            setVentasPorHora(obtenerVentasPorHora(ventasData));
 
         } catch (error) {
             console.error('[Reportes] Error:', error);
@@ -274,10 +276,17 @@ export default function ReportesPage() {
                                 </div>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <button
+                                onClick={() => setShowAdminReport(true)}
+                                className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white rounded-xl font-medium hover:bg-slate-700 transition-all shadow-md hover:shadow-lg"
+                            >
+                                <FileText size={18} />
+                                Reporte Administrativo
+                            </button>
                             <button
                                 onClick={exportarCSV}
-                                className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white rounded-xl font-medium hover:bg-slate-700 transition-all shadow-md hover:shadow-lg"
+                                className="flex items-center gap-2 px-5 py-2.5 bg-white text-slate-600 border border-slate-200 rounded-xl font-medium hover:bg-slate-50 transition-all shadow-md hover:shadow-lg"
                             >
                                 <Download size={18} />
                                 Exportar
@@ -927,6 +936,17 @@ export default function ReportesPage() {
                     orderId={selectedVenta.id}
                 />
             )}
+
+            {/* Modal de Reporte Administrativo */}
+            <AdminReportModal
+                isOpen={showAdminReport}
+                onClose={() => setShowAdminReport(false)}
+                ventas={ventas}
+                inventarios={inventarios}
+                gastos={gastos}
+                fechaInicio={tipoRango === 'dia' ? fechaSeleccionada : fechaInicio}
+                fechaFin={tipoRango === 'dia' ? fechaSeleccionada : fechaFin}
+            />
         </div>
     );
 }
