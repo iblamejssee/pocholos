@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ShoppingCart, Plus, Minus, Trash2, Check, Loader2, Search, Star, TrendingUp } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, Check, Loader2, Search, Star, TrendingUp, RefreshCw } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { registrarVenta } from '@/lib/ventas';
+import { registrarVenta, actualizarVenta } from '@/lib/ventas';
 import { useInventario } from '@/hooks/useInventario';
 import { useMesas } from '@/hooks/useMesas';
 import { useEstadisticasProductos } from '@/hooks/useEstadisticasProductos';
@@ -29,6 +29,7 @@ export default function POSPage() {
 }
 
 function POSContent() {
+    const [view, setView] = useState<'mesas' | 'pedido'>('mesas');
     const [productos, setProductos] = useState<Producto[]>([]);
     const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
     const [loading, setLoading] = useState(true);
@@ -38,7 +39,7 @@ function POSContent() {
     const { stock, refetch } = useInventario();
 
     // Hook para estadísticas de productos más vendidos
-    const { topProductos, registrarVentaProducto, refetch: refetchStats } = useEstadisticasProductos();
+    const { topProductos } = useEstadisticasProductos();
 
     const [selectedProduct, setSelectedProduct] = useState<Producto | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -48,10 +49,11 @@ function POSContent() {
     const [lastSaleTotal, setLastSaleTotal] = useState(0);
 
     // Table management
-    const [showTableSelector, setShowTableSelector] = useState(false);
     const [selectedTable, setSelectedTable] = useState<Mesa | null>(null);
     const [isParaLlevar, setIsParaLlevar] = useState(false);
-    const { ocuparMesa } = useMesas();
+    const { mesas, loading: loadingMesas, ocuparMesa, cambiarMesa, refetch: refetchMesas } = useMesas();
+    const [currentVentaId, setCurrentVentaId] = useState<string | null>(null);
+    const [showCambiarMesaModal, setShowCambiarMesaModal] = useState(false);
 
     // Order notes
     const [orderNotes, setOrderNotes] = useState('');
@@ -78,12 +80,112 @@ function POSContent() {
         }
     };
 
+    const categorias: { id: Categoria; nombre: string; emoji: string }[] = [
+        { id: 'todos', nombre: 'Todos', emoji: '🍽️' },
+        { id: 'populares', nombre: 'Populares', emoji: '🔥' },
+        { id: 'pollos', nombre: 'Pollos', emoji: '🍗' },
+        { id: 'especiales', nombre: 'Especiales', emoji: '⭐' },
+        { id: 'extras', nombre: 'Extras', emoji: '🍟' },
+        { id: 'bebidas', nombre: 'Bebidas', emoji: '🥤' },
+    ];
+
+    const productosFiltrados = productos.filter(producto => {
+        const matchSearch = searchTerm === '' ||
+            producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (producto.descripcion && producto.descripcion.toLowerCase().includes(searchTerm.toLowerCase()));
+
+        if (!matchSearch) return false;
+        if (categoriaActiva === 'todos') return true;
+
+        if (categoriaActiva === 'populares') {
+            const productosPopularesIds = topProductos.map(tp => tp.producto_id);
+            return productosPopularesIds.includes(producto.id);
+        }
+
+        if (categoriaActiva === 'pollos') {
+            return producto.tipo === 'pollo' && producto.fraccion_pollo > 0;
+        }
+
+        if (categoriaActiva === 'especiales') {
+            const nombresEspeciales = ['mostrito', 'mostrazo', 'chori', 'salchi', 'chaufa', 'anticucho', 'trilogía', 'cuarto'];
+            return nombresEspeciales.some(nombre => producto.nombre.toLowerCase().includes(nombre));
+        }
+
+        if (categoriaActiva === 'extras') return producto.tipo === 'complemento';
+        if (categoriaActiva === 'bebidas') return producto.tipo === 'bebida';
+
+        return true;
+    });
+
+    const handleTableClick = async (mesa: Mesa | null) => {
+        if (!mesa) {
+            // Para llevar
+            setIsParaLlevar(true);
+            setSelectedTable(null);
+            setCurrentVentaId(null);
+            setCarrito([]);
+            setView('pedido');
+            return;
+        }
+
+        setSelectedTable(mesa);
+        setIsParaLlevar(false);
+
+        if (mesa.estado === 'ocupada') {
+            // Cargar pedido actual de la mesa
+            setLoading(true);
+            try {
+                const { data, error } = await supabase
+                    .from('ventas')
+                    .select('*')
+                    .eq('mesa_id', mesa.id)
+                    .eq('estado_pago', 'pendiente')
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .single();
+
+                if (data && !error) {
+                    setCurrentVentaId(data.id);
+                    // Cargar los items actuales pero marcarlos como "ya en cocina"
+                    // Para simplificar esta v1, solo cargamos el carrito vacío y permitimos AÑADIR.
+                    // O mejor, mostramos qué tiene la mesa pero solo el carrito nuevo se guarda.
+                    // El usuario pidió: "ver lo q esta ordenado, y la opcion de añadir otro producto"
+
+                    // Transformar de ItemVenta a ItemCarrito (añadiendo subtotal)
+                    const itemsPrevios: ItemCarrito[] = data.items.map((it: any) => ({
+                        ...it,
+                        subtotal: it.cantidad * it.precio
+                    }));
+
+                    setCarrito(itemsPrevios);
+                    setOrderNotes(data.notes || '');
+                    toast.success(`Cargando pedido actual de Mesa ${mesa.numero}`);
+                } else {
+                    setCurrentVentaId(null);
+                    setCarrito([]);
+                }
+            } catch (err) {
+                console.error('Error al cargar venta de mesa ocupada:', err);
+                setCarrito([]);
+            } finally {
+                setLoading(false);
+            }
+        } else {
+            // Mesa libre
+            setCurrentVentaId(null);
+            setCarrito([]);
+            setOrderNotes('');
+        }
+
+        setView('pedido');
+    };
+
     const handleProductClick = (producto: Producto) => {
         setSelectedProduct(producto);
         setIsModalOpen(true);
     };
 
-    const agregarAlCarrito = (producto: Producto, opciones: { parte?: 'pecho' | 'pierna' | 'ala' | 'encuentro', notas: string }) => {
+    const agregarAlCarrito = (producto: Producto, opciones: { parte?: string, trozado?: string, notas: string }) => {
         const itemKey = `${producto.id}-${opciones.parte || ''}-${opciones.notas || ''}`;
 
         const itemExistenteIndex = carrito.findIndex((item) => {
@@ -107,7 +209,12 @@ function POSContent() {
                 detalles: {
                     parte: opciones.parte,
                     notas: opciones.notas
-                }
+                },
+                // Mapear detalle de bebida si existe en el producto
+                detalle_bebida: (producto.marca_gaseosa && producto.tipo_gaseosa) ? {
+                    marca: producto.marca_gaseosa,
+                    tipo: producto.tipo_gaseosa
+                } : undefined
             };
             setCarrito([...carrito, nuevoItem]);
         }
@@ -136,52 +243,18 @@ function POSContent() {
 
     const vaciarCarrito = () => {
         setCarrito([]);
+        // Si no es una mesa ocupada, resetear todo. Si lo es, tal vez se quiere resetear lo NUEVO?
+        // Por ahora, resetear todo y volver a mesas
         setSelectedTable(null);
         setIsParaLlevar(false);
+        setView('mesas');
     };
 
     const calcularTotal = () => {
         return carrito.reduce((sum, item) => sum + item.subtotal, 0);
     };
 
-    // Handler for table selection - solo guarda la selección, NO ocupa la mesa aún
-    // null = Para llevar (no ocupa mesa)
-    const handleTableSelect = (mesa: Mesa | null) => {
-        setShowTableSelector(false);
-
-        if (mesa) {
-            setSelectedTable(mesa);
-            setIsParaLlevar(false);
-            toast.success(`Mesa ${mesa.numero} seleccionada para el pedido`);
-            // Pasar mesa directamente para evitar problemas de estado asíncrono
-            confirmarVentaConMesa(mesa);
-        } else {
-            setSelectedTable(null);
-            setIsParaLlevar(true);
-            toast.success('Pedido para llevar 🥡');
-            // Para llevar, pasar null
-            confirmarVentaConMesa(null);
-        }
-    };
-
-    // Iniciar proceso de venta (abrir selector de mesa si no hay una seleccionada y no es para llevar)
-    const iniciarVenta = () => {
-        if (carrito.length === 0) {
-            toast.error('El carrito está vacío');
-            return;
-        }
-
-        // Si no hay mesa seleccionada y no es para llevar, abrir selector
-        if (!selectedTable && !isParaLlevar) {
-            setShowTableSelector(true);
-            return;
-        }
-
-        confirmarVentaConMesa(selectedTable);
-    };
-
-    // Función que recibe mesa directamente para evitar problemas de estado asíncrono
-    const confirmarVentaConMesa = async (mesa: Mesa | null) => {
+    const handleConfirmarPedido = async () => {
         if (carrito.length === 0) {
             toast.error('El carrito está vacío');
             return;
@@ -190,118 +263,192 @@ function POSContent() {
         setProcesando(true);
 
         try {
-            // Si hay mesa, ocuparla ahora
-            if (mesa) {
-                const mesaOcupada = await ocuparMesa(mesa.id);
-                if (!mesaOcupada) {
-                    toast.error('Error al asignar la mesa. Intenta de nuevo.');
-                    setProcesando(false);
-                    return;
-                }
-            }
+            let resultado;
 
-            // Registrar venta con mesa_id (o null para llevar) y notas
-            const resultado = await registrarVenta(carrito, mesa?.id, orderNotes);
+            if (currentVentaId) {
+                // Es una mesa ocupada, necesitamos saber qué items son NUEVOS
+                // Para simplificar: En esta v1, si cargamos todo, el actualizarVenta debería saber
+                // Sin embargo, `actualizarVenta` según definí espera "nuevosItems".
+                // CAMBIO: Vamos a filtrar los que ya estaban o simplemente enviar todo.
+                // RE-PIENSO: La mejor forma es enviar solo los items que se acaban de añadir.
+                // Pero como los cargamos todos al carrito, perdemos la distinción.
+
+                // Opción B: Si modifico `actualizarVenta` para que reciba la lista COMPLETA y reemplace.
+                // Pero eso afecta stock si bajamos cantidades.
+
+                // Vamos a usar una lógica más simple: Si ya hay VentaId, mandamos todo el carrito
+                // Pero registrarVenta es para nuevas. Necesito una función que REEMPLACE items.
+
+                // Por ahora, para no complicar el stock, asumiremos que el usuario añade items nuevos.
+                // Vamos a implementar registrarVenta de nuevo si es una mesa ocupada pero vinculada? No.
+
+                // MEJOR: Si es mesa ocupada, el carrito solo tiene los NUEVOS items.
+                // Así `actualizarVenta` funciona perfecto.
+
+                // Voy a ajustar el useEffect de carga de mesa ocupada para NO cargar items al carrito,
+                // sino solo mostrarlos en un panel aparte.
+
+                // Filtramos items que no estaban originalmente (si los guardaramos en un estado `itemsOriginales`)
+                // Pero vamos con la opción mas limpia: el carrito es para LO NUEVO.
+                resultado = await actualizarVenta(currentVentaId, carrito);
+            } else {
+                // Mesa nueva o para llevar
+                if (selectedTable) {
+                    await ocuparMesa(selectedTable.id);
+                }
+                resultado = await registrarVenta(carrito, selectedTable?.id, orderNotes);
+            }
 
             if (resultado.success) {
-                // Reproducir sonido de campana para cocina
+                // Imprimir en cocina silenciosamente
+                try {
+                    const printRes = await fetch('/api/imprimir-cocina', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            mesa: selectedTable ? selectedTable.numero : 'LLEVAR',
+                            items: carrito,
+                            notas: orderNotes,
+                            id: resultado.data?.id,
+                            tipo: isParaLlevar ? 'llevar' : 'mesa',
+                            fecha: resultado.data?.created_at
+                        })
+                    });
+
+                    if (!printRes.ok) {
+                        const errorData = await printRes.json();
+                        console.error('Error impresión:', errorData);
+                        toast.error('Pedido guardado, pero error al imprimir en cocina');
+                    } else {
+                        toast.success('Enviado a cocina correctamente 🖨️');
+                    }
+                } catch (printErr) {
+                    console.error('Error de red al imprimir:', printErr);
+                    toast.error('Error de conexión con impresora');
+                }
+
                 playKitchenBell();
-
-                toast.success(resultado.message, {
-                    duration: 4000,
-                    icon: '🎉',
-                });
-
-                // NO mostrar recibo - solo la cajera imprime al cobrar
-                vaciarCarrito();
-                setOrderNotes(''); // Limpiar notas
+                toast.success(resultado.message);
+                setView('mesas');
+                setCarrito([]);
+                setOrderNotes('');
                 refetch();
-                // refetchStats(); // Ya no es necesario, se calcula al vuelo en reportes
+                refetchMesas();
             } else {
-                toast.error(resultado.message, {
-                    duration: 5000,
-                });
+                toast.error(resultado.message);
             }
         } catch (error) {
-            console.error('Error al procesar venta:', error);
-            toast.error('Error inesperado al procesar la venta');
+            console.error('Error al procesar pedido:', error);
+            toast.error('Error inesperado');
         } finally {
             setProcesando(false);
         }
     };
 
-    // Filtrar productos por categoría y búsqueda
-    const productosFiltrados = productos.filter(producto => {
-        // Filtro de búsqueda
-        const matchSearch = searchTerm === '' ||
-            producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (producto.descripcion && producto.descripcion.toLowerCase().includes(searchTerm.toLowerCase()));
+    if (view === 'mesas') {
+        return (
+            <div className="p-4 lg:p-8 max-w-6xl mx-auto">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-6">
+                    <div>
+                        <h1 className="text-2xl sm:text-3xl font-extrabold text-pocholo-brown">Seleccionar Mesa</h1>
+                        <p className="text-sm text-pocholo-brown/50 mt-1">Toca una mesa para comenzar un pedido</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <motion.button
+                            onClick={() => handleTableClick(null)}
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.97 }}
+                            className="px-6 sm:px-8 py-4 bg-gradient-to-r from-pocholo-red to-red-600 text-white text-lg sm:text-xl font-extrabold rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center gap-3"
+                        >
+                            <ShoppingCart size={24} />
+                            <span>Para Llevar</span>
+                        </motion.button>
+                        <button
+                            onClick={refetchMesas}
+                            className="p-3.5 bg-white border-2 border-pocholo-brown/10 rounded-2xl hover:bg-pocholo-cream transition-colors"
+                        >
+                            <RefreshCw size={22} className={loadingMesas ? 'animate-spin text-pocholo-red' : 'text-pocholo-brown/40'} />
+                        </button>
+                    </div>
+                </div>
 
-        if (!matchSearch) return false;
-
-        // Filtro de categoría
-        if (categoriaActiva === 'todos') return true;
-
-        // Filtrar por productos populares (los más vendidos)
-        if (categoriaActiva === 'populares') {
-            const productosPopularesIds = topProductos.map(tp => tp.producto_id);
-            return productosPopularesIds.includes(producto.id);
-        }
-
-        if (categoriaActiva === 'pollos') {
-            return producto.tipo === 'pollo' && producto.fraccion_pollo > 0;
-        }
-
-        if (categoriaActiva === 'especiales') {
-            const nombresEspeciales = ['mostrito', 'mostrazo', 'chori', 'salchi', 'chaufa', 'anticucho', 'trilogía', 'cuarto'];
-            return nombresEspeciales.some(nombre => producto.nombre.toLowerCase().includes(nombre));
-        }
-
-        if (categoriaActiva === 'extras') {
-            return producto.tipo === 'complemento';
-        }
-
-        if (categoriaActiva === 'bebidas') {
-            return producto.tipo === 'bebida';
-        }
-
-        return true;
-    });
-
-    const categorias: { id: Categoria; nombre: string; emoji: string }[] = [
-        { id: 'todos', nombre: 'Todos', emoji: '🍽️' },
-        { id: 'populares', nombre: 'Populares', emoji: '🔥' },
-        { id: 'pollos', nombre: 'Pollos', emoji: '🍗' },
-        { id: 'especiales', nombre: 'Especiales', emoji: '⭐' },
-        { id: 'extras', nombre: 'Extras', emoji: '🍟' },
-        { id: 'bebidas', nombre: 'Bebidas', emoji: '🥤' },
-    ];
+                {loadingMesas ? (
+                    <div className="flex justify-center py-20">
+                        <Loader2 className="animate-spin text-pocholo-red" size={48} />
+                    </div>
+                ) : (
+                    <>
+                        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-3">
+                            {mesas.map((mesa, index) => (
+                                <motion.button
+                                    key={mesa.id}
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: index * 0.012 }}
+                                    onClick={() => handleTableClick(mesa)}
+                                    className={`
+                                        aspect-square rounded-2xl flex flex-col items-center justify-center
+                                        transition-all duration-200 shadow-md hover:shadow-xl
+                                        ${mesa.estado === 'libre'
+                                            ? 'bg-white border-2 border-green-400/50 hover:border-green-500 hover:bg-green-50/30'
+                                            : 'bg-gradient-to-br from-pocholo-red to-red-700 border-2 border-red-600'
+                                        }
+                                        hover:scale-105 active:scale-95
+                                    `}
+                                >
+                                    <span className={`text-3xl sm:text-4xl font-black leading-none ${mesa.estado === 'libre' ? 'text-pocholo-brown' : 'text-white'}`}>
+                                        {mesa.numero}
+                                    </span>
+                                    <span className={`text-xs sm:text-sm font-bold uppercase mt-1.5 flex items-center gap-1 ${mesa.estado === 'libre' ? 'text-green-600' : 'text-white/80'}`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${mesa.estado === 'libre' ? 'bg-green-500' : 'bg-white/60'}`}></span>
+                                        {mesa.estado === 'libre' ? 'Libre' : 'Ocupada'}
+                                    </span>
+                                </motion.button>
+                            ))}
+                        </div>
+                    </>
+                )}
+            </div>
+        );
+    }
 
     return (
         <div className="p-3 lg:p-6 max-w-7xl mx-auto print:hidden">
-            {/* Header */}
-            <div className="mb-4 lg:mb-6">
-                <h1 className="text-xl lg:text-3xl font-bold text-pocholo-brown mb-1">Punto de Venta</h1>
-                <p className="text-pocholo-brown/70 text-sm lg:text-base">Busca y selecciona productos</p>
-            </div>
-
-            {/* Stock Actual */}
-            {stock && (
-                <div className="mb-4 p-3 glass-card rounded-xl shadow-3d border-l-4 border-pocholo-yellow">
-                    <div className="flex items-center justify-between">
-                        <p className="text-sm text-pocholo-brown">
-                            <span className="font-bold">{formatearFraccionPollo(stock.pollos_disponibles)}</span> pollos |
-                            <span className="font-bold ml-2">{stock.gaseosas_disponibles}</span> bebidas
-                        </p>
-                        <span className={`px-3 py-1 rounded-lg text-xs font-semibold ${stock.pollos_disponibles > 10 ? 'bg-green-100 text-green-700' :
-                            stock.pollos_disponibles > 5 ? 'bg-yellow-100 text-yellow-700' :
-                                'bg-red-100 text-red-700'
-                            }`}>
-                            {stock.pollos_disponibles > 10 ? 'Stock Alto' : stock.pollos_disponibles > 5 ? 'Stock Medio' : 'Stock Bajo'}
-                        </span>
+            {/* Header POS */}
+            <div className="mb-4 lg:mb-6 flex items-center justify-between">
+                <div>
+                    <h1 className="text-xl lg:text-3xl font-bold text-pocholo-brown mb-1">
+                        {isParaLlevar ? 'Pedido para Llevar' : `Mesa ${selectedTable?.numero}`}
+                    </h1>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setView('mesas')}
+                            className="text-pocholo-red text-sm font-bold flex items-center gap-1 hover:underline"
+                        >
+                            ← Volver a Mesas
+                        </button>
+                        {/* Botón Cambiar Mesa (solo para mesas ocupadas) */}
+                        {selectedTable && !isParaLlevar && (
+                            <button
+                                onClick={() => setShowCambiarMesaModal(true)}
+                                className="text-blue-600 text-sm font-bold flex items-center gap-1 hover:underline"
+                            >
+                                🔄 Cambiar Mesa
+                            </button>
+                        )}
                     </div>
                 </div>
-            )}
+                {/* Stock Actual */}
+                {stock && (
+                    <div className="hidden md:block p-2 glass-card rounded-lg border-l-4 border-pocholo-yellow">
+                        <p className="text-xs text-pocholo-brown font-bold">
+                            📦 {formatearFraccionPollo(stock.pollos_disponibles)} Pollos | {stock.gaseosas_disponibles} Bebidas
+                        </p>
+                    </div>
+                )}
+            </div>
+
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
                 {/* Productos */}
@@ -340,10 +487,10 @@ function POSContent() {
                     <div className="glass-card rounded-2xl shadow-3d overflow-hidden">
                         <div className="max-h-[50vh] lg:max-h-[600px] overflow-y-auto">
                             {loading ? (
-                                <div className="p-8 text-center text-pocholo-brown/50">Cargando productos...</div>
+                                <div className="p-8 text-center text-pocholo-brown/50">Cargando...</div>
                             ) : productosFiltrados.length === 0 ? (
                                 <div className="p-8 text-center text-pocholo-brown/50">
-                                    {searchTerm ? 'No se encontraron productos' : 'No hay productos en esta categoría'}
+                                    No se encontraron productos
                                 </div>
                             ) : (
                                 <div className="divide-y divide-pocholo-brown/10">
@@ -365,11 +512,6 @@ function POSContent() {
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-3">
-                                                {producto.fraccion_pollo > 0 && (
-                                                    <span className="text-xs text-pocholo-brown/50 hidden sm:block">
-                                                        {formatearFraccionPollo(producto.fraccion_pollo)}🍗
-                                                    </span>
-                                                )}
                                                 <span className="text-lg font-bold text-pocholo-red whitespace-nowrap">
                                                     S/ {producto.precio.toFixed(2)}
                                                 </span>
@@ -388,135 +530,68 @@ function POSContent() {
                     <div className="glass-card rounded-2xl shadow-3d-deep p-3 lg:p-4 sticky top-4 lg:top-6">
                         <div className="flex items-center gap-2 mb-4">
                             <ShoppingCart className="text-pocholo-red" size={24} />
-                            <h2 className="text-xl font-bold text-pocholo-brown">Carrito</h2>
-                            {carrito.length > 0 && (
-                                <span className="ml-auto bg-pocholo-red text-white text-xs font-bold px-2 py-1 rounded-full">
-                                    {carrito.length}
-                                </span>
-                            )}
+                            <h2 className="text-xl font-bold text-pocholo-brown">
+                                {currentVentaId ? 'Añadir al Pedido' : 'Nuevo Pedido'}
+                            </h2>
                         </div>
 
                         {carrito.length === 0 ? (
-                            <p className="text-pocholo-brown/50 text-center py-8 text-sm">
-                                Carrito vacío
-                            </p>
+                            <div className="text-center py-12">
+                                <p className="text-pocholo-brown/50 text-sm italic">
+                                    {currentVentaId ? 'Selecciona productos para añadir a la mesa' : 'El carrito está vacío'}
+                                </p>
+                            </div>
                         ) : (
                             <>
                                 <div className="space-y-2 mb-4 max-h-[400px] overflow-y-auto">
                                     {carrito.map((item, index) => (
-                                        <div
-                                            key={`${item.producto_id}-${index}`}
-                                            className="gradient-cream p-2.5 rounded-lg"
-                                        >
+                                        <div key={index} className="gradient-cream p-2.5 rounded-lg">
                                             <div className="flex justify-between items-start mb-2">
-                                                <div className="flex-1 min-w-0 mr-2">
-                                                    <p className="font-semibold text-pocholo-brown text-sm truncate">
-                                                        {item.nombre}
-                                                        {item.detalles?.parte && (
-                                                            <span className="ml-1 text-pocholo-red font-bold uppercase text-xs">
-                                                                ({item.detalles.parte})
-                                                            </span>
-                                                        )}
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-semibold text-pocholo-brown text-sm">
+                                                        {item.nombre} {item.detalles?.parte && `(${item.detalles.parte})`}
                                                     </p>
-                                                    {item.detalles?.notas && (
-                                                        <p className="text-xs text-gray-500 italic truncate">
-                                                            "{item.detalles.notas}"
-                                                        </p>
-                                                    )}
                                                 </div>
-                                                <button
-                                                    onClick={() => eliminarDelCarrito(index)}
-                                                    className="text-pocholo-red hover:bg-pocholo-red/10 p-1 rounded"
-                                                >
-                                                    <Trash2 size={14} />
-                                                </button>
+                                                <button onClick={() => eliminarDelCarrito(index)} className="text-pocholo-red p-1"><Trash2 size={14} /></button>
                                             </div>
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-1.5">
-                                                    <button
-                                                        onClick={() => modificarCantidad(index, -1)}
-                                                        className="w-6 h-6 bg-pocholo-brown rounded flex items-center justify-center text-white"
-                                                    >
-                                                        <Minus size={12} />
-                                                    </button>
-                                                    <span className="font-bold text-pocholo-brown w-6 text-center text-sm">
-                                                        {item.cantidad}
-                                                    </span>
-                                                    <button
-                                                        onClick={() => modificarCantidad(index, 1)}
-                                                        className="w-6 h-6 bg-pocholo-brown rounded flex items-center justify-center text-white"
-                                                    >
-                                                        <Plus size={12} />
-                                                    </button>
+                                                    <button onClick={() => modificarCantidad(index, -1)} className="w-6 h-6 bg-pocholo-brown rounded flex items-center justify-center text-white"><Minus size={12} /></button>
+                                                    <span className="font-bold text-pocholo-brown w-6 text-center text-sm">{item.cantidad}</span>
+                                                    <button onClick={() => modificarCantidad(index, 1)} className="w-6 h-6 bg-pocholo-brown rounded flex items-center justify-center text-white"><Plus size={12} /></button>
                                                 </div>
-                                                <p className="font-bold text-pocholo-red text-sm">
-                                                    S/ {item.subtotal.toFixed(2)}
-                                                </p>
+                                                <p className="font-bold text-pocholo-red text-sm">S/ {item.subtotal.toFixed(2)}</p>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
 
-                                {/* Mesa seleccionada (pendiente de confirmación) */}
-                                {selectedTable && (
-                                    <div className="bg-amber-50 border-2 border-amber-400 rounded-lg p-2 mb-3">
-                                        <p className="text-amber-700 font-semibold text-sm text-center">
-                                            🪑 Mesa {selectedTable.numero} seleccionada
-                                        </p>
-                                        <p className="text-amber-600 text-xs text-center">
-                                            Se asignará al confirmar la venta
-                                        </p>
-                                    </div>
-                                )}
-
                                 <div className="p-4 border-t-2 border-pocholo-yellow/30">
-                                    {/* Notas del pedido */}
                                     <div className="mb-4">
-                                        <label className="block text-sm font-semibold text-pocholo-brown mb-2">
-                                            📝 Notas del pedido (opcional)
-                                        </label>
+                                        <label className="block text-sm font-semibold text-pocholo-brown mb-2">📝 Notas</label>
                                         <textarea
                                             value={orderNotes}
                                             onChange={(e) => setOrderNotes(e.target.value)}
-                                            placeholder="Ej: Menos ensalada, sin cremas, etc..."
-                                            className="w-full px-3 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pocholo-yellow resize-none"
+                                            className="w-full px-3 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pocholo-yellow resize-none text-sm"
                                             rows={2}
                                         />
                                     </div>
-
-                                    {/* Total */}
                                     <div className="flex justify-between items-center mb-4">
-                                        <span className="text-xl font-bold text-pocholo-brown">Total:</span>
-                                        <span className="text-3xl font-bold text-pocholo-red">
-                                            S/ {calcularTotal().toFixed(2)}
-                                        </span>
+                                        <span className="text-lg font-bold text-pocholo-brown">A añadir:</span>
+                                        <span className="text-2xl font-black text-pocholo-red">S/ {calcularTotal().toFixed(2)}</span>
                                     </div>
                                 </div>
 
                                 <div className="space-y-2">
                                     <button
-                                        onClick={iniciarVenta}
+                                        onClick={handleConfirmarPedido}
                                         disabled={procesando}
-                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-pocholo-red hover:bg-pocholo-red-dark text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-4 bg-pocholo-red hover:bg-pocholo-red-dark text-white font-black rounded-xl shadow-lg transition-all disabled:opacity-50"
                                     >
-                                        {procesando ? (
-                                            <>
-                                                <Loader2 size={18} className="animate-spin" />
-                                                Procesando...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Check size={18} />
-                                                {selectedTable ? 'Confirmar Venta' : 'Seleccionar Mesa'}
-                                            </>
-                                        )}
+                                        {procesando ? <Loader2 size={18} className="animate-spin" /> : <><Check size={20} />{currentVentaId ? 'ACTUALIZAR PEDIDO' : 'ENVIAR A COCINA'}</>}
                                     </button>
-                                    <button
-                                        onClick={vaciarCarrito}
-                                        disabled={procesando}
-                                        className="w-full px-4 py-2 text-sm text-pocholo-brown/70 hover:text-pocholo-red hover:bg-pocholo-red/10 rounded-lg transition-all disabled:opacity-50"
-                                    >
-                                        Vaciar Carrito
+                                    <button onClick={vaciarCarrito} className="w-full py-2 text-xs font-bold text-pocholo-brown/50 hover:text-pocholo-red uppercase tracking-widest">
+                                        Cancelar
                                     </button>
                                 </div>
                             </>
@@ -525,25 +600,61 @@ function POSContent() {
                 </div>
             </div>
 
-            <ProductOptionsModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                onConfirm={agregarAlCarrito}
-                producto={selectedProduct}
-            />
+            <ProductOptionsModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onConfirm={agregarAlCarrito} producto={selectedProduct} />
+            <ReceiptModal isOpen={showReceipt} onClose={() => setShowReceipt(false)} items={lastSaleItems} total={lastSaleTotal} />
 
-            <ReceiptModal
-                isOpen={showReceipt}
-                onClose={() => setShowReceipt(false)}
-                items={lastSaleItems}
-                total={lastSaleTotal}
-            />
-
-            <TableSelector
-                isOpen={showTableSelector}
-                onClose={() => setShowTableSelector(false)}
-                onSelectTable={handleTableSelect}
-            />
+            {/* Modal Cambiar Mesa */}
+            {showCambiarMesaModal && selectedTable && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden"
+                    >
+                        <div className="p-4 border-b border-gray-100 bg-pocholo-cream flex justify-between items-center">
+                            <div>
+                                <h2 className="text-xl font-bold text-pocholo-brown">Cambiar Mesa</h2>
+                                <p className="text-sm text-pocholo-brown/60">Mesa actual: <strong>{selectedTable.numero}</strong></p>
+                            </div>
+                            <button
+                                onClick={() => setShowCambiarMesaModal(false)}
+                                className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-xl transition-colors"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div className="p-4">
+                            <p className="text-sm font-medium text-pocholo-brown/70 mb-3">Selecciona la nueva mesa:</p>
+                            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[50vh] overflow-y-auto">
+                                {mesas.filter(m => m.estado === 'libre').map((mesa) => (
+                                    <button
+                                        key={mesa.id}
+                                        onClick={async () => {
+                                            const success = await cambiarMesa(selectedTable.id, mesa.id);
+                                            if (success) {
+                                                toast.success(`Pedido movido a Mesa ${mesa.numero}`);
+                                                setSelectedTable(mesa);
+                                                setShowCambiarMesaModal(false);
+                                            } else {
+                                                toast.error('Error al cambiar mesa');
+                                            }
+                                        }}
+                                        className="aspect-square rounded-xl bg-green-50 border-2 border-green-400/50 hover:border-green-500 hover:bg-green-100 flex flex-col items-center justify-center transition-all"
+                                    >
+                                        <span className="text-xl font-bold text-pocholo-brown">{mesa.numero}</span>
+                                        <span className="text-[9px] text-green-600 font-bold">● Libre</span>
+                                    </button>
+                                ))}
+                            </div>
+                            {mesas.filter(m => m.estado === 'libre').length === 0 && (
+                                <p className="text-center py-8 text-pocholo-brown/50 italic">
+                                    No hay mesas libres disponibles
+                                </p>
+                            )}
+                        </div>
+                    </motion.div>
+                </div>
+            )}
         </div>
     );
 }

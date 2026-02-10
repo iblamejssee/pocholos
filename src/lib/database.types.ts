@@ -24,6 +24,9 @@ export interface Producto {
     tipo: 'pollo' | 'bebida' | 'complemento';
     precio: number;
     fraccion_pollo: number; // 1.0, 0.25, 0.125, 0
+    // Campos para trackeo de bebidas
+    marca_gaseosa?: 'inca_kola' | 'coca_cola' | 'sprite' | 'fanta' | 'chicha' | null;
+    tipo_gaseosa?: 'personal_retornable' | 'descartable' | 'gordita' | 'litro' | 'litro_medio' | 'tres_litros' | 'medio_litro' | null;
     activo: boolean;
     imagen_url?: string; // URL de la imagen del producto
     descripcion?: string; // Descripción detallada del producto
@@ -45,6 +48,11 @@ export interface ItemVenta {
     cantidad: number;
     precio: number;
     fraccion_pollo: number;
+    // Detalle de bebida para este item
+    detalle_bebida?: {
+        marca: 'inca_kola' | 'coca_cola' | 'sprite' | 'fanta' | 'chicha';
+        tipo: 'personal_retornable' | 'descartable' | 'gordita' | 'litro' | 'litro_medio' | 'tres_litros' | 'medio_litro';
+    };
 }
 
 export interface Venta {
@@ -54,6 +62,7 @@ export interface Venta {
     total: number;
     pollos_restados: number;
     gaseosas_restadas: number;
+    bebidas_detalle?: BebidasDetalle; // Consolidado de bebidas restadas en esta venta
     metodo_pago: 'efectivo' | 'tarjeta' | 'yape' | 'plin';
     estado_pedido: 'pendiente' | 'listo' | 'entregado';
     estado_pago?: 'pendiente' | 'pagado';
@@ -84,9 +93,11 @@ export interface StockActual {
     papas_iniciales?: number;
     dinero_inicial: number;
     estado: 'abierto' | 'cerrado';
+    bebidas_detalle?: BebidasDetalle; // Initial stock
+    bebidas_ventas?: BebidasDetalle[]; // Array of sales to subtract
 }
 
-// Detailed beverage inventory structure
+// Detailed beverage inventory structure (tamaños reales Perú)
 export interface BebidasDetalle {
     inca_kola?: {
         personal_retornable?: number;
@@ -105,24 +116,18 @@ export interface BebidasDetalle {
         tres_litros?: number;
     };
     sprite?: {
-        personal_retornable?: number;
         descartable?: number;
-        gordita?: number;
-        litro?: number;
         litro_medio?: number;
         tres_litros?: number;
     };
     fanta?: {
-        personal_retornable?: number;
         descartable?: number;
-        gordita?: number;
-        litro?: number;
-        litro_medio?: number;
+        mediana?: number;
         tres_litros?: number;
     };
-    chicha?: {
-        litro?: number;
-        medio_litro?: number;
+    agua_mineral?: {
+        personal?: number;
+        grande?: number;
     };
 }
 
@@ -130,7 +135,8 @@ export interface BebidasDetalle {
 export interface ItemCarrito extends ItemVenta {
     subtotal: number;
     detalles?: {
-        parte?: 'pecho' | 'pierna' | 'ala' | 'encuentro';
+        parte?: string; // pecho, pierna, ala, encuentro, entrepierna, rabadilla
+        trozado?: string; // entero, 1/4, 1/8
         notas?: string;
     };
 }

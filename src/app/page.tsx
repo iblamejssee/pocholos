@@ -30,6 +30,7 @@ function DashboardContent() {
   };
   const [showGastosModal, setShowGastosModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showBebidasDetalle, setShowBebidasDetalle] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [gastosDelDia, setGastosDelDia] = useState<{ id: string; descripcion: string; monto: number; metodo_pago?: string }[]>([]);
 
@@ -213,11 +214,6 @@ function DashboardContent() {
         >
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-slate-800">Inventario del Día</h2>
-            {stock && (
-              <span className="text-xs text-slate-400">
-                Última actualización hace {Math.floor((Date.now() - new Date(stock.fecha).getTime()) / 60000)} min
-              </span>
-            )}
           </div>
 
           {loading ? (
@@ -231,7 +227,7 @@ function DashboardContent() {
               <p className="text-sm">Realiza la apertura del día</p>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div className="grid grid-cols-3 gap-4">
                 <div className="p-4 bg-slate-50 rounded-xl">
                   <div className="flex items-center justify-between mb-2">
@@ -249,7 +245,7 @@ function DashboardContent() {
                   <p className="text-xs text-slate-400">de {stock.pollos_iniciales} iniciales</p>
                 </div>
 
-                <div className="p-4 bg-slate-50 rounded-xl">
+                <div className="p-4 bg-slate-50 rounded-xl cursor-pointer hover:bg-blue-50 transition-colors" onClick={() => setShowBebidasDetalle(!showBebidasDetalle)}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-slate-500">Bebidas</span>
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${(stock.gaseosas_disponibles / stock.gaseosas_iniciales) > 0.3
@@ -260,7 +256,7 @@ function DashboardContent() {
                     </span>
                   </div>
                   <p className="text-xl font-bold text-slate-800">{stock.gaseosas_disponibles}</p>
-                  <p className="text-xs text-slate-400">de {stock.gaseosas_iniciales} iniciales</p>
+                  <p className="text-xs text-blue-500 underline mt-1">{showBebidasDetalle ? 'Ocultar ▲' : 'Ver detalle ▼'}</p>
                 </div>
 
                 <div className="p-4 bg-slate-50 rounded-xl">
@@ -271,6 +267,42 @@ function DashboardContent() {
                   <p className="text-xs text-slate-400">Dinero inicial</p>
                 </div>
               </div>
+
+              {/* Panel de Bebidas Inline — profesional */}
+              {showBebidasDetalle && stock.bebidas_detalle && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="bg-slate-50 rounded-lg p-3 border border-slate-200"
+                >
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {Object.entries(stock.bebidas_detalle).map(([marca, tipos]) => {
+                      const MARCA_LABEL: Record<string, string> = { inca_kola: 'Inca Kola', coca_cola: 'Coca Cola', sprite: 'Sprite', fanta: 'Fanta', agua_mineral: 'Agua Mineral' };
+                      const MARCA_DOT: Record<string, string> = { inca_kola: 'bg-yellow-500', coca_cola: 'bg-red-600', sprite: 'bg-green-600', fanta: 'bg-orange-500', agua_mineral: 'bg-sky-400' };
+                      const TIPO_LABEL: Record<string, string> = { personal_retornable: 'Pers.', descartable: 'Desc.', gordita: 'Gordita', litro: '1L', litro_medio: '1.5L', tres_litros: '3L', mediana: '2.25L', personal: '600ml', grande: '2.5L' };
+                      const total = Object.values(tipos as Record<string, number>).reduce((s, n) => s + n, 0);
+                      return (
+                        <div key={marca} className="bg-white rounded-md p-2.5 border border-slate-150">
+                          <div className="flex items-center gap-1.5 mb-1.5 pb-1.5 border-b border-slate-100">
+                            <span className={`w-2 h-2 rounded-full ${MARCA_DOT[marca] || 'bg-gray-400'}`}></span>
+                            <span className="text-[11px] font-semibold text-slate-600">{MARCA_LABEL[marca] || marca}</span>
+                            <span className={`ml-auto text-xs font-bold ${total > 0 ? 'text-slate-800' : 'text-red-500'}`}>{total}</span>
+                          </div>
+                          <div className="space-y-0.5">
+                            {Object.entries(tipos as Record<string, number>).map(([tipo, qty]) => (
+                              <div key={tipo} className="flex justify-between text-[11px]">
+                                <span className={qty === 0 ? 'text-red-400 line-through' : 'text-slate-500'}>{TIPO_LABEL[tipo] || tipo}</span>
+                                <span className={`font-semibold ${qty === 0 ? 'text-red-400' : 'text-slate-700'}`}>{qty}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
 
               {/* Barra de Progreso */}
               <div>
@@ -311,7 +343,7 @@ function DashboardContent() {
                 <ShoppingCart size={20} />
               </div>
               <div className="flex-1">
-                <p className="font-medium">Punto de Venta</p>
+                <p className="font-medium">Pedidos</p>
                 <p className="text-xs text-white/60">Nueva venta</p>
               </div>
               <ArrowRight size={18} className="opacity-50" />
@@ -341,20 +373,6 @@ function DashboardContent() {
               <div className="flex-1">
                 <p className="font-medium text-slate-800">Cocina</p>
                 <p className="text-xs text-slate-500">Ver pedidos</p>
-              </div>
-              <ArrowRight size={18} className="text-slate-400" />
-            </Link>
-
-            <Link
-              href="/mesas"
-              className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors"
-            >
-              <div className="w-10 h-10 bg-white rounded-lg border border-slate-200 flex items-center justify-center">
-                <Users size={20} className="text-slate-600" />
-              </div>
-              <div className="flex-1">
-                <p className="font-medium text-slate-800">Mesas</p>
-                <p className="text-xs text-slate-500">Gestionar mesas</p>
               </div>
               <ArrowRight size={18} className="text-slate-400" />
             </Link>
@@ -417,14 +435,6 @@ function DashboardContent() {
             >
               <Package size={24} className="text-slate-600 mb-2" />
               <span className="font-medium text-slate-800 text-sm">Ventas</span>
-            </Link>
-
-            <Link
-              href="/inventario"
-              className="flex flex-col items-center justify-center p-4 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors text-center"
-            >
-              <ClipboardList size={24} className="text-slate-600 mb-2" />
-              <span className="font-medium text-slate-800 text-sm">Inventario</span>
             </Link>
 
             <Link

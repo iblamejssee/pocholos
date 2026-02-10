@@ -1,10 +1,9 @@
-'use client';
-
 import { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Printer, X, CheckCircle, Receipt } from 'lucide-react';
+import { Printer, X, CheckCircle, Receipt, Search, User, RefreshCw, Trash2 } from 'lucide-react';
 import type { ItemCarrito, ItemVenta } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
+import { consultarDNI } from '@/services/dniService';
 
 interface ReceiptModalProps {
     isOpen: boolean;
@@ -36,10 +35,18 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
         numero_correlativo: 1
     });
     const [numeroBoleta, setNumeroBoleta] = useState('');
+    const [dni, setDni] = useState('');
+    const [clienteNombre, setClienteNombre] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
+    const [errorDni, setErrorDni] = useState<string | null>(null);
 
     useEffect(() => {
         if (isOpen) {
             cargarConfiguracion();
+            // Reset client data when opening modal
+            setDni('');
+            setClienteNombre('');
+            setErrorDni(null);
         }
     }, [isOpen]);
 
@@ -68,6 +75,37 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
         }
     };
 
+    const handleDNISearch = async () => {
+        if (dni.length !== 8) {
+            setErrorDni('El DNI debe tener 8 dígitos');
+            return;
+        }
+
+        setIsSearching(true);
+        setErrorDni(null);
+
+        try {
+            const response = await consultarDNI(dni);
+            if (response.success && response.data) {
+                setClienteNombre(response.data.nombre_completo);
+            } else {
+                setErrorDni(response.message || 'No se encontró el DNI');
+                setClienteNombre('');
+            }
+        } catch (error) {
+            setErrorDni('Error al consultar DNI');
+            setClienteNombre('');
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    const clearClientData = () => {
+        setDni('');
+        setClienteNombre('');
+        setErrorDni(null);
+    };
+
     const handlePrint = () => {
         window.print();
     };
@@ -93,58 +131,133 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.9 }}
-                        className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh] print:hidden"
+                        className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[96vh] print:hidden"
                     >
                         {/* Header Visual */}
-                        <div className="bg-pocholo-red text-white p-5 text-center">
-                            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-2 p-2 shadow-lg">
+                        <div className="bg-pocholo-red text-white p-4 text-center">
+                            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-1 p-1.5 shadow-lg">
                                 <img src="/images/logo-pocholos-icon.png" alt="Logo" className="w-full h-full object-contain" />
                             </div>
-                            <h2 className="text-xl font-bold">Boleta de Venta</h2>
-                            <p className="text-white/80 text-sm">{numeroBoleta}</p>
+                            <h2 className="text-lg font-bold">Boleta de Venta</h2>
+                            <p className="text-white/80 text-xs">{numeroBoleta}</p>
+                        </div>
+
+                        {/* Sección de Cliente / DNI */}
+                        <div className="p-4 bg-gray-50 border-b border-gray-100">
+                            <div className="flex flex-col gap-2">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Identificación del Cliente (Opcional)</label>
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                        <input
+                                            type="text"
+                                            value={dni}
+                                            onChange={(e) => setDni(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                                            placeholder="DNI (8 dígitos)"
+                                            className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-pocholo-red/20 focus:border-pocholo-red transition-all"
+                                        />
+                                        <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
+                                    </div>
+                                    <button
+                                        onClick={handleDNISearch}
+                                        disabled={isSearching || dni.length !== 8}
+                                        className="bg-pocholo-yellow hover:bg-yellow-500 disabled:bg-gray-200 text-pocholo-red font-bold px-3 py-2 rounded-xl text-xs transition-colors flex items-center gap-1 min-w-[90px] justify-center"
+                                    >
+                                        {isSearching ? <RefreshCw className="animate-spin" size={14} /> : 'Consultar'}
+                                    </button>
+                                    {(dni || clienteNombre) && (
+                                        <button
+                                            onClick={clearClientData}
+                                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors rounded-xl"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    )}
+                                </div>
+
+                                {errorDni && <p className="text-[10px] text-red-500 ml-1 font-medium">{errorDni}</p>}
+
+                                {clienteNombre && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -5 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="bg-white p-2 rounded-xl border border-green-100 flex items-center gap-2"
+                                    >
+                                        <div className="bg-green-100 text-green-600 p-1.5 rounded-lg">
+                                            <User size={14} />
+                                        </div>
+                                        <div className="flex-1 overflow-hidden">
+                                            <p className="text-[10px] text-gray-500 leading-none mb-0.5">Nombre Registrado:</p>
+                                            <p className="text-[11px] font-bold text-gray-800 truncate uppercase">{clienteNombre}</p>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Vista Previa del Ticket en Pantalla */}
-                        <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-                            <div className="bg-white shadow-sm border border-gray-200 p-4 rounded-xl text-sm font-mono text-gray-700">
-                                <div className="text-center border-b border-dashed border-gray-300 pb-3 mb-3">
-                                    <p className="font-black text-base text-black">{config.razon_social}</p>
-                                    {config.ruc && <p className="text-xs">RUC: {config.ruc}</p>}
-                                    {config.direccion && <p className="text-xs">{config.direccion}</p>}
-                                    {config.telefono && <p className="text-xs">Tel: {config.telefono}</p>}
-                                    <p className="font-bold mt-2 text-pocholo-red">{numeroBoleta}</p>
-                                    <p className="text-xs mt-1">{fechaFormateada} - {horaFormateada}</p>
-                                    {mesaNumero && <p className="text-xs bg-pocholo-yellow/20 rounded px-2 py-0.5 inline-block mt-1">Mesa: {mesaNumero}</p>}
+                        <div className="flex-1 overflow-y-auto p-4 bg-gray-50/50">
+                            <div className="bg-white shadow-sm border border-gray-200 p-5 rounded-xl text-[13px] font-mono text-gray-700">
+                                <div className="text-center pb-3 mb-3 border-b-2 border-black">
+                                    <p className="font-black text-xl text-black leading-tight mb-1 uppercase tracking-tighter">{config.razon_social}</p>
+                                    <div className="space-y-0.5 text-[10px] text-gray-500 font-bold uppercase">
+                                        {config.ruc && <p>RUC: {config.ruc}</p>}
+                                        {config.direccion && <p className="leading-tight">{config.direccion}</p>}
+                                        {config.telefono && <p>TEL: {config.telefono}</p>}
+                                    </div>
+                                    <div className="mt-3 pt-2 border-t border-gray-100">
+                                        <p className="font-black text-base text-pocholo-red tracking-widest">{numeroBoleta}</p>
+                                        <p className="text-[11px] text-gray-400 mt-1">{fechaFormateada} - {horaFormateada}</p>
+                                        {mesaNumero && <p className="text-[11px] bg-pocholo-red text-white font-bold rounded-full px-3 py-0.5 inline-block mt-2">MESA: {mesaNumero}</p>}
+                                    </div>
                                 </div>
 
-                                <div className="space-y-1 mb-3">
-                                    <div className="flex justify-between text-xs font-bold text-gray-500 border-b pb-1">
-                                        <span>CANT. DESCRIPCIÓN</span>
+                                {/* Información del Cliente en Ticket On-Screen */}
+                                {(dni && clienteNombre) && (
+                                    <div className="mb-4 pb-3 border-b-2 border-black text-[11px] space-y-1">
+                                        <p className="text-[9px] font-bold text-gray-400 uppercase mb-1">Datos del Cliente</p>
+                                        <div className="flex gap-2">
+                                            <span className="font-black text-black w-12 italic">DNI:</span>
+                                            <span className="text-black">{dni}</span>
+                                        </div>
+                                        <div className="flex gap-2 items-start">
+                                            <span className="font-black text-black w-12 italic">SR(A):</span>
+                                            <p className="uppercase text-black flex-1 leading-tight">{clienteNombre}</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="mb-4">
+                                    <div className="flex justify-between text-[11px] font-black text-black border-b border-black pb-1 mb-2 uppercase">
+                                        <span>CANT  DESCRIPCIÓN</span>
                                         <span>TOTAL</span>
                                     </div>
-                                    {items.map((item, idx) => {
-                                        const cantidad = Number(item.cantidad) || 0;
-                                        const precio = Number(item.precio) || 0;
-                                        const subtotal = Number((item as any).subtotal) || (cantidad * precio);
-                                        return (
-                                            <div key={idx} className="py-1">
-                                                <div className="flex justify-between text-black">
-                                                    <span>{cantidad}x {item.nombre || 'Producto'}</span>
-                                                    <span className="font-semibold">S/ {subtotal.toFixed(2)}</span>
+                                    <div className="space-y-2">
+                                        {items.map((item, idx) => {
+                                            const cantidad = Number(item.cantidad) || 0;
+                                            const precio = Number(item.precio) || 0;
+                                            const subtotal = Number((item as any).subtotal) || (cantidad * precio);
+                                            return (
+                                                <div key={idx} className="flex justify-between text-black leading-snug items-start">
+                                                    <span className="pr-4"><span className="font-black">{cantidad}</span> {item.nombre?.toUpperCase()}</span>
+                                                    <span className="font-black whitespace-nowrap">S/ {subtotal.toFixed(2)}</span>
                                                 </div>
-                                            </div>
-                                        );
-                                    })}
+                                            );
+                                        })}
+                                    </div>
                                 </div>
 
-                                <div className="border-t-2 border-black pt-2 flex justify-between text-lg font-black text-black">
-                                    <span>TOTAL</span>
-                                    <span>S/ {total.toFixed(2)}</span>
+                                <div className="border-t-4 border-black pt-3 mb-4">
+                                    <div className="flex justify-between items-center">
+                                        <span className="font-black text-base text-black uppercase">TOTAL A PAGAR</span>
+                                        <span className="text-xl font-black text-black">S/ {total.toFixed(2)}</span>
+                                    </div>
                                 </div>
 
-                                <div className="text-center mt-4 pt-3 border-t border-dashed border-gray-300">
-                                    <p className="text-xs">{config.mensaje_boleta}</p>
-                                    <p className="text-[10px] text-gray-400 mt-1">La Pasión Hecha Sazón</p>
+                                <div className="text-center mt-6 pt-4 border-t-2 border-black">
+                                    <p className="text-[11px] leading-tight font-bold italic mb-2">"{config.mensaje_boleta}"</p>
+                                    <div className="bg-black text-white py-1 px-4 inline-block transform -rotate-1">
+                                        <p className="text-[10px] uppercase font-black tracking-widest">La Pasión Hecha Sazón</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -160,72 +273,93 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                     </motion.div>
 
                     {/* ÁREA DE IMPRESIÓN OPTIMIZADA (Para Advance / Epson 80mm) */}
-                    <div className="hidden print:block print-ticket font-sans text-[11px] w-[80mm] leading-tight print:p-0 print:m-0 text-black">
-                        
+                    <div className="hidden print:block print-ticket font-mono text-[13px] w-[80mm] leading-[1.3] print:p-0 print:m-0 text-[#000]">
+
                         {/* Logo en Impresión */}
-                        <div className="text-center mb-1">
-                            <img src="/images/logo-pocholos-icon.png" alt="Logo" className="w-10 h-10 mx-auto mb-1 object-contain" />
-                            <h1 className="text-sm font-black uppercase">{config.razon_social}</h1>
-                            {config.ruc && <p className="text-[10px]">RUC: {config.ruc}</p>}
-                            {config.direccion && <p className="text-[9px]">{config.direccion}</p>}
-                            {config.telefono && <p className="text-[9px]">Tel: {config.telefono}</p>}
+                        <div className="text-center mb-2">
+                            <h1 className="text-2xl font-black uppercase leading-none mb-1 tracking-tighter">{config.razon_social}</h1>
+                            <div className="text-[10px] font-black uppercase space-y-0.5">
+                                {config.ruc && <p>RUC: {config.ruc}</p>}
+                                {config.direccion && <p className="leading-tight px-4">{config.direccion}</p>}
+                                {config.telefono && <p>TEL: {config.telefono}</p>}
+                            </div>
                         </div>
 
-                        <div className="border-b border-black border-dashed my-1"></div>
+                        <div className="border-b-4 border-black mb-2"></div>
 
-                        <div className="text-center font-bold">
-                            <p className="text-[11px]">BOLETA DE VENTA</p>
-                            <p className="text-xs">{numeroBoleta}</p>
+                        <div className="text-center mb-2">
+                            <p className="text-[12px] font-black tracking-[0.2em] mb-1">BOLETA DE VENTA</p>
+                            <p className="text-lg font-black">{numeroBoleta}</p>
                         </div>
 
-                        <div className="border-b border-black border-dashed my-1"></div>
+                        <div className="border-b-2 border-black mb-2"></div>
 
-                        <div className="flex justify-between text-[9px]">
+                        <div className="flex justify-between text-[11px] font-black mb-1">
                             <span>FECHA: {fechaFormateada}</span>
                             <span>HORA: {horaFormateada}</span>
                         </div>
                         {mesaNumero && (
-                            <p className="text-center font-bold text-[10px] mt-1">MESA: {mesaNumero}</p>
+                            <div className="text-center font-black text-base border-2 border-black py-1 my-1">
+                                MESA: {mesaNumero}
+                            </div>
                         )}
 
-                        <div className="border-b border-black border-dashed my-1"></div>
+                        <div className="border-b-2 border-black my-2"></div>
+
+                        {/* CLIENTE EN IMPRESIÓN */}
+                        {(dni && clienteNombre) && (
+                            <div className="space-y-1 mb-2 text-[12px] font-bold">
+                                <p className="text-[10px] uppercase underline decoration-2 mb-1">Datos del Cliente:</p>
+                                <div className="flex gap-2">
+                                    <span className="font-black w-12 italic">DNI:</span>
+                                    <span>{dni}</span>
+                                </div>
+                                <div className="flex gap-2 items-start">
+                                    <span className="font-black w-12 italic">SR(A):</span>
+                                    <p className="flex-1 uppercase leading-tight">{clienteNombre}</p>
+                                </div>
+                                <div className="border-b-2 border-black mt-2"></div>
+                            </div>
+                        )}
 
                         {/* Items de Venta */}
-                        <div className="w-full">
-                            <div className="flex justify-between font-bold text-[10px] mb-1">
+                        <div className="w-full mt-2">
+                            <div className="flex justify-between font-black text-[11px] mb-2 uppercase border-b border-black pb-1">
                                 <span>CANT  DESCRIPCIÓN</span>
-                                <span>P.TOTAL</span>
+                                <span>TOTAL</span>
                             </div>
-                            <div className="space-y-1">
+                            <div className="space-y-2">
                                 {items.map((item, idx) => {
                                     const cantidad = Number(item.cantidad) || 0;
                                     const precio = Number(item.precio) || 0;
                                     const subtotal = Number((item as any).subtotal) || (cantidad * precio);
                                     return (
-                                        <div key={idx} className="flex justify-between items-start leading-none">
-                                            <span className="flex-1 pr-2">{cantidad} {item.nombre?.toUpperCase()}</span>
-                                            <span className="font-bold">{subtotal.toFixed(2)}</span>
+                                        <div key={idx} className="flex justify-between items-start leading-[1.2]">
+                                            <span className="flex-1 pr-4 font-medium"><span className="font-black">{cantidad}</span> {item.nombre?.toUpperCase()}</span>
+                                            <span className="font-black whitespace-nowrap">S/ {subtotal.toFixed(2)}</span>
                                         </div>
                                     );
                                 })}
                             </div>
                         </div>
 
-                        <div className="border-b border-black border-dashed my-1"></div>
+                        <div className="border-t-[6px] border-black my-3 pt-2"></div>
 
                         {/* Total Final */}
-                        <div className="flex justify-between text-sm font-black py-1">
-                            <span>TOTAL A PAGAR:</span>
-                            <span>S/ {total.toFixed(2)}</span>
+                        <div className="flex justify-between items-center py-1">
+                            <span className="text-[14px] font-black uppercase">TOTAL A PAGAR:</span>
+                            <span className="text-2xl font-black">S/ {total.toFixed(2)}</span>
                         </div>
 
-                        <div className="border-b border-black border-dashed my-1"></div>
+                        <div className="border-b-4 border-black my-3"></div>
 
                         {/* Footer de Impresión */}
-                        <div className="text-center mt-2 pb-4">
-                            <p className="text-[10px] italic">{config.mensaje_boleta}</p>
-                            <p className="text-[9px] font-bold mt-1">LA PASIÓN HECHA SAZÓN</p>
-                            <p className="text-[8px] mt-2">SISTEMA POCHOLO'S V1.0</p>
+                        <div className="text-center mt-4">
+                            <p className="text-[11px] font-black italic uppercase leading-tight mb-3 px-2">"{config.mensaje_boleta}"</p>
+                            <div className="bg-black text-white py-1.5 px-2 mb-4">
+                                <p className="text-[12px] font-black tracking-widest">LA PASIÓN HECHA SAZÓN</p>
+                            </div>
+                            <p className="text-[9px] font-bold pb-8">SISTEMA POCHOLO'S V1.0</p>
                         </div>
                     </div>
                 </div>

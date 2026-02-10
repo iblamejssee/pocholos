@@ -71,6 +71,48 @@ export function useMesas() {
         }
     };
 
+    // Cambiar mesa (transferir pedido de una mesa a otra)
+    const cambiarMesa = async (mesaOrigenId: number, mesaDestinoId: number): Promise<boolean> => {
+        try {
+            // 1. Actualizar la venta pendiente para que apunte a la nueva mesa
+            const { error: ventaError } = await supabase
+                .from('ventas')
+                .update({ mesa_id: mesaDestinoId })
+                .eq('mesa_id', mesaOrigenId)
+                .eq('estado_pago', 'pendiente');
+
+            if (ventaError) throw ventaError;
+
+            // 2. Liberar la mesa de origen
+            const { error: liberarError } = await supabase
+                .from('mesas')
+                .update({ estado: 'libre' })
+                .eq('id', mesaOrigenId);
+
+            if (liberarError) throw liberarError;
+
+            // 3. Ocupar la mesa de destino
+            const { error: ocuparError } = await supabase
+                .from('mesas')
+                .update({ estado: 'ocupada' })
+                .eq('id', mesaDestinoId);
+
+            if (ocuparError) throw ocuparError;
+
+            // Actualizar estado local
+            setMesas(prev => prev.map(mesa => {
+                if (mesa.id === mesaOrigenId) return { ...mesa, estado: 'libre' };
+                if (mesa.id === mesaDestinoId) return { ...mesa, estado: 'ocupada' };
+                return mesa;
+            }));
+
+            return true;
+        } catch (err) {
+            console.error('Error cambiando mesa:', err);
+            return false;
+        }
+    };
+
     // Suscripción en tiempo real a cambios en mesas
     useEffect(() => {
         fetchMesas();
@@ -103,6 +145,7 @@ export function useMesas() {
         error,
         refetch: fetchMesas,
         ocuparMesa,
-        liberarMesa
+        liberarMesa,
+        cambiarMesa
     };
 }

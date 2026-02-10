@@ -117,7 +117,7 @@ function CocinaContent() {
         try {
             const { data: pedido } = await supabase
                 .from('ventas')
-                .select('estado_pago')
+                .select('estado_pago, mesa_id')
                 .eq('id', cancellingId)
                 .single();
 
@@ -134,8 +134,17 @@ function CocinaContent() {
                 .eq('id', cancellingId);
 
             if (error) throw error;
+
+            // Liberar la mesa si tenía una asignada
+            if (pedido?.mesa_id) {
+                await supabase
+                    .from('mesas')
+                    .update({ estado: 'libre' })
+                    .eq('id', pedido.mesa_id);
+            }
+
             setPedidos(prev => prev.filter(p => p.id !== cancellingId));
-            toast.success('Pedido cancelado');
+            toast.success('Pedido cancelado — stock restaurado', { icon: '🗑️' });
         } catch (error) {
             console.error('Error:', error);
             toast.error('Error al cancelar');
@@ -246,7 +255,8 @@ function CocinaContent() {
     return (
         <>
             {/* ESTILOS DE EMERGENCIA PARA IMPRESIÓN */}
-            <style dangerouslySetInnerHTML={{ __html: `
+            <style dangerouslySetInnerHTML={{
+                __html: `
                 @media print {
                     .print\\:hidden { display: none !important; }
                     body { background: white !important; margin: 0 !important; padding: 0 !important; }

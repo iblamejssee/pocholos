@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, DollarSign, Package, TrendingDown, AlertCircle, Check, Loader2, Share2, Calculator } from 'lucide-react';
+import { Lock, DollarSign, Package, TrendingDown, AlertCircle, Check, Loader2, Share2, Calculator, FileSpreadsheet } from 'lucide-react';
 import { useInventario } from '@/hooks/useInventario';
 import { useVentas } from '@/hooks/useVentas';
 import { useMetricas } from '@/hooks/useMetricas';
 import { formatearCantidadPollos, formatearFraccionPollo } from '@/lib/utils';
+import { generarReporteExcel } from '@/lib/excelReport';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import AnimatedCard from '@/components/AnimatedCard';
@@ -168,6 +169,27 @@ function CierreCajaContent() {
                 ? listaPlatosVendidos.map(item => `- ${item.nombre}: ${item.cantidad}`).join('\n')
                 : 'No se vendieron platillos hoy.';
 
+            // Formatear detalle de bebidas sobrantes
+            const MARCA_LABEL: Record<string, string> = { inca_kola: 'Inca Kola', coca_cola: 'Coca Cola', sprite: 'Sprite', fanta: 'Fanta', agua_mineral: 'Agua Mineral' };
+            const TIPO_LABEL: Record<string, string> = { personal_retornable: 'Personal Ret.', descartable: 'Descartable', gordita: 'Gordita', litro: '1L', litro_medio: '1.5L', tres_litros: '3L', mediana: '2.25L', personal: '600ml', grande: '2.5L' };
+            let bebidasTexto = '';
+            if (stock?.bebidas_detalle) {
+                const lineas: string[] = [];
+                for (const [marca, tipos] of Object.entries(stock.bebidas_detalle)) {
+                    const tiposObj = tipos as Record<string, number>;
+                    const items = Object.entries(tiposObj).filter(([, qty]) => qty > 0);
+                    if (items.length > 0) {
+                        lineas.push(`*${MARCA_LABEL[marca] || marca}*`);
+                        for (const [tipo, qty] of items) {
+                            lineas.push(`   ${TIPO_LABEL[tipo] || tipo}: ${qty}`);
+                        }
+                    }
+                }
+                bebidasTexto = lineas.length > 0 ? lineas.join('\n') : 'Sin bebidas restantes.';
+            } else {
+                bebidasTexto = 'Sin detalle disponible.';
+            }
+
             if (error) {
                 console.error('Error al actualizar inventario diario:', error);
                 toast.error('Error al guardar el cierre: ' + error.message);
@@ -215,9 +237,13 @@ ${gastosTexto}
 --------------------------------
 ${platillosTexto}
 
+🥤 *BEBIDAS SOBRANTES (para mañana)*
+--------------------------------
+${bebidasTexto}
+
 📊 *CUADRE DE STOCK*
 --------------------------------
-Gaseosas Sobrantes: ${stockGaseosasReal} (Diff: ${diffGaseosas > 0 ? '+' : ''}${diffGaseosas})
+Gaseosas Total: ${stockGaseosasReal} (Diff: ${diffGaseosas > 0 ? '+' : ''}${diffGaseosas})
 
 📝 Notas: ${observaciones || 'Ninguna'}
 
@@ -243,6 +269,35 @@ _Generado automáticamente por Pocholo's POS_`;
         window.open(`https://wa.me/?text=${encodeURIComponent(resumenWhatsApp)}`, '_blank');
     };
 
+    const descargarExcel = async () => {
+        if (!stock) return;
+        try {
+            const fileName = await generarReporteExcel({
+                fecha: new Date().toLocaleDateString('es-PE'),
+                stock,
+                metricas,
+                ventasPorMetodo,
+                desglosePollos,
+                listaPlatosVendidos,
+                gastosDelDia,
+                totalGastos,
+                stockPollosReal,
+                pollosAderezados,
+                pollosEnCaja,
+                stockGaseosasReal,
+                stockPapasFinal,
+                dineroCajaReal,
+                observaciones,
+                diffPollos,
+                diffGaseosas,
+            });
+            toast.success(`Excel descargado: ${fileName}`, { icon: '📊' });
+        } catch (error) {
+            console.error('Error al generar Excel:', error);
+            toast.error('Error al generar el reporte Excel');
+        }
+    };
+
     if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-pocholo-red" /></div>;
 
     if (cierreCompletado) {
@@ -261,10 +316,18 @@ _Generado automáticamente por Pocholo's POS_`;
 
                     <button
                         onClick={copiarWhatsApp}
-                        className="w-full py-4 bg-[#25D366] text-white font-bold rounded-xl shadow-lg hover:brightness-105 transition-all flex items-center justify-center gap-2 mb-4"
+                        className="w-full py-4 bg-[#25D366] text-white font-bold rounded-xl shadow-lg hover:brightness-105 transition-all flex items-center justify-center gap-2 mb-3"
                     >
                         <Share2 size={20} />
                         Compartir en WhatsApp
+                    </button>
+
+                    <button
+                        onClick={descargarExcel}
+                        className="w-full py-4 bg-[#217346] text-white font-bold rounded-xl shadow-lg hover:brightness-105 transition-all flex items-center justify-center gap-2 mb-3"
+                    >
+                        <FileSpreadsheet size={20} />
+                        Descargar Reporte Excel
                     </button>
 
                     <button

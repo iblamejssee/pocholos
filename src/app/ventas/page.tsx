@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Venta, Mesa, ItemCarrito, ItemVenta } from '@/lib/database.types';
-import { Users, DollarSign, Clock, ShoppingBag } from 'lucide-react';
+import { Users, DollarSign, Clock, ShoppingBag, Trash2, AlertTriangle } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import AnimatedCard from '@/components/AnimatedCard';
@@ -39,6 +40,10 @@ function MesasActivasContent() {
         orderId: string;
         mesaNumero?: number;
     } | null>(null);
+
+    // Estado para cancelar pedido
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const [cancelData, setCancelData] = useState<{ ventaId: string; mesaId: number | null; label: string } | null>(null);
 
     useEffect(() => {
         cargarPedidosPendientes();
@@ -145,132 +150,153 @@ function MesasActivasContent() {
         }
     };
 
+    const handleCancelClick = (ventaId: string, mesaId: number | null, label: string) => {
+        setCancelData({ ventaId, mesaId, label });
+        setShowCancelModal(true);
+    };
+
+    const confirmCancel = async () => {
+        if (!cancelData) return;
+        try {
+            // Eliminar la venta
+            const { error } = await supabase
+                .from('ventas')
+                .delete()
+                .eq('id', cancelData.ventaId);
+
+            if (error) throw error;
+
+            // Liberar la mesa si tenía una asignada
+            if (cancelData.mesaId) {
+                await supabase
+                    .from('mesas')
+                    .update({ estado: 'libre' })
+                    .eq('id', cancelData.mesaId);
+            }
+
+            toast.success('Pedido eliminado — stock restaurado', { icon: '🗑️' });
+            cargarPedidosPendientes();
+        } catch (error) {
+            console.error('Error al cancelar:', error);
+            toast.error('Error al eliminar el pedido');
+        } finally {
+            setShowCancelModal(false);
+            setCancelData(null);
+        }
+    };
+
     const totalPedidos = mesasActivas.length + ventasParaLlevar.length;
 
     return (
-        <div className="p-3 sm:p-6 lg:p-8">
-            <div className="mb-4 sm:mb-8">
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-pocholo-brown mb-2">
+        <div className="p-4 sm:p-6 lg:p-8">
+            <div className="mb-6">
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-1">
                     Pedidos Pendientes
                 </h1>
-                <p className="text-sm sm:text-base text-pocholo-brown/60">
-                    Gestiona los pedidos de mesas y para llevar
+                <p className="text-sm text-slate-400">
+                    {totalPedidos} pedido{totalPedidos !== 1 ? 's' : ''} por cobrar
                 </p>
             </div>
 
             {loading ? (
-                <div className="text-center py-12">
-                    <div className="animate-spin w-12 h-12 border-4 border-pocholo-yellow border-t-transparent rounded-full mx-auto mb-4" />
-                    <p className="text-pocholo-brown/60">Cargando pedidos pendientes...</p>
+                <div className="text-center py-16">
+                    <div className="animate-spin w-10 h-10 border-3 border-slate-300 border-t-slate-600 rounded-full mx-auto mb-4" />
+                    <p className="text-slate-400 text-sm">Cargando pedidos...</p>
                 </div>
             ) : totalPedidos === 0 ? (
-                <AnimatedCard>
-                    <div className="text-center py-12">
-                        <Users size={64} className="mx-auto mb-4 text-pocholo-brown/30" />
-                        <h3 className="text-xl font-semibold text-pocholo-brown mb-2">
-                            No hay pedidos pendientes
-                        </h3>
-                        <p className="text-pocholo-brown/60">
-                            Todos los pedidos han sido pagados
-                        </p>
-                    </div>
-                </AnimatedCard>
+                <div className="text-center py-20 bg-white border border-slate-200 rounded-xl">
+                    <Users size={48} className="mx-auto mb-3 text-slate-300" />
+                    <h3 className="text-lg font-semibold text-slate-600 mb-1">
+                        Sin pedidos pendientes
+                    </h3>
+                    <p className="text-slate-400 text-sm">
+                        Todos los pedidos han sido cobrados
+                    </p>
+                </div>
             ) : (
                 <>
                     {/* Sección PARA LLEVAR */}
                     {ventasParaLlevar.length > 0 && (
                         <div className="mb-8">
-                            <h2 className="text-2xl font-bold text-pocholo-brown mb-4 flex items-center gap-2">
-                                <ShoppingBag className="text-amber-500" size={28} />
-                                Para Llevar ({ventasParaLlevar.length})
+                            <h2 className="text-lg font-bold text-slate-700 mb-3 flex items-center gap-2">
+                                <ShoppingBag size={20} className="text-slate-500" />
+                                Para Llevar
+                                <span className="text-xs font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{ventasParaLlevar.length}</span>
                             </h2>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {ventasParaLlevar.map((venta) => (
                                     <motion.div
                                         key={venta.id}
-                                        initial={{ opacity: 0, y: 20 }}
+                                        initial={{ opacity: 0, y: 12 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        className="bg-white rounded-2xl shadow-lg overflow-hidden border-2 border-amber-500"
+                                        className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                                     >
-                                        {/* Header Para Llevar */}
-                                        <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-4">
-                                            <div className="flex items-center justify-between text-white">
-                                                <div className="flex items-center gap-2">
-                                                    <ShoppingBag size={24} />
-                                                    <h3 className="text-2xl font-bold">🥡 Para Llevar</h3>
-                                                </div>
-                                                <div className="bg-white/20 px-3 py-1 rounded-full">
-                                                    <Clock size={16} className="inline mr-1" />
-                                                    <span className="text-sm font-semibold">Pendiente</span>
-                                                </div>
+                                        {/* Header */}
+                                        <div className="bg-slate-800 px-5 py-4">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-lg font-bold text-white">Para Llevar</h3>
+                                                <span className="text-[11px] font-medium text-amber-400 bg-amber-400/15 px-2 py-0.5 rounded-full">Pendiente</span>
                                             </div>
                                         </div>
 
-                                        {/* Content */}
-                                        <div className="p-4">
-                                            {/* Fecha y Hora */}
-                                            <div className="mb-3 text-xs text-pocholo-brown/60">
-                                                <p>📅 {new Date(venta.created_at).toLocaleDateString('es-PE')}</p>
-                                                <p>🕐 {new Date(venta.created_at).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}</p>
-                                            </div>
+                                        <div className="p-5">
+                                            {/* Hora */}
+                                            <p className="text-xs text-slate-400 mb-3">
+                                                {new Date(venta.created_at).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}
+                                            </p>
 
                                             {/* Items */}
-                                            <div className="mb-4">
-                                                <h4 className="font-semibold text-pocholo-brown mb-2">Pedido:</h4>
-                                                <div className="space-y-1 max-h-40 overflow-y-auto">
-                                                    {venta.items.map((item, idx) => (
-                                                        <div key={idx} className="flex justify-between text-sm">
-                                                            <span className="text-pocholo-brown/70">
-                                                                {item.cantidad}x {item.nombre}
-                                                            </span>
-                                                            <span className="font-semibold text-pocholo-brown">
-                                                                S/ {(item.cantidad * item.precio).toFixed(2)}
-                                                            </span>
-                                                        </div>
-                                                    ))}
-                                                </div>
+                                            <div className="space-y-1 mb-4">
+                                                {venta.items.map((item, idx) => (
+                                                    <div key={idx} className="flex justify-between text-sm">
+                                                        <span className="text-slate-600">{item.cantidad}× {item.nombre}</span>
+                                                        <span className="font-semibold text-slate-800">S/ {(item.cantidad * item.precio).toFixed(2)}</span>
+                                                    </div>
+                                                ))}
                                             </div>
 
                                             {/* Total */}
-                                            <div className="border-t-2 border-amber-300 pt-3 mb-4">
+                                            <div className="border-t border-slate-100 pt-3 mb-4">
                                                 <div className="flex justify-between items-center">
-                                                    <span className="text-lg font-semibold text-pocholo-brown">Total:</span>
-                                                    <span className="text-2xl font-bold text-pocholo-red">
-                                                        S/ {venta.total.toFixed(2)}
-                                                    </span>
+                                                    <span className="text-base font-medium text-slate-500">Total:</span>
+                                                    <span className="text-2xl font-bold text-slate-800">S/ {venta.total.toFixed(2)}</span>
                                                 </div>
                                             </div>
 
                                             {/* Botones de pago */}
-                                            <div className="space-y-2">
+                                            <div className="grid grid-cols-2 gap-2.5 mb-2">
                                                 <button
                                                     onClick={() => marcarComoPagado(venta.id, null, undefined, venta.items, venta.total, 'efectivo')}
-                                                    className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg"
+                                                    className="py-4 rounded-lg font-semibold text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors flex items-center justify-center gap-1.5"
                                                 >
-                                                    <DollarSign size={20} />
-                                                    Efectivo
+                                                    <DollarSign size={15} /> Efectivo
                                                 </button>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <button
-                                                        onClick={() => marcarComoPagado(venta.id, null, undefined, venta.items, venta.total, 'yape')}
-                                                        className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg"
-                                                    >
-                                                        📱 Yape
-                                                    </button>
-                                                    <button
-                                                        onClick={() => marcarComoPagado(venta.id, null, undefined, venta.items, venta.total, 'plin')}
-                                                        className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg"
-                                                    >
-                                                        💠 Plin
-                                                    </button>
-                                                </div>
+                                                <button
+                                                    onClick={() => marcarComoPagado(venta.id, null, undefined, venta.items, venta.total, 'yape')}
+                                                    className="py-4 rounded-lg font-semibold text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
+                                                >
+                                                    Yape
+                                                </button>
+                                                <button
+                                                    onClick={() => marcarComoPagado(venta.id, null, undefined, venta.items, venta.total, 'plin')}
+                                                    className="py-4 rounded-lg font-semibold text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
+                                                >
+                                                    Plin
+                                                </button>
                                                 <button
                                                     onClick={() => marcarComoPagado(venta.id, null, undefined, venta.items, venta.total, 'tarjeta')}
-                                                    className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg"
+                                                    className="py-4 rounded-lg font-semibold text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
                                                 >
-                                                    💳 Tarjeta
+                                                    Tarjeta
                                                 </button>
                                             </div>
+                                            {/* Eliminar */}
+                                            <button
+                                                onClick={() => handleCancelClick(venta.id, null, 'Para Llevar')}
+                                                className="w-full py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex items-center justify-center gap-1"
+                                            >
+                                                <Trash2 size={12} /> Eliminar
+                                            </button>
                                         </div>
                                     </motion.div>
                                 ))}
@@ -281,102 +307,90 @@ function MesasActivasContent() {
                     {/* Sección MESAS */}
                     {mesasActivas.length > 0 && (
                         <div>
-                            <h2 className="text-2xl font-bold text-pocholo-brown mb-4 flex items-center gap-2">
-                                <Users className="text-red-500" size={28} />
-                                Mesas ({mesasActivas.length})
+                            <h2 className="text-lg font-bold text-slate-700 mb-3 flex items-center gap-2">
+                                <Users size={20} className="text-slate-500" />
+                                Mesas
+                                <span className="text-xs font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{mesasActivas.length}</span>
                             </h2>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {mesasActivas.map((mesa) => (
                                     <motion.div
                                         key={mesa.id}
-                                        initial={{ opacity: 0, y: 20 }}
+                                        initial={{ opacity: 0, y: 12 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        className="bg-white rounded-2xl shadow-lg overflow-hidden border-2 border-red-500"
+                                        className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                                     >
                                         {/* Header */}
-                                        <div className="bg-gradient-to-r from-red-500 to-red-600 p-4">
-                                            <div className="flex items-center justify-between text-white">
-                                                <div className="flex items-center gap-2">
-                                                    <Users size={24} />
-                                                    <h3 className="text-2xl font-bold">Mesa {mesa.numero}</h3>
-                                                </div>
-                                                <div className="bg-white/20 px-3 py-1 rounded-full">
-                                                    <Clock size={16} className="inline mr-1" />
-                                                    <span className="text-sm font-semibold">Pendiente</span>
-                                                </div>
+                                        <div className="bg-slate-800 px-5 py-4">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-lg font-bold text-white">Mesa {mesa.numero}</h3>
+                                                <span className="text-[11px] font-medium text-amber-400 bg-amber-400/15 px-2 py-0.5 rounded-full">Pendiente</span>
                                             </div>
                                         </div>
 
-                                        {/* Content */}
-                                        <div className="p-4">
+                                        <div className="p-5">
                                             {mesa.venta ? (
                                                 <>
-                                                    {/* Fecha y Hora */}
-                                                    <div className="mb-3 text-xs text-pocholo-brown/60">
-                                                        <p>📅 {new Date(mesa.venta.created_at).toLocaleDateString('es-PE')}</p>
-                                                        <p>🕐 {new Date(mesa.venta.created_at).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}</p>
-                                                    </div>
+                                                    {/* Hora */}
+                                                    <p className="text-xs text-slate-400 mb-3">
+                                                        {new Date(mesa.venta.created_at).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}
+                                                    </p>
 
                                                     {/* Items */}
-                                                    <div className="mb-4">
-                                                        <h4 className="font-semibold text-pocholo-brown mb-2">Pedido:</h4>
-                                                        <div className="space-y-1 max-h-40 overflow-y-auto">
-                                                            {mesa.venta.items.map((item, idx) => (
-                                                                <div key={idx} className="flex justify-between text-sm">
-                                                                    <span className="text-pocholo-brown/70">
-                                                                        {item.cantidad}x {item.nombre}
-                                                                    </span>
-                                                                    <span className="font-semibold text-pocholo-brown">
-                                                                        S/ {(item.cantidad * item.precio).toFixed(2)}
-                                                                    </span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
+                                                    <div className="space-y-1 mb-4 max-h-36 overflow-y-auto">
+                                                        {mesa.venta.items.map((item, idx) => (
+                                                            <div key={idx} className="flex justify-between text-sm">
+                                                                <span className="text-slate-600">{item.cantidad}× {item.nombre}</span>
+                                                                <span className="font-semibold text-slate-800">S/ {(item.cantidad * item.precio).toFixed(2)}</span>
+                                                            </div>
+                                                        ))}
                                                     </div>
 
                                                     {/* Total */}
-                                                    <div className="border-t-2 border-pocholo-yellow/30 pt-3 mb-4">
+                                                    <div className="border-t border-slate-100 pt-3 mb-4">
                                                         <div className="flex justify-between items-center">
-                                                            <span className="text-lg font-semibold text-pocholo-brown">Total:</span>
-                                                            <span className="text-2xl font-bold text-pocholo-red">
-                                                                S/ {mesa.venta.total.toFixed(2)}
-                                                            </span>
+                                                            <span className="text-base font-medium text-slate-500">Total:</span>
+                                                            <span className="text-2xl font-bold text-slate-800">S/ {mesa.venta.total.toFixed(2)}</span>
                                                         </div>
                                                     </div>
 
                                                     {/* Botones de pago */}
-                                                    <div className="space-y-2">
+                                                    <div className="grid grid-cols-2 gap-2.5 mb-2">
                                                         <button
                                                             onClick={() => marcarComoPagado(mesa.venta!.id, mesa.id, mesa.numero, mesa.venta!.items, mesa.venta!.total, 'efectivo')}
-                                                            className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg"
+                                                            className="py-4 rounded-lg font-semibold text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors flex items-center justify-center gap-1.5"
                                                         >
-                                                            <DollarSign size={20} />
-                                                            Efectivo
+                                                            <DollarSign size={15} /> Efectivo
                                                         </button>
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            <button
-                                                                onClick={() => marcarComoPagado(mesa.venta!.id, mesa.id, mesa.numero, mesa.venta!.items, mesa.venta!.total, 'yape')}
-                                                                className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg"
-                                                            >
-                                                                📱 Yape
-                                                            </button>
-                                                            <button
-                                                                onClick={() => marcarComoPagado(mesa.venta!.id, mesa.id, mesa.numero, mesa.venta!.items, mesa.venta!.total, 'plin')}
-                                                                className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg"
-                                                            >
-                                                                💠 Plin
-                                                            </button>
-                                                        </div>
+                                                        <button
+                                                            onClick={() => marcarComoPagado(mesa.venta!.id, mesa.id, mesa.numero, mesa.venta!.items, mesa.venta!.total, 'yape')}
+                                                            className="py-4 rounded-lg font-semibold text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
+                                                        >
+                                                            Yape
+                                                        </button>
+                                                        <button
+                                                            onClick={() => marcarComoPagado(mesa.venta!.id, mesa.id, mesa.numero, mesa.venta!.items, mesa.venta!.total, 'plin')}
+                                                            className="py-4 rounded-lg font-semibold text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
+                                                        >
+                                                            Plin
+                                                        </button>
                                                         <button
                                                             onClick={() => marcarComoPagado(mesa.venta!.id, mesa.id, mesa.numero, mesa.venta!.items, mesa.venta!.total, 'tarjeta')}
-                                                            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg"
+                                                            className="py-4 rounded-lg font-semibold text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
                                                         >
-                                                            💳 Tarjeta
+                                                            Tarjeta
                                                         </button>
                                                     </div>
+                                                    {/* Eliminar */}
+                                                    <button
+                                                        onClick={() => handleCancelClick(mesa.venta!.id, mesa.id, `Mesa ${mesa.numero}`)}
+                                                        className="w-full py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex items-center justify-center gap-1"
+                                                    >
+                                                        <Trash2 size={12} /> Eliminar
+                                                    </button>
                                                 </>
                                             ) : (
-                                                <div className="text-center py-4 text-pocholo-brown/50">
+                                                <div className="text-center py-4 text-slate-400">
                                                     <p className="text-sm">Mesa ocupada sin pedido registrado</p>
                                                 </div>
                                             )}
@@ -400,6 +414,43 @@ function MesasActivasContent() {
                     mesaNumero={receiptData.mesaNumero}
                 />
             )}
+
+            {/* Modal de confirmación de cancelación */}
+            <AnimatePresence>
+                {showCancelModal && cancelData && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6"
+                        >
+                            <div className="text-center">
+                                <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <AlertTriangle size={28} className="text-red-600" />
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-800 mb-2">Eliminar Pedido</h3>
+                                <p className="text-gray-500 text-sm mb-1">¿Eliminar el pedido de <strong>{cancelData.label}</strong>?</p>
+                                <p className="text-gray-400 text-xs mb-6">El stock de pollos y bebidas se restaurará automáticamente.</p>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => { setShowCancelModal(false); setCancelData(null); }}
+                                        className="flex-1 py-2.5 px-4 rounded-lg font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+                                    >
+                                        No, mantener
+                                    </button>
+                                    <button
+                                        onClick={confirmCancel}
+                                        className="flex-1 py-2.5 px-4 rounded-lg font-medium text-white bg-red-600 hover:bg-red-700 transition-colors"
+                                    >
+                                        Sí, eliminar
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { DollarSign, ShoppingBag, TrendingUp, TrendingDown, Calendar, Download, Star, Clock, CreditCard, Home, Package, ChevronLeft, ChevronRight, X, Filter, BarChart3, Printer, FileText } from 'lucide-react';
+import { DollarSign, ShoppingBag, TrendingUp, TrendingDown, Calendar, FileSpreadsheet, Star, Clock, CreditCard, Home, Package, ChevronLeft, ChevronRight, X, Filter, BarChart3, Printer, FileText } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import {
     obtenerVentasPorRango,
@@ -25,6 +25,7 @@ import type { Venta, InventarioDiario, Gasto } from '@/lib/database.types';
 import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addMonths, subMonths, isSameDay, isWithinInterval, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { formatearFraccionPollo } from '@/lib/utils';
+import { generarReporteExcelReportes } from '@/lib/excelReportes';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReceiptModal from '@/components/ReceiptModal';
@@ -165,31 +166,30 @@ export default function ReportesPage() {
         }
     };
 
-    const exportarCSV = () => {
+    const exportarExcel = async () => {
         if (ventas.length === 0) {
             toast.error('No hay datos para exportar');
             return;
         }
-
-        const headers = ['Fecha', 'Hora', 'ID Pedido', 'Items', 'Método Pago', 'Total'];
-        const rows = ventas.map(v => [
-            format(new Date(v.created_at), 'dd/MM/yyyy'),
-            format(new Date(v.created_at), 'HH:mm'),
-            v.id.slice(0, 8),
-            v.items.length,
-            v.metodo_pago || 'Efectivo',
-            v.total.toFixed(2)
-        ]);
-
-        const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `reporte_${format(new Date(), 'yyyyMMdd_HHmm')}.csv`;
-        link.click();
-        URL.revokeObjectURL(url);
-        toast.success('Reporte exportado correctamente');
+        try {
+            const fileName = await generarReporteExcelReportes({
+                periodo: getPeriodoTexto(),
+                metricas,
+                ventas,
+                topProductos,
+                desgloseMetodoPago,
+                consumoPollos,
+                distribucionTipo,
+                comparativa,
+                ventasPorHora,
+                inventarios,
+                gastos,
+            });
+            toast.success(`Excel descargado: ${fileName}`, { icon: '📊' });
+        } catch (error) {
+            console.error('Error al generar Excel:', error);
+            toast.error('Error al generar el reporte Excel');
+        }
     };
 
     // Generar días del calendario
@@ -285,11 +285,11 @@ export default function ReportesPage() {
                                 Reporte Administrativo
                             </button>
                             <button
-                                onClick={exportarCSV}
-                                className="flex items-center gap-2 px-5 py-2.5 bg-white text-slate-600 border border-slate-200 rounded-xl font-medium hover:bg-slate-50 transition-all shadow-md hover:shadow-lg"
+                                onClick={exportarExcel}
+                                className="flex items-center gap-2 px-5 py-2.5 bg-[#217346] text-white rounded-xl font-medium hover:brightness-110 transition-all shadow-md hover:shadow-lg"
                             >
-                                <Download size={18} />
-                                Exportar
+                                <FileSpreadsheet size={18} />
+                                Exportar Excel
                             </button>
                         </div>
                     </div>

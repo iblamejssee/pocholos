@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, ShoppingCart, BarChart, Lock, ClipboardList, ChefHat, Package, Users, Boxes, LucideIcon, X } from 'lucide-react';
+import { Home, ShoppingCart, BarChart, Lock, ClipboardList, ChefHat, Package, Users, Boxes, LucideIcon, X, Wine } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,7 +25,6 @@ interface SidebarProps {
     onClose?: () => void;
 }
 
-// Menú organizado por secciones
 const menuSections: MenuSection[] = [
     {
         title: 'Principal',
@@ -37,16 +36,14 @@ const menuSections: MenuSection[] = [
         title: 'Operaciones',
         items: [
             { icon: ClipboardList, label: 'Apertura de Día', href: '/apertura', permission: 'apertura' },
-            { icon: ShoppingCart, label: 'Punto de Venta', href: '/pos', permission: 'pos' },
-            { icon: Users, label: 'Gestión de Mesas', href: '/mesas', permission: 'mesas' },
+            { icon: ShoppingCart, label: 'Pedidos', href: '/pos', permission: 'pos' },
             { icon: ChefHat, label: 'Cocina', href: '/cocina', permission: 'cocina' },
         ]
     },
     {
         title: 'Gestión',
         items: [
-            { icon: Package, label: 'Ventas del Día', href: '/ventas', permission: 'ventas' },
-            { icon: Boxes, label: 'Inventario', href: '/inventario', permission: 'inventario' },
+            { icon: Package, label: 'Caja', href: '/ventas', permission: 'ventas' },
         ]
     },
     {
@@ -62,7 +59,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
     const pathname = usePathname();
     const { user, loading } = useAuth();
 
-    // Esperar a que termine de cargar el usuario
+    // Esperar a que termine de cargar el usuario 
     if (loading) {
         return (
             <>

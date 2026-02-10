@@ -5,32 +5,72 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check } from 'lucide-react';
 import type { Producto } from '@/lib/database.types';
 
+type PartesPollo = 'pecho' | 'pierna' | 'ala' | 'encuentro' | 'entrepierna' | 'Rabadilla';
+type TipoTrozado = '1/8' | '1/4' | 'entero';
+
 interface ProductOptionsModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (producto: Producto, opciones: { parte?: 'pecho' | 'pierna' | 'ala' | 'encuentro', notas: string }) => void;
+    onConfirm: (producto: Producto, opciones: { parte?: PartesPollo, trozado?: TipoTrozado, notas: string }) => void;
     producto: Producto | null;
 }
 
 export default function ProductOptionsModal({ isOpen, onClose, onConfirm, producto }: ProductOptionsModalProps) {
-    const [parte, setParte] = useState<'pecho' | 'pierna' | 'ala' | 'encuentro' | undefined>(undefined);
+    const [parte, setParte] = useState<PartesPollo | undefined>(undefined);
+    const [trozado, setTrozado] = useState<TipoTrozado>('entero');
     const [notas, setNotas] = useState('');
 
     useEffect(() => {
         if (isOpen) {
             setParte(undefined);
+            setTrozado('entero');
             setNotas('');
         }
     }, [isOpen, producto]);
 
     if (!producto) return null;
 
-    const esPollo = producto.tipo === 'pollo' || producto.nombre.toLowerCase().includes('pollo') || producto.nombre.toLowerCase().includes('mostrito');
-    const permiteParte = esPollo && !producto.nombre.toLowerCase().includes('entero');
+    const nombreLower = producto.nombre.toLowerCase();
+    const esPollo = producto.tipo === 'pollo' || nombreLower.includes('pollo') || nombreLower.includes('mostrito');
+
+    // Para pollo entero o medio pollo: mostrar opción de trozado
+    // Detectamos: "entero", "medio", "1/2", "1 pollo" (sin fracción como 1/4)
+    const esPolloEnteroOMedio = esPollo && (
+        nombreLower.includes('entero') ||
+        nombreLower.includes('medio') ||
+        nombreLower.includes('1/2') ||
+        /^1\s*pollo/i.test(nombreLower) || // "1 pollo" o "1pollo"
+        (nombreLower.includes('pollo') && !nombreLower.includes('1/4') && !nombreLower.includes('1/8') && !nombreLower.includes('combo') && !nombreLower.includes('mostrito'))
+    );
+
+    // Para platos con pollo (no entero): mostrar selección de parte
+    const permiteParte = esPollo && !esPolloEnteroOMedio;
+
+
+    const partesPollo: { valor: PartesPollo; emoji: string; label: string }[] = [
+        { valor: 'pecho', emoji: '🍗', label: 'Pecho' },
+        { valor: 'pierna', emoji: '🍖', label: 'Pierna' },
+        { valor: 'ala', emoji: '🦴', label: 'Ala' },
+        { valor: 'encuentro', emoji: '🍗', label: 'Encuentro' },
+        { valor: 'entrepierna', emoji: '🍖', label: 'Entrepierna' },
+        { valor: 'Rabadilla', emoji: '🐔', label: 'Rabadilla' },
+    ];
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onConfirm(producto, { parte, notas });
+
+        // Construir notas finales
+        let notasFinales = notas;
+        if (esPolloEnteroOMedio && trozado !== 'entero') {
+            const trozadoTexto = `Trozado en ${trozado}`;
+            notasFinales = notasFinales ? `${trozadoTexto}, ${notasFinales}` : trozadoTexto;
+        }
+
+        onConfirm(producto, {
+            parte,
+            trozado: esPolloEnteroOMedio ? trozado : undefined,
+            notas: notasFinales
+        });
         onClose();
     };
 
@@ -42,9 +82,9 @@ export default function ProductOptionsModal({ isOpen, onClose, onConfirm, produc
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
-                        className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl w-full max-w-md border-2 border-white/50 overflow-hidden"
+                        className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl w-full max-w-md border-2 border-white/50 overflow-hidden max-h-[90vh] overflow-y-auto"
                     >
-                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-pocholo-cream to-white">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-pocholo-cream to-white sticky top-0">
                             <div>
                                 <h2 className="text-2xl font-bold text-pocholo-brown">{producto.nombre}</h2>
                                 <p className="text-pocholo-red font-semibold">S/ {producto.precio.toFixed(2)}</p>
@@ -57,38 +97,74 @@ export default function ProductOptionsModal({ isOpen, onClose, onConfirm, produc
                             </button>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                            {/* Opción de Trozado (para pollo entero o medio) */}
+                            {esPolloEnteroOMedio && (
+                                <div className="space-y-3">
+                                    <label className="block text-sm font-medium text-pocholo-brown/80 mb-2">
+                                        ¿Cómo lo quiere?
+                                    </label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setTrozado('entero')}
+                                            className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${trozado === 'entero'
+                                                ? 'border-pocholo-red bg-red-50 text-pocholo-red'
+                                                : 'border-gray-100 hover:border-pocholo-yellow/50 text-gray-600'
+                                                }`}
+                                        >
+                                            <span className="text-xl">🐔</span>
+                                            <span className="font-semibold text-sm">Entero</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setTrozado('1/4')}
+                                            className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${trozado === '1/4'
+                                                ? 'border-pocholo-red bg-red-50 text-pocholo-red'
+                                                : 'border-gray-100 hover:border-pocholo-yellow/50 text-gray-600'
+                                                }`}
+                                        >
+                                            <span className="text-xl">🍗</span>
+                                            <span className="font-semibold text-sm">Trozado 1/4</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setTrozado('1/8')}
+                                            className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${trozado === '1/8'
+                                                ? 'border-pocholo-red bg-red-50 text-pocholo-red'
+                                                : 'border-gray-100 hover:border-pocholo-yellow/50 text-gray-600'
+                                                }`}
+                                        >
+                                            <span className="text-xl">🦴</span>
+                                            <span className="font-semibold text-sm">Trozado 1/8</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Selección de Parte (solo si aplica) */}
                             {permiteParte && (
                                 <div className="space-y-3">
                                     <label className="block text-sm font-medium text-pocholo-brown/80 mb-2">
                                         Elegir Parte del Pollo
                                     </label>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <button
-                                            type="button"
-                                            onClick={() => setParte('pecho')}
-                                            className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${parte === 'pecho'
-                                                ? 'border-pocholo-red bg-red-50 text-pocholo-red'
-                                                : 'border-gray-100 hover:border-pocholo-yellow/50 text-gray-600'
-                                                }`}
-                                        >
-                                            <span className="text-2xl">🍗</span>
-                                            <span className="font-semibold">Pecho</span>
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setParte('pierna')}
-                                            className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${parte === 'pierna'
-                                                ? 'border-pocholo-red bg-red-50 text-pocholo-red'
-                                                : 'border-gray-100 hover:border-pocholo-yellow/50 text-gray-600'
-                                                }`}
-                                        >
-                                            <span className="text-2xl">🍖</span>
-                                            <span className="font-semibold">Pierna</span>
-                                        </button>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {partesPollo.map((p) => (
+                                            <button
+                                                key={p.valor}
+                                                type="button"
+                                                onClick={() => setParte(p.valor)}
+                                                className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${parte === p.valor
+                                                    ? 'border-pocholo-red bg-red-50 text-pocholo-red'
+                                                    : 'border-gray-100 hover:border-pocholo-yellow/50 text-gray-600'
+                                                    }`}
+                                            >
+                                                <span className="text-xl">{p.emoji}</span>
+                                                <span className="font-semibold text-xs">{p.label}</span>
+                                            </button>
+                                        ))}
                                     </div>
-                                    {!parte && <p className="text-red-400 text-xs mt-1">* Selección recomendada</p>}
+                                    {!parte && <p className="text-amber-500 text-xs mt-1">* Selección opcional</p>}
                                 </div>
                             )}
 
@@ -101,9 +177,9 @@ export default function ProductOptionsModal({ isOpen, onClose, onConfirm, produc
                                     value={notas}
                                     onChange={(e) => setNotas(e.target.value)}
                                     placeholder="Ej: Sin ensalada, papas bien fritas, para llevar..."
-                                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-100 focus:border-pocholo-yellow focus:ring-4 focus:ring-pocholo-yellow/10 transition-all resize-none h-24"
+                                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-100 focus:border-pocholo-yellow focus:ring-4 focus:ring-pocholo-yellow/10 transition-all resize-none h-20"
                                 />
-                                <div className="flex gap-2 text-xs">
+                                <div className="flex flex-wrap gap-2 text-xs">
                                     <button
                                         type="button"
                                         onClick={() => setNotas(prev => (prev ? prev + ", Sin ensalada" : "Sin ensalada"))}
@@ -113,10 +189,17 @@ export default function ProductOptionsModal({ isOpen, onClose, onConfirm, produc
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setNotas(prev => (prev ? prev + ", Para llevar" : "Para llevar"))}
+                                        onClick={() => setNotas(prev => (prev ? prev + ", Papas crujientes" : "Papas crujientes"))}
                                         className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-600 transition-colors"
                                     >
-                                        + Para llevar
+                                        + Papas crujientes
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setNotas(prev => (prev ? prev + ", Extra ají" : "Extra ají"))}
+                                        className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-600 transition-colors"
+                                    >
+                                        + Extra ají
                                     </button>
                                 </div>
                             </div>

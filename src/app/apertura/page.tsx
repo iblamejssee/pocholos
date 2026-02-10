@@ -9,27 +9,66 @@ import type { BebidasDetalle } from '@/lib/database.types';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { motion } from 'framer-motion';
 
-// Marcas de gaseosas
-const MARCAS = ['inca_kola', 'coca_cola', 'sprite', 'fanta'] as const;
-type MarcaGaseosa = typeof MARCAS[number];
+// Configuración de marcas con sus tamaños reales en Perú
+const MARCAS_CONFIG = [
+    {
+        key: 'inca_kola',
+        name: 'Inca Kola',
+        dot: 'bg-yellow-500',
+        sizes: [
+            { key: 'personal_retornable', label: 'Personal Ret.', desc: '296ml' },
+            { key: 'descartable', label: 'Descartable', desc: '600ml' },
+            { key: 'gordita', label: 'Gordita', desc: '625ml' },
+            { key: 'litro', label: '1 Litro', desc: '1L' },
+            { key: 'litro_medio', label: '1.5 Litros', desc: '1.5L' },
+            { key: 'tres_litros', label: '3 Litros', desc: '3L' },
+        ],
+    },
+    {
+        key: 'coca_cola',
+        name: 'Coca Cola',
+        dot: 'bg-red-600',
+        sizes: [
+            { key: 'personal_retornable', label: 'Personal Ret.', desc: '296ml' },
+            { key: 'descartable', label: 'Descartable', desc: '600ml' },
+            { key: 'gordita', label: 'Gordita', desc: '625ml' },
+            { key: 'litro', label: '1 Litro', desc: '1L' },
+            { key: 'litro_medio', label: '1.5 Litros', desc: '1.5L' },
+            { key: 'tres_litros', label: '3 Litros', desc: '3L' },
+        ],
+    },
+    {
+        key: 'sprite',
+        name: 'Sprite',
+        dot: 'bg-green-600',
+        sizes: [
+            { key: 'descartable', label: 'Personal', desc: '500ml' },
+            { key: 'litro_medio', label: '1.5 Litros', desc: '1.5L' },
+            { key: 'tres_litros', label: '3 Litros', desc: '3L' },
+        ],
+    },
+    {
+        key: 'fanta',
+        name: 'Fanta',
+        dot: 'bg-orange-500',
+        sizes: [
+            { key: 'descartable', label: 'Personal', desc: '500ml' },
+            { key: 'mediana', label: '2.25 Litros', desc: '2.25L' },
+            { key: 'tres_litros', label: '3 Litros', desc: '3L' },
+        ],
+    },
+    {
+        key: 'agua_mineral',
+        name: 'Agua Mineral',
+        dot: 'bg-sky-400',
+        sizes: [
+            { key: 'personal', label: 'Personal', desc: '600ml' },
+            { key: 'grande', label: 'Grande', desc: '2.5L' },
+        ],
+    },
+] as const;
 
-// Tamaños disponibles para gaseosas
-const TAMANOS_GASEOSA = [
-    { key: 'personal_retornable', label: 'Personal Ret.', desc: '350ml' },
-    { key: 'descartable', label: 'Descartable', desc: '500ml' },
-    { key: 'gordita', label: 'Gordita', desc: '625ml' },
-    { key: 'litro', label: '1 Litro', desc: '1L' },
-    { key: 'litro_medio', label: '1.5 Litros', desc: '1.5L' },
-    { key: 'tres_litros', label: '3 Litros', desc: '3L' },
-];
 
-// Configuración de marcas con colores
-const MARCA_CONFIG: Record<MarcaGaseosa, { name: string; color: string; bgColor: string; borderColor: string }> = {
-    inca_kola: { name: 'Inca Kola', color: 'text-yellow-700', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-300' },
-    coca_cola: { name: 'Coca Cola', color: 'text-red-700', bgColor: 'bg-red-50', borderColor: 'border-red-300' },
-    sprite: { name: 'Sprite', color: 'text-green-700', bgColor: 'bg-green-50', borderColor: 'border-green-300' },
-    fanta: { name: 'Fanta', color: 'text-orange-700', bgColor: 'bg-orange-50', borderColor: 'border-orange-300' },
-};
 
 export default function AperturaPage() {
     return (
@@ -52,10 +91,11 @@ function AperturaContent() {
     const [bebidasDetalle, setBebidasDetalle] = useState<BebidasDetalle>({
         inca_kola: { personal_retornable: 0, descartable: 0, gordita: 0, litro: 0, litro_medio: 0, tres_litros: 0 },
         coca_cola: { personal_retornable: 0, descartable: 0, gordita: 0, litro: 0, litro_medio: 0, tres_litros: 0 },
-        sprite: { personal_retornable: 0, descartable: 0, gordita: 0, litro: 0, litro_medio: 0, tres_litros: 0 },
-        fanta: { personal_retornable: 0, descartable: 0, gordita: 0, litro: 0, litro_medio: 0, tres_litros: 0 },
-        chicha: { litro: 0, medio_litro: 0 }
+        sprite: { descartable: 0, litro_medio: 0, tres_litros: 0 },
+        fanta: { descartable: 0, mediana: 0, tres_litros: 0 },
+        agua_mineral: { personal: 0, grande: 0 },
     });
+    const [expandedBrands, setExpandedBrands] = useState<Set<string>>(new Set());
 
     // Cargar stock del día anterior al montar
     useEffect(() => {
@@ -112,9 +152,9 @@ function AperturaContent() {
         setBebidasDetalle({
             inca_kola: { personal_retornable: 0, descartable: 0, gordita: 0, litro: 0, litro_medio: 0, tres_litros: 0 },
             coca_cola: { personal_retornable: 0, descartable: 0, gordita: 0, litro: 0, litro_medio: 0, tres_litros: 0 },
-            sprite: { personal_retornable: 0, descartable: 0, gordita: 0, litro: 0, litro_medio: 0, tres_litros: 0 },
-            fanta: { personal_retornable: 0, descartable: 0, gordita: 0, litro: 0, litro_medio: 0, tres_litros: 0 },
-            chicha: { litro: 0, medio_litro: 0 }
+            sprite: { descartable: 0, litro_medio: 0, tres_litros: 0 },
+            fanta: { descartable: 0, mediana: 0, tres_litros: 0 },
+            agua_mineral: { personal: 0, grande: 0 },
         });
         setPreviousDayLoaded(false);
         toast.success('Stock de bebidas reiniciado');
@@ -145,8 +185,30 @@ function AperturaContent() {
                 .single();
 
             if (existente) {
-                toast.error('Ya se realizó la apertura del día de hoy', { duration: 4000 });
-                setLoading(false);
+                // Permitir sobrescribir si el usuario confirma (o implícitamente al enviar de nuevo)
+                // Para simplificar UX, haremos un UPDATE si ya existe
+                const { error: updateError } = await supabase
+                    .from('inventario_diario')
+                    .update({
+                        pollos_enteros: pollos,
+                        papas_iniciales: papas,
+                        gaseosas: totalBebidas,
+                        dinero_inicial: parseFloat(dineroInicial) || 0,
+                        bebidas_detalle: bebidasDetalle,
+                        // No tocamos la fecha ni el id
+                    })
+                    .eq('fecha', fechaHoy);
+
+                if (updateError) throw updateError;
+
+                toast.success(
+                    `¡Apertura ACTUALIZADA!\nDatos corregidos para el día de hoy.`,
+                    { duration: 4000, icon: '🔄' }
+                );
+
+                setTimeout(() => {
+                    router.push('/');
+                }, 1500);
                 return;
             }
 
@@ -299,83 +361,62 @@ function AperturaContent() {
                         </div>
                     ) : (
                         <>
-                            {/* Header de marcas */}
-                            <div className="grid grid-cols-5 gap-2 mb-3">
-                                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Tamaño</div>
-                                {MARCAS.map(marca => (
-                                    <div
-                                        key={marca}
-                                        className={`text-center py-2 px-1 rounded-lg ${MARCA_CONFIG[marca].bgColor} ${MARCA_CONFIG[marca].color} font-bold text-xs`}
-                                    >
-                                        {MARCA_CONFIG[marca].name.split(' ')[0]}
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Filas de tamaños */}
-                            <div className="space-y-3">
-                                {TAMANOS_GASEOSA.map(tamano => (
-                                    <div key={tamano.key} className="grid grid-cols-5 gap-2 items-center">
-                                        <div className="text-sm text-pocholo-brown">
-                                            <span className="font-medium">{tamano.label}</span>
-                                            <span className="text-xs text-gray-400 ml-1 hidden md:inline">{tamano.desc}</span>
+                            {/* Marcas como acordeón — click para expandir */}
+                            <div className="space-y-1">
+                                {MARCAS_CONFIG.map((marca) => {
+                                    const brandData = bebidasDetalle[marca.key as keyof BebidasDetalle] as Record<string, number> | undefined;
+                                    const brandTotal = marca.sizes.reduce((sum, s) => sum + ((brandData?.[s.key]) || 0), 0);
+                                    const isOpen = expandedBrands.has(marca.key);
+                                    const toggleBrand = () => {
+                                        setExpandedBrands(prev => {
+                                            const next = new Set(prev);
+                                            if (next.has(marca.key)) next.delete(marca.key);
+                                            else next.add(marca.key);
+                                            return next;
+                                        });
+                                    };
+                                    return (
+                                        <div key={marca.key} className="border border-slate-200 rounded-lg overflow-hidden">
+                                            {/* Header de marca — clickeable */}
+                                            <button
+                                                type="button"
+                                                onClick={toggleBrand}
+                                                className="w-full flex items-center gap-3 px-4 py-3 bg-white hover:bg-slate-50 transition-colors"
+                                            >
+                                                <span className={`w-3 h-3 rounded-full shrink-0 ${marca.dot}`}></span>
+                                                <span className="text-sm font-bold text-slate-800 flex-1 text-left">{marca.name}</span>
+                                                <span className={`text-sm font-semibold ${brandTotal > 0 ? 'text-slate-600' : 'text-slate-400'}`}>{brandTotal} und.</span>
+                                                <span className="text-slate-400 text-xs ml-1">{isOpen ? '▲' : '▼'}</span>
+                                            </button>
+                                            {/* Panel expandible con tamaños */}
+                                            {isOpen && (
+                                                <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 space-y-2">
+                                                    {marca.sizes.map((size) => {
+                                                        const val = (brandData?.[size.key]) || 0;
+                                                        return (
+                                                            <div key={size.key} className="flex items-center gap-3">
+                                                                <div className="flex-1 min-w-0">
+                                                                    <span className="text-sm text-slate-700">{size.label}</span>
+                                                                    <span className="text-[10px] text-slate-400 ml-1.5">{size.desc}</span>
+                                                                </div>
+                                                                <input
+                                                                    type="number"
+                                                                    inputMode="numeric"
+                                                                    min="0"
+                                                                    value={val === 0 ? '' : val}
+                                                                    placeholder="0"
+                                                                    onChange={(e) => updateBeverage(marca.key as keyof BebidasDetalle, size.key, e.target.value)}
+                                                                    onFocus={(e) => e.target.select()}
+                                                                    className="w-20 px-2 py-2 text-center text-sm font-semibold text-slate-800 bg-white border border-slate-200 rounded-md transition-all focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-300 hover:border-slate-300 placeholder:text-slate-300"
+                                                                />
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
                                         </div>
-                                        {MARCAS.map(marca => {
-                                            const val = bebidasDetalle[marca]?.[tamano.key as keyof typeof bebidasDetalle[typeof marca]] || 0;
-                                            return (
-                                                <input
-                                                    key={`${marca}-${tamano.key}`}
-                                                    type="number"
-                                                    inputMode="numeric"
-                                                    min="0"
-                                                    value={val === 0 ? '' : val}
-                                                    placeholder="0"
-                                                    onChange={(e) => updateBeverage(marca, tamano.key, e.target.value)}
-                                                    onFocus={(e) => e.target.select()}
-                                                    className={`w-full px-2 py-3 text-center text-lg font-bold border-2 rounded-xl transition-all focus:outline-none focus:ring-2 focus:scale-105 ${MARCA_CONFIG[marca].borderColor} ${MARCA_CONFIG[marca].bgColor}`}
-                                                />
-                                            );
-                                        })}
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Chicha Morada - Separada */}
-                            <div className="mt-6 pt-4 border-t border-gray-200">
-                                <div className="flex items-center gap-3 mb-3">
-                                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                                        <span className="text-lg">🟣</span>
-                                    </div>
-                                    <span className="font-bold text-pocholo-brown">Chicha Morada</span>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4 max-w-sm">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-600 mb-2">1 Litro</label>
-                                        <input
-                                            type="number"
-                                            inputMode="numeric"
-                                            min="0"
-                                            value={(bebidasDetalle.chicha?.litro || 0) === 0 ? '' : bebidasDetalle.chicha?.litro}
-                                            placeholder="0"
-                                            onChange={(e) => updateBeverage('chicha', 'litro', e.target.value)}
-                                            onFocus={(e) => e.target.select()}
-                                            className="w-full px-4 py-3 text-center text-xl font-bold border-2 border-purple-300 bg-purple-50 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-300 focus:scale-105 transition-all"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-600 mb-2">½ Litro</label>
-                                        <input
-                                            type="number"
-                                            inputMode="numeric"
-                                            min="0"
-                                            value={(bebidasDetalle.chicha?.medio_litro || 0) === 0 ? '' : bebidasDetalle.chicha?.medio_litro}
-                                            placeholder="0"
-                                            onChange={(e) => updateBeverage('chicha', 'medio_litro', e.target.value)}
-                                            onFocus={(e) => e.target.select()}
-                                            className="w-full px-4 py-3 text-center text-xl font-bold border-2 border-purple-300 bg-purple-50 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-300 focus:scale-105 transition-all"
-                                        />
-                                    </div>
-                                </div>
+                                    );
+                                })}
                             </div>
                         </>
                     )}
