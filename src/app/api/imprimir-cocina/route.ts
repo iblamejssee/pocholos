@@ -21,16 +21,21 @@ export async function POST(request: Request) {
         const encoder = new EscPosEncoder();
 
         // 1. Inicializar
+        const fechaObj = fecha ? new Date(fecha) : new Date();
+        const fechaFormat = fechaObj.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
         const buffer = encoder
             .initialize()
             .align('center')
             .bold(true)
             .size(1, 1)
-            .text("POCHOLO'S CHICKEN - COCINA")
+            .text("POCHOLO'S CHICKEN")
+            .newline()
+            .text("COCINA")
             .newline()
             .bold(false)
             .size(0, 0)
-            .text(fecha || new Date().toLocaleString('es-PE'))
+            .text(fechaFormat)
             .newline()
             .line()
             .align('left')
@@ -47,7 +52,12 @@ export async function POST(request: Request) {
 
         // 2. Items
         items.forEach((item: any) => {
-            encoder.bold(true).text(`${item.cantidad}x ${item.nombre}`).newline();
+            encoder
+                .bold(true)
+                .size(1, 1) // DOBLE TAMAÑO
+                .text(`${item.cantidad}x ${item.nombre}`)
+                .newline()
+                .size(0, 0); // Reset
 
             if (item.detalles?.parte) {
                 encoder.bold(false).text(`   Parte: ${item.detalles.parte}`).newline();
@@ -56,7 +66,7 @@ export async function POST(request: Request) {
                 encoder.bold(false).text(`   Corte: ${item.detalles.trozado}`).newline();
             }
             if (item.detalles?.notas) {
-                encoder.bold(false).text(`   Nota: ${item.detalles.notas}`).newline();
+                encoder.bold(true).text(`   NOTA: ${item.detalles.notas}`).newline();
             }
             encoder.newline();
         });
