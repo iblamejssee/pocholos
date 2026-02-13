@@ -272,94 +272,82 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                         </div>
                     </motion.div>
 
-                    {/* ÁREA DE IMPRESIÓN OPTIMIZADA (Para Advance / Epson 80mm) */}
-                    <div className="hidden print:block print-ticket font-mono text-[13px] w-[80mm] leading-[1.3] print:p-0 print:m-0 text-black">
+                    {/* ÁREA DE IMPRESIÓN — ADVANCE 80mm USB */}
+                    <div className="hidden print:block print-ticket">
 
-                        {/* Logo en Impresión */}
-                        <div className="text-center mb-2">
-                            <h1 className="text-2xl font-bold uppercase leading-none mb-1 tracking-tighter">{config.razon_social}</h1>
-                            <div className="text-[10px] font-bold uppercase space-y-0.5 text-black">
+                        {/* Encabezado del negocio */}
+                        <div className="ticket-header">
+                            <p className="negocio-nombre">{config.razon_social}</p>
+                            <div className="negocio-info">
                                 {config.ruc && <p>RUC: {config.ruc}</p>}
-                                {config.direccion && <p className="leading-tight px-4">{config.direccion}</p>}
+                                {config.direccion && <p>{config.direccion}</p>}
                                 {config.telefono && <p>TEL: {config.telefono}</p>}
                             </div>
                         </div>
 
-                        <div className="border-b-2 border-black mb-2"></div>
-
-                        <div className="text-center mb-2">
-                            <p className="text-[12px] font-bold tracking-[0.2em] mb-1">BOLETA DE VENTA</p>
-                            <p className="text-lg font-bold">{numeroBoleta}</p>
+                        {/* Número de boleta */}
+                        <div className="ticket-boleta-num">
+                            <p className="boleta-titulo">BOLETA DE VENTA</p>
+                            <p className="boleta-numero">{numeroBoleta}</p>
                         </div>
 
-                        <div className="border-b border-black mb-2"></div>
-
-                        <div className="flex justify-between text-[11px] font-bold mb-1 text-black">
-                            <span>FECHA: {fechaFormateada}</span>
-                            <span>HORA: {horaFormateada}</span>
+                        {/* Fecha, hora, mesa */}
+                        <div className="ticket-meta">
+                            <div className="ticket-meta-row">
+                                <span>FECHA: {fechaFormateada}</span>
+                                <span>HORA: {horaFormateada}</span>
+                            </div>
                         </div>
                         {mesaNumero && (
-                            <div className="text-center font-bold text-base border border-black py-1 my-1">
+                            <div className="ticket-mesa">
                                 MESA: {mesaNumero}
                             </div>
                         )}
 
-                        <div className="border-b border-black my-2"></div>
-
-                        {/* CLIENTE EN IMPRESIÓN */}
+                        {/* Datos del cliente */}
                         {(dni && clienteNombre) && (
-                            <div className="space-y-1 mb-2 text-[12px] font-bold text-black">
-                                <p className="text-[10px] uppercase underline decoration-1 mb-1">Datos del Cliente:</p>
-                                <div className="flex gap-2">
-                                    <span className="font-bold w-12 italic">DNI:</span>
-                                    <span>{dni}</span>
-                                </div>
-                                <div className="flex gap-2 items-start">
-                                    <span className="font-bold w-12 italic">SR(A):</span>
-                                    <p className="flex-1 uppercase leading-tight">{clienteNombre}</p>
-                                </div>
-                                <div className="border-b border-black mt-2"></div>
+                            <div className="ticket-cliente">
+                                <p style={{ fontSize: '9pt', textDecoration: 'underline', textTransform: 'uppercase' }}>Datos del Cliente:</p>
+                                <p>DNI: {dni}</p>
+                                <p>SR(A): {clienteNombre.toUpperCase()}</p>
                             </div>
                         )}
 
-                        {/* Items de Venta */}
-                        <div className="w-full mt-2">
-                            <div className="flex justify-between font-bold text-[11px] mb-2 uppercase border-b border-black pb-1 text-black">
-                                <span>CANT  DESCRIPCIÓN</span>
-                                <span>TOTAL</span>
-                            </div>
-                            <div className="space-y-2">
-                                {items.map((item, idx) => {
-                                    const cantidad = Number(item.cantidad) || 0;
-                                    const precio = Number(item.precio) || 0;
-                                    const subtotal = Number((item as any).subtotal) || (cantidad * precio);
-                                    return (
-                                        <div key={idx} className="flex justify-between items-start leading-[1.2] text-black">
-                                            <span className="flex-1 pr-4 font-normal"><span className="font-bold">{cantidad}</span> {item.nombre?.toUpperCase()}</span>
-                                            <span className="font-bold whitespace-nowrap">S/ {subtotal.toFixed(2)}</span>
-                                        </div>
-                                    );
-                                })}
+                        {/* Cabecera de items */}
+                        <div className="ticket-items-header">
+                            <span>CANT  DESCRIPCIÓN</span>
+                            <span>TOTAL</span>
+                        </div>
+
+                        {/* Items de venta */}
+                        <div>
+                            {items.map((item, idx) => {
+                                const cantidad = Number(item.cantidad) || 0;
+                                const precio = Number(item.precio) || 0;
+                                const subtotal = Number((item as any).subtotal) || (cantidad * precio);
+                                return (
+                                    <div key={idx} className="ticket-item">
+                                        <span className="item-cantidad">{cantidad}</span>
+                                        <span className="item-nombre">{item.nombre?.toUpperCase()}</span>
+                                        <span className="item-precio">S/ {subtotal.toFixed(2)}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Total */}
+                        <div className="ticket-total-box">
+                            <div className="ticket-total-row">
+                                <span className="ticket-total-label">TOTAL A PAGAR:</span>
+                                <span className="ticket-total-amount">S/ {total.toFixed(2)}</span>
                             </div>
                         </div>
 
-                        <div className="border-t-[4px] border-black my-3 pt-2"></div>
-
-                        {/* Total Final */}
-                        <div className="flex justify-between items-center py-1">
-                            <span className="text-[14px] font-bold uppercase text-black">TOTAL A PAGAR:</span>
-                            <span className="text-2xl font-bold text-black">S/ {total.toFixed(2)}</span>
-                        </div>
-
-                        <div className="border-b-2 border-black my-3"></div>
-
-                        {/* Footer de Impresión */}
-                        <div className="text-center mt-4">
-                            <p className="text-[11px] font-bold italic uppercase leading-tight mb-3 px-2 text-black">"{config.mensaje_boleta}"</p>
-                            <div className="border border-black py-1.5 px-2 mb-4">
-                                <p className="text-[12px] font-bold tracking-widest text-black">LA PASIÓN HECHA SAZÓN</p>
-                            </div>
-                            <p className="text-[9px] font-bold pb-8 text-black">SISTEMA POCHOLO'S V1.0</p>
+                        {/* Footer */}
+                        <div className="ticket-footer">
+                            <p className="footer-mensaje">"{config.mensaje_boleta}"</p>
+                            <div className="footer-slogan">LA PASIÓN HECHA SAZÓN</div>
+                            <p className="footer-sistema">SISTEMA POCHOLO'S V1.0</p>
                         </div>
                     </div>
                 </div>
