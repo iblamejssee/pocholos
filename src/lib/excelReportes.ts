@@ -366,13 +366,21 @@ export async function generarReporteExcelReportes(data: ReportesExportData) {
 
     data.ventas.forEach((v, i) => {
         const items = v.items.map(item => `${item.cantidad}x ${item.nombre}`).join(', ');
+        let metodoPagoDisplay = (v.metodo_pago || 'efectivo').charAt(0).toUpperCase() + (v.metodo_pago || 'efectivo').slice(1);
+        if (v.metodo_pago === 'mixto' && v.pago_dividido) {
+            const desglose = Object.entries(v.pago_dividido)
+                .filter(([, m]) => m && m > 0)
+                .map(([k, m]) => `${k}: S/${m?.toFixed(2)}`)
+                .join(' + ');
+            metodoPagoDisplay = `Mixto (${desglose})`;
+        }
         const r = ws2.addRow([
             format(new Date(v.created_at), 'dd/MM/yyyy'),
             format(new Date(v.created_at), 'HH:mm'),
             `#${v.id.slice(0, 8)}`,
             v.mesa_id ? `Mesa ${v.mesa_id}` : 'Para Llevar',
             items,
-            (v.metodo_pago || 'efectivo').charAt(0).toUpperCase() + (v.metodo_pago || 'efectivo').slice(1),
+            metodoPagoDisplay,
             v.total.toFixed(2),
         ]);
 

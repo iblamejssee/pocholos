@@ -63,7 +63,13 @@ export interface Venta {
     pollos_restados: number;
     gaseosas_restadas: number;
     bebidas_detalle?: BebidasDetalle; // Consolidado de bebidas restadas en esta venta
-    metodo_pago: 'efectivo' | 'tarjeta' | 'yape' | 'plin';
+    metodo_pago: 'efectivo' | 'tarjeta' | 'yape' | 'plin' | 'mixto';
+    pago_dividido?: {
+        efectivo?: number;
+        yape?: number;
+        plin?: number;
+        tarjeta?: number;
+    };
     estado_pedido: 'pendiente' | 'listo' | 'entregado';
     estado_pago?: 'pendiente' | 'pagado';
     mesa?: string; // Deprecated: usar mesa_id

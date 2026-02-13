@@ -877,10 +877,25 @@ export default function ReportesPage() {
                                                         <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${v.metodo_pago === 'yape' ? 'bg-purple-100 text-purple-700' :
                                                             v.metodo_pago === 'plin' ? 'bg-cyan-100 text-cyan-700' :
                                                                 v.metodo_pago === 'tarjeta' ? 'bg-blue-100 text-blue-700' :
-                                                                    'bg-green-100 text-green-700'
+                                                                    v.metodo_pago === 'mixto' ? 'bg-amber-100 text-amber-700' :
+                                                                        'bg-green-100 text-green-700'
                                                             }`}>
-                                                            {v.metodo_pago || 'Efectivo'}
+                                                            {v.metodo_pago === 'mixto' ? 'Mixto' : (v.metodo_pago || 'Efectivo')}
                                                         </span>
+                                                        {v.metodo_pago === 'mixto' && v.pago_dividido && (
+                                                            <div className="mt-1.5 text-[11px] text-slate-500 space-y-0.5">
+                                                                {Object.entries(v.pago_dividido)
+                                                                    .filter(([, monto]) => monto && monto > 0)
+                                                                    .map(([metodo, monto]) => (
+                                                                        <div key={metodo} className="flex items-center gap-1">
+                                                                            <span className="w-1.5 h-1.5 rounded-full bg-slate-300 inline-block"></span>
+                                                                            <span className="capitalize">{metodo}:</span>
+                                                                            <span className="font-medium text-slate-700">S/ {monto?.toFixed(2)}</span>
+                                                                        </div>
+                                                                    ))
+                                                                }
+                                                            </div>
+                                                        )}
                                                     </td>
                                                     <td className="px-6 py-4 text-right font-bold text-slate-800">
                                                         S/ {v.total.toFixed(2)}

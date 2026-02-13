@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ShoppingCart, Plus, Minus, Trash2, Check, Loader2, Search, Star, TrendingUp, RefreshCw } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, Check, Loader2, Search, Star, TrendingUp, RefreshCw, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { registrarVenta, actualizarVenta } from '@/lib/ventas';
 import { useInventario } from '@/hooks/useInventario';
@@ -58,8 +58,25 @@ function POSContent() {
     // Order notes
     const [orderNotes, setOrderNotes] = useState('');
 
+    // Custom item (producto libre)
+    const [showCustomItem, setShowCustomItem] = useState(false);
+    const [customItemName, setCustomItemName] = useState('');
+    const [customItemPrice, setCustomItemPrice] = useState('');
+
     useEffect(() => {
         cargarProductos();
+
+        // Suscripción en tiempo real para actualizar precios al instante
+        const channel = supabase
+            .channel('productos-changes')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'productos' },
+                () => { cargarProductos(); }
+            )
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
     }, []);
 
     const cargarProductos = async () => {
@@ -580,6 +597,92 @@ function POSContent() {
                                         <span className="text-lg font-bold text-pocholo-brown">A añadir:</span>
                                         <span className="text-2xl font-black text-pocholo-red">S/ {calcularTotal().toFixed(2)}</span>
                                     </div>
+                                </div>
+
+                                {/* Producto Libre */}
+                                <div className="border-t border-pocholo-brown/10 pt-3 px-4 pb-2">
+                                    {!showCustomItem ? (
+                                        <button
+                                            onClick={() => setShowCustomItem(true)}
+                                            className="w-full py-2 text-xs font-bold text-pocholo-brown/50 hover:text-pocholo-red transition-colors flex items-center justify-center gap-1"
+                                        >
+                                            <Plus size={14} /> Agregar producto libre
+                                        </button>
+                                    ) : (
+                                        <div className="space-y-2 bg-slate-50 rounded-lg p-3">
+                                            <input
+                                                type="text"
+                                                placeholder="Nombre (ej: Media Palta)"
+                                                value={customItemName}
+                                                onChange={(e) => setCustomItemName(e.target.value)}
+                                                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-pocholo-red"
+                                                autoFocus
+                                            />
+                                            <div className="flex gap-2">
+                                                <div className="relative flex-1">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">S/</span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.50"
+                                                        min="0"
+                                                        placeholder="0.00"
+                                                        value={customItemPrice}
+                                                        onChange={(e) => setCustomItemPrice(e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter' && customItemName && customItemPrice) {
+                                                                const precio = parseFloat(customItemPrice);
+                                                                if (precio > 0) {
+                                                                    const customItem: ItemCarrito = {
+                                                                        producto_id: `custom-${Date.now()}`,
+                                                                        nombre: customItemName.trim(),
+                                                                        cantidad: 1,
+                                                                        precio,
+                                                                        fraccion_pollo: 0,
+                                                                        subtotal: precio,
+                                                                    };
+                                                                    setCarrito([...carrito, customItem]);
+                                                                    setCustomItemName('');
+                                                                    setCustomItemPrice('');
+                                                                    setShowCustomItem(false);
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-pocholo-red"
+                                                    />
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        const precio = parseFloat(customItemPrice);
+                                                        if (customItemName && precio > 0) {
+                                                            const customItem: ItemCarrito = {
+                                                                producto_id: `custom-${Date.now()}`,
+                                                                nombre: customItemName.trim(),
+                                                                cantidad: 1,
+                                                                precio,
+                                                                fraccion_pollo: 0,
+                                                                subtotal: precio,
+                                                            };
+                                                            setCarrito([...carrito, customItem]);
+                                                            setCustomItemName('');
+                                                            setCustomItemPrice('');
+                                                            setShowCustomItem(false);
+                                                        } else {
+                                                            toast.error('Ingresa nombre y precio');
+                                                        }
+                                                    }}
+                                                    className="px-3 py-2 bg-pocholo-red text-white rounded-lg text-xs font-bold hover:bg-pocholo-red-dark transition-colors"
+                                                >
+                                                    <Check size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() => { setShowCustomItem(false); setCustomItemName(''); setCustomItemPrice(''); }}
+                                                    className="px-3 py-2 bg-slate-200 text-slate-600 rounded-lg text-xs hover:bg-slate-300 transition-colors"
+                                                >
+                                                    <X size={16} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">

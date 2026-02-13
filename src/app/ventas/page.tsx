@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import AnimatedCard from '@/components/AnimatedCard';
 import ReceiptModal from '@/components/ReceiptModal';
+import SplitPaymentModal from '@/components/SplitPaymentModal';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 interface MesaConVenta extends Mesa {
@@ -44,6 +45,21 @@ function MesasActivasContent() {
     // Estado para cancelar pedido
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [cancelData, setCancelData] = useState<{ ventaId: string; mesaId: number | null; label: string } | null>(null);
+
+    // Estado para modal de cobro (pago dividido)
+    const [showPayModal, setShowPayModal] = useState(false);
+    const [payModalData, setPayModalData] = useState<{
+        ventaId: string;
+        mesaId: number | null;
+        mesaNumero?: number;
+        items: ItemVenta[];
+        total: number;
+    } | null>(null);
+
+    const abrirModalCobro = (ventaId: string, mesaId: number | null, mesaNumero: number | undefined, items: ItemVenta[], total: number) => {
+        setPayModalData({ ventaId, mesaId, mesaNumero, items, total });
+        setShowPayModal(true);
+    };
 
     useEffect(() => {
         cargarPedidosPendientes();
@@ -115,18 +131,32 @@ function MesasActivasContent() {
         }
     };
 
-    const marcarComoPagado = async (ventaId: string, mesaId: number | null, mesaNumero: number | undefined, items: ItemVenta[], total: number, metodoPago: 'efectivo' | 'yape' | 'plin' | 'tarjeta') => {
+    const marcarComoPagado = async (
+        metodoPago: 'efectivo' | 'yape' | 'plin' | 'tarjeta' | 'mixto',
+        pagoDividido?: { efectivo?: number; yape?: number; plin?: number; tarjeta?: number }
+    ) => {
+        if (!payModalData) return;
+        const { ventaId, mesaId, mesaNumero, items, total } = payModalData;
+
         try {
             // Actualizar estado de pago
+            const updateData: any = {
+                estado_pago: 'pagado',
+                metodo_pago: metodoPago
+            };
+            if (pagoDividido) {
+                updateData.pago_dividido = pagoDividido;
+            }
+
             const { error } = await supabase
                 .from('ventas')
-                .update({
-                    estado_pago: 'pagado',
-                    metodo_pago: metodoPago
-                })
+                .update(updateData)
                 .eq('id', ventaId);
 
             if (error) throw error;
+
+            setShowPayModal(false);
+            setPayModalData(null);
 
             // Preparar datos para el recibo
             setReceiptData({
@@ -138,10 +168,15 @@ function MesasActivasContent() {
 
             setShowReceipt(true);
 
-            toast.success(`Pago registrado (${metodoPago.toUpperCase()})`, {
-                icon: '💰',
-                duration: 3000
-            });
+            if (metodoPago === 'mixto' && pagoDividido) {
+                const desglose = Object.entries(pagoDividido)
+                    .filter(([, v]) => v && v > 0)
+                    .map(([k, v]) => `${k}: S/${v?.toFixed(2)}`)
+                    .join(' + ');
+                toast.success(`Pago mixto: ${desglose}`, { icon: '💰', duration: 4000 });
+            } else {
+                toast.success(`Pago registrado (${metodoPago.toUpperCase()})`, { icon: '💰', duration: 3000 });
+            }
 
             cargarPedidosPendientes();
         } catch (error) {
@@ -263,33 +298,13 @@ function MesasActivasContent() {
                                                 </div>
                                             </div>
 
-                                            {/* Botones de pago */}
-                                            <div className="grid grid-cols-2 gap-2.5 mb-2">
-                                                <button
-                                                    onClick={() => marcarComoPagado(venta.id, null, undefined, venta.items, venta.total, 'efectivo')}
-                                                    className="py-4 rounded-lg font-semibold text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors flex items-center justify-center gap-1.5"
-                                                >
-                                                    <DollarSign size={15} /> Efectivo
-                                                </button>
-                                                <button
-                                                    onClick={() => marcarComoPagado(venta.id, null, undefined, venta.items, venta.total, 'yape')}
-                                                    className="py-4 rounded-lg font-semibold text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
-                                                >
-                                                    Yape
-                                                </button>
-                                                <button
-                                                    onClick={() => marcarComoPagado(venta.id, null, undefined, venta.items, venta.total, 'plin')}
-                                                    className="py-4 rounded-lg font-semibold text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
-                                                >
-                                                    Plin
-                                                </button>
-                                                <button
-                                                    onClick={() => marcarComoPagado(venta.id, null, undefined, venta.items, venta.total, 'tarjeta')}
-                                                    className="py-4 rounded-lg font-semibold text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
-                                                >
-                                                    Tarjeta
-                                                </button>
-                                            </div>
+                                            {/* Botón de cobro */}
+                                            <button
+                                                onClick={() => abrirModalCobro(venta.id, null, undefined, venta.items, venta.total)}
+                                                className="w-full py-4 rounded-xl font-bold text-sm text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-md flex items-center justify-center gap-2 mb-2 active:scale-[0.98]"
+                                            >
+                                                Cobrar S/ {venta.total.toFixed(2)}
+                                            </button>
                                             {/* Eliminar */}
                                             <button
                                                 onClick={() => handleCancelClick(venta.id, null, 'Para Llevar')}
@@ -354,33 +369,13 @@ function MesasActivasContent() {
                                                         </div>
                                                     </div>
 
-                                                    {/* Botones de pago */}
-                                                    <div className="grid grid-cols-2 gap-2.5 mb-2">
-                                                        <button
-                                                            onClick={() => marcarComoPagado(mesa.venta!.id, mesa.id, mesa.numero, mesa.venta!.items, mesa.venta!.total, 'efectivo')}
-                                                            className="py-4 rounded-lg font-semibold text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors flex items-center justify-center gap-1.5"
-                                                        >
-                                                            <DollarSign size={15} /> Efectivo
-                                                        </button>
-                                                        <button
-                                                            onClick={() => marcarComoPagado(mesa.venta!.id, mesa.id, mesa.numero, mesa.venta!.items, mesa.venta!.total, 'yape')}
-                                                            className="py-4 rounded-lg font-semibold text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
-                                                        >
-                                                            Yape
-                                                        </button>
-                                                        <button
-                                                            onClick={() => marcarComoPagado(mesa.venta!.id, mesa.id, mesa.numero, mesa.venta!.items, mesa.venta!.total, 'plin')}
-                                                            className="py-4 rounded-lg font-semibold text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
-                                                        >
-                                                            Plin
-                                                        </button>
-                                                        <button
-                                                            onClick={() => marcarComoPagado(mesa.venta!.id, mesa.id, mesa.numero, mesa.venta!.items, mesa.venta!.total, 'tarjeta')}
-                                                            className="py-4 rounded-lg font-semibold text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
-                                                        >
-                                                            Tarjeta
-                                                        </button>
-                                                    </div>
+                                                    {/* Botón de cobro */}
+                                                    <button
+                                                        onClick={() => abrirModalCobro(mesa.venta!.id, mesa.id, mesa.numero, mesa.venta!.items, mesa.venta!.total)}
+                                                        className="w-full py-4 rounded-xl font-bold text-sm text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-md flex items-center justify-center gap-2 mb-2 active:scale-[0.98]"
+                                                    >
+                                                        Cobrar S/ {mesa.venta!.total.toFixed(2)}
+                                                    </button>
                                                     {/* Eliminar */}
                                                     <button
                                                         onClick={() => handleCancelClick(mesa.venta!.id, mesa.id, `Mesa ${mesa.numero}`)}
@@ -401,6 +396,16 @@ function MesasActivasContent() {
                         </div>
                     )}
                 </>
+            )}
+
+            {/* Modal de Cobro (Pago Dividido) */}
+            {payModalData && (
+                <SplitPaymentModal
+                    isOpen={showPayModal}
+                    onClose={() => { setShowPayModal(false); setPayModalData(null); }}
+                    total={payModalData.total}
+                    onConfirm={marcarComoPagado}
+                />
             )}
 
             {/* Modal de Recibo para Impresión */}

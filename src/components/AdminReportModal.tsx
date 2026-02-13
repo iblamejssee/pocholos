@@ -32,10 +32,18 @@ export default function AdminReportModal({
     const totalGastos = gastos.reduce((sum, g) => sum + g.monto, 0);
     const utilidadNeta = totalVentas - totalGastos;
 
-    // Desglose Pagos
+    // Desglose Pagos (con soporte para pago dividido)
     const ventasPorMetodo = ventas.reduce((acc, v) => {
-        const metodo = v.metodo_pago || 'efectivo';
-        acc[metodo] = (acc[metodo] || 0) + v.total;
+        if (v.pago_dividido && v.metodo_pago === 'mixto') {
+            for (const [metodo, monto] of Object.entries(v.pago_dividido)) {
+                if (monto && monto > 0) {
+                    acc[metodo] = (acc[metodo] || 0) + monto;
+                }
+            }
+        } else {
+            const metodo = v.metodo_pago || 'efectivo';
+            acc[metodo] = (acc[metodo] || 0) + v.total;
+        }
         return acc;
     }, {} as Record<string, number>);
 

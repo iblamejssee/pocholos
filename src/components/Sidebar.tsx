@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, ShoppingCart, BarChart, Lock, ClipboardList, ChefHat, Package, Users, Boxes, LucideIcon, X, Wine } from 'lucide-react';
+import { Home, ShoppingCart, BarChart, Lock, ClipboardList, ChefHat, Package, Users, Boxes, LucideIcon, X, Wine, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
@@ -51,6 +51,7 @@ const menuSections: MenuSection[] = [
         items: [
             { icon: BarChart, label: 'Reportes', href: '/reportes', permission: 'reportes' },
             { icon: Lock, label: 'Cierre de Caja', href: '/cierre', permission: 'cierre' },
+            { icon: Settings, label: 'Configuración', href: '/configuracion', permission: 'configuracion' },
         ]
     }
 ];

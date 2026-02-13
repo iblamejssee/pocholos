@@ -278,17 +278,33 @@ export const calcularDesgloseMetodoPago = (ventas: Venta[]): DesgloseMetodoPago[
     const totalGeneral = ventas.reduce((sum, v) => sum + v.total, 0);
 
     ventas.forEach(venta => {
-        const metodo = venta.metodo_pago || 'Efectivo';
-        if (!metodoMap.has(metodo)) {
-            metodoMap.set(metodo, { total: 0, cantidad: 0 });
+        if (venta.pago_dividido && venta.metodo_pago === 'mixto') {
+            // Distribuir montos a cada método individual
+            for (const [metodo, monto] of Object.entries(venta.pago_dividido)) {
+                if (monto && monto > 0) {
+                    const key = metodo.charAt(0).toUpperCase() + metodo.slice(1);
+                    if (!metodoMap.has(key)) {
+                        metodoMap.set(key, { total: 0, cantidad: 0 });
+                    }
+                    const data = metodoMap.get(key)!;
+                    data.total += monto;
+                    data.cantidad += 1; // Cuenta como +1 transacción parcial por método
+                }
+            }
+        } else {
+            const metodo = venta.metodo_pago || 'Efectivo';
+            const key = metodo.charAt(0).toUpperCase() + metodo.slice(1);
+            if (!metodoMap.has(key)) {
+                metodoMap.set(key, { total: 0, cantidad: 0 });
+            }
+            const data = metodoMap.get(key)!;
+            data.total += venta.total;
+            data.cantidad += 1;
         }
-        const data = metodoMap.get(metodo)!;
-        data.total += venta.total;
-        data.cantidad += 1;
     });
 
     return Array.from(metodoMap.entries()).map(([metodo, data]) => ({
-        metodo: metodo.charAt(0).toUpperCase() + metodo.slice(1),
+        metodo,
         total: data.total,
         cantidad: data.cantidad,
         porcentaje: totalGeneral > 0 ? (data.total / totalGeneral) * 100 : 0

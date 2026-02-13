@@ -1,5 +1,5 @@
 'use client';
-
+import Image from "next/image";
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock, DollarSign, Package, TrendingDown, AlertCircle, Check, Loader2, Share2, Calculator, FileSpreadsheet } from 'lucide-react';
@@ -32,6 +32,7 @@ function CierreCajaContent() {
     // Estado para gastos del día
     const [gastosDelDia, setGastosDelDia] = useState<{ descripcion: string; monto: number; metodo_pago?: string }[]>([]);
     const totalGastos = gastosDelDia.reduce((sum, g) => sum + g.monto, 0);
+    const gastosEfectivo = gastosDelDia.filter(g => !g.metodo_pago || g.metodo_pago === 'efectivo').reduce((sum, g) => sum + g.monto, 0);
 
     // Estados para inputs manuales
     const [pollosAderezados, setPollosAderezados] = useState('');
@@ -60,10 +61,19 @@ function CierreCajaContent() {
         cargarGastos();
     }, []);
 
-    // Agrupar ventas por método de pago
+    // Agrupar ventas por método de pago (con soporte para pago dividido)
     const ventasPorMetodo = ventas.reduce((acc, venta) => {
-        const metodo = venta.metodo_pago || 'efectivo';
-        acc[metodo] = (acc[metodo] || 0) + venta.total;
+        if (venta.pago_dividido && venta.metodo_pago === 'mixto') {
+            // Distribuir montos a cada método individual
+            for (const [metodo, monto] of Object.entries(venta.pago_dividido)) {
+                if (monto && monto > 0) {
+                    acc[metodo] = (acc[metodo] || 0) + monto;
+                }
+            }
+        } else {
+            const metodo = venta.metodo_pago || 'efectivo';
+            acc[metodo] = (acc[metodo] || 0) + venta.total;
+        }
         return acc;
     }, {} as Record<string, number>);
 
@@ -157,7 +167,7 @@ function CierreCajaContent() {
                 .eq('fecha', obtenerFechaHoy());
 
             // Calcular total efectivo esperado (base + ventas efectivo - gastos efectivo)
-            const totalEfectivoEsperado = (ventasPorMetodo['efectivo'] || 0) + (stock?.dinero_inicial || 0) - totalGastos;
+            const totalEfectivoEsperado = (ventasPorMetodo['efectivo'] || 0) + (stock?.dinero_inicial || 0) - gastosEfectivo;
 
             // Formatear gastos para el mensaje de WhatsApp
             const gastosTexto = gastosDelDia.length > 0
@@ -212,7 +222,7 @@ function CierreCajaContent() {
 --------------------------------
 ${gastosTexto}
 
-💵 *EFECTIVO NETO: S/ ${(totalEfectivoEsperado - totalGastos).toFixed(2)}*
+💵 *EFECTIVO NETO: S/ ${totalEfectivoEsperado.toFixed(2)}*
 
 🍗 *DESGLOSE DE POLLOS*
 --------------------------------
@@ -376,13 +386,38 @@ _Generado automáticamente por Pocholo's POS_`;
                                     <span className="font-bold text-pocholo-brown">S/ {(ventasPorMetodo['tarjeta'] || 0).toFixed(2)}</span>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2">
+                                    {/* YAPE */}
                                     <div className="flex justify-between items-center p-3 bg-purple-50 border border-purple-100 rounded-xl">
-                                        <span className="text-purple-700 text-xs font-bold">Yape</span>
-                                        <span className="font-bold text-purple-900">S/ {(ventasPorMetodo['yape'] || 0).toFixed(2)}</span>
+                                        <div className="flex items-center gap-2">
+                                            <Image
+                                                src="/images/yape-logo.png"
+                                                alt="Yape"
+                                                width={20}
+                                                height={20}
+                                                className="object-contain"
+                                            />
+                                            <span className="text-purple-700 text-xs font-bold">Yape</span>
+                                        </div>
+                                        <span className="font-bold text-purple-900">
+                                            S/ {(ventasPorMetodo['yape'] || 0).toFixed(2)}
+                                        </span>
                                     </div>
+
+                                    {/* PLIN */}
                                     <div className="flex justify-between items-center p-3 bg-cyan-50 border border-cyan-100 rounded-xl">
-                                        <span className="text-cyan-700 text-xs font-bold">Plin</span>
-                                        <span className="font-bold text-cyan-900">S/ {(ventasPorMetodo['plin'] || 0).toFixed(2)}</span>
+                                        <div className="flex items-center gap-2">
+                                            <Image
+                                                src="/images/plin-logo.png"
+                                                alt="Plin"
+                                                width={20}
+                                                height={20}
+                                                className="object-contain"
+                                            />
+                                            <span className="text-cyan-700 text-xs font-bold">Plin</span>
+                                        </div>
+                                        <span className="font-bold text-cyan-900">
+                                            S/ {(ventasPorMetodo['plin'] || 0).toFixed(2)}
+                                        </span>
                                     </div>
                                 </div>
                                 <div className="border-t-2 border-dashed border-pocholo-brown/20 my-2 pt-2">
@@ -432,13 +467,13 @@ _Generado automáticamente por Pocholo's POS_`;
                                     />
                                 </div>
                                 {dineroCajaReal && (
-                                    <div className={`p-3 rounded-xl flex justify-between items-center ${parseFloat(dineroCajaReal) - ((ventasPorMetodo['efectivo'] || 0) + (stock?.dinero_inicial || 0)) === 0
+                                    <div className={`p-3 rounded-xl flex justify-between items-center ${parseFloat(dineroCajaReal) - ((ventasPorMetodo['efectivo'] || 0) + (stock?.dinero_inicial || 0) - gastosEfectivo) === 0
                                         ? 'bg-green-100 text-green-700'
                                         : 'bg-red-100 text-red-700'
                                         }`}>
                                         <span className="font-medium">Diferencia:</span>
                                         <span className="font-bold">
-                                            S/ {(parseFloat(dineroCajaReal) - ((ventasPorMetodo['efectivo'] || 0) + (stock?.dinero_inicial || 0))).toFixed(2)}
+                                            S/ {(parseFloat(dineroCajaReal) - ((ventasPorMetodo['efectivo'] || 0) + (stock?.dinero_inicial || 0) - gastosEfectivo)).toFixed(2)}
                                         </span>
                                     </div>
                                 )}

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import Link from 'next/link';
 import { ChefHat, ClipboardList, ShoppingCart, TrendingUp, TrendingDown, AlertCircle, Package, RotateCcw, DollarSign, Users, BarChart3, Clock, Wallet, ArrowRight, Activity, Zap, Receipt, Trash2 } from 'lucide-react';
 import { useInventario } from '@/hooks/useInventario';
@@ -202,6 +203,104 @@ function DashboardContent() {
           <p className="text-sm text-slate-500 mt-1">Ticket promedio</p>
         </motion.div>
       </div>
+
+      {/* Bóvedas - Montos por Método de Pago */}
+      {stock && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          {(() => {
+            // Calcular montos por método (con soporte pago dividido)
+            const montosPorMetodo = ventas.reduce((acc, v) => {
+              if (v.estado_pago !== 'pagado') return acc;
+              if (v.pago_dividido && v.metodo_pago === 'mixto') {
+                for (const [metodo, monto] of Object.entries(v.pago_dividido)) {
+                  if (monto && monto > 0) {
+                    acc[metodo] = (acc[metodo] || 0) + monto;
+                  }
+                }
+              } else {
+                const metodo = v.metodo_pago || 'efectivo';
+                acc[metodo] = (acc[metodo] || 0) + v.total;
+              }
+              return acc;
+            }, {} as Record<string, number>);
+
+            // Gastos en efectivo
+            const gastosEfectivo = gastosDelDia
+              .filter(g => !g.metodo_pago || g.metodo_pago === 'efectivo')
+              .reduce((sum, g) => sum + g.monto, 0);
+
+            const cajaChica = (stock.dinero_inicial || 0) + (montosPorMetodo['efectivo'] || 0) - gastosEfectivo;
+
+            const bovedas = [
+              {
+                label: 'Caja Chica',
+                monto: cajaChica,
+                icon: '/images/cash-icon.png', // opcional si quieres uno personalizado
+                color: 'emerald',
+                desc: `Base S/${stock.dinero_inicial?.toFixed(0) || 0} + Ventas - Gastos`
+              },
+              {
+                label: 'Yape',
+                monto: montosPorMetodo['yape'] || 0,
+                icon: '/images/yape-logo.png',
+                color: 'purple',
+                desc: 'Cobros por Yape'
+              },
+              {
+                label: 'Plin',
+                monto: montosPorMetodo['plin'] || 0,
+                icon: '/images/plin-logo.png',
+                color: 'cyan',
+                desc: 'Cobros por Plin'
+              },
+              {
+                label: 'Tarjeta',
+                monto: montosPorMetodo['tarjeta'] || 0,
+                icon: '/images/card-icon.png', // opcional
+                color: 'blue',
+                desc: 'Cobros por Tarjeta'
+              },
+            ];
+
+            const colorMap: Record<string, { bg: string; border: string; text: string; badge: string }> = {
+              emerald: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-600' },
+              purple: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', badge: 'bg-purple-100 text-purple-600' },
+              cyan: { bg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-700', badge: 'bg-cyan-100 text-cyan-600' },
+              blue: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', badge: 'bg-blue-100 text-blue-600' },
+            };
+
+            return bovedas.map((b, i) => {
+              const c = colorMap[b.color];
+              return (
+                <motion.div
+                  key={b.label}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 + i * 0.05 }}
+                  className={`${c.bg} ${c.border} border rounded-xl p-4 hover:shadow-md transition-shadow`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-9 h-9 flex items-center justify-center">
+                      <Image
+                        src={b.icon}
+                        alt={b.label}
+                        width={28}
+                        height={28}
+                        className="object-contain"
+                      />
+                    </div>
+                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${c.badge}`}>
+                      {b.label}
+                    </span>
+                  </div>
+                  <p className={`text-xl sm:text-2xl font-black ${c.text}`}>S/ {b.monto.toFixed(2)}</p>
+                  <p className="text-[11px] text-slate-400 mt-1">{b.desc}</p>
+                </motion.div>
+              );
+            });
+          })()}
+        </div>
+      )}
 
       {/* Grid Principal */}
       <div className="grid lg:grid-cols-3 gap-6 mb-8">
