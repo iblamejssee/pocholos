@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Venta, Mesa, ItemCarrito, ItemVenta } from '@/lib/database.types';
-import { Users, DollarSign, Clock, ShoppingBag, Trash2, AlertTriangle } from 'lucide-react';
+import { Users, DollarSign, Clock, ShoppingBag, Trash2, AlertTriangle, Printer } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -40,6 +40,7 @@ function MesasActivasContent() {
         total: number;
         orderId: string;
         mesaNumero?: number;
+        title?: string;
     } | null>(null);
 
     // Estado para cancelar pedido
@@ -129,6 +130,17 @@ function MesasActivasContent() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handlePrintPreCuenta = (widthMesa: boolean, items: (ItemCarrito | ItemVenta)[], total: number, orderId: string, mesaNumero?: number) => {
+        setReceiptData({
+            items,
+            total,
+            orderId,
+            mesaNumero,
+            title: 'ESTADO DE CUENTA'
+        });
+        setShowReceipt(true);
     };
 
     const marcarComoPagado = async (
@@ -305,6 +317,15 @@ function MesasActivasContent() {
                                             >
                                                 Cobrar S/ {venta.total.toFixed(2)}
                                             </button>
+
+                                            {/* Pre-cuenta */}
+                                            <button
+                                                onClick={() => handlePrintPreCuenta(false, venta.items, venta.total, venta.id)}
+                                                className="w-full py-2 mb-2 rounded-lg text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors flex items-center justify-center gap-1"
+                                            >
+                                                <Printer size={14} /> Imprimir Pre-Cuenta
+                                            </button>
+
                                             {/* Eliminar */}
                                             <button
                                                 onClick={() => handleCancelClick(venta.id, null, 'Para Llevar')}
@@ -376,6 +397,15 @@ function MesasActivasContent() {
                                                     >
                                                         Cobrar S/ {mesa.venta!.total.toFixed(2)}
                                                     </button>
+
+                                                    {/* Pre-cuenta */}
+                                                    <button
+                                                        onClick={() => handlePrintPreCuenta(true, mesa.venta!.items, mesa.venta!.total, mesa.venta!.id, mesa.numero)}
+                                                        className="w-full py-2 mb-2 rounded-lg text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors flex items-center justify-center gap-1"
+                                                    >
+                                                        <Printer size={14} /> Imprimir Pre-Cuenta
+                                                    </button>
+
                                                     {/* Eliminar */}
                                                     <button
                                                         onClick={() => handleCancelClick(mesa.venta!.id, mesa.id, `Mesa ${mesa.numero}`)}
@@ -416,7 +446,9 @@ function MesasActivasContent() {
                     items={receiptData.items}
                     total={receiptData.total}
                     orderId={receiptData.orderId}
+                    orderId={receiptData.orderId}
                     mesaNumero={receiptData.mesaNumero}
+                    title={receiptData.title}
                 />
             )}
 

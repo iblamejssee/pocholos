@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Printer, X, CheckCircle, Receipt, Search, User, RefreshCw, Trash2 } from 'lucide-react';
 import type { ItemCarrito, ItemVenta } from '@/lib/database.types';
@@ -6,12 +7,14 @@ import { supabase } from '@/lib/supabase';
 import { consultarDNI } from '@/services/dniService';
 
 interface ReceiptModalProps {
+
     isOpen: boolean;
     onClose: () => void;
     items: (ItemCarrito | ItemVenta)[];
     total: number;
     orderId?: string;
     mesaNumero?: number;
+    title?: string; // Nuevo prop opcional
 }
 
 interface ConfigNegocio {
@@ -24,7 +27,7 @@ interface ConfigNegocio {
     numero_correlativo: number;
 }
 
-export default function ReceiptModal({ isOpen, onClose, items, total, orderId, mesaNumero }: ReceiptModalProps) {
+export default function ReceiptModal({ isOpen, onClose, items, total, orderId, mesaNumero, title = 'BOLETA DE VENTA' }: ReceiptModalProps) {
     const [config, setConfig] = useState<ConfigNegocio>({
         ruc: '',
         razon_social: "POCHOLO'S CHICKEN",
@@ -63,10 +66,13 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                 const numero = String(data.numero_correlativo).padStart(8, '0');
                 setNumeroBoleta(`${data.serie_boleta}-${numero}`);
 
-                await supabase
-                    .from('configuracion_negocio')
-                    .update({ numero_correlativo: data.numero_correlativo + 1 })
-                    .eq('id', data.id);
+                // Solo incrementamos correlativo si es una BOLETA real
+                if (title === 'BOLETA DE VENTA') {
+                    await supabase
+                        .from('configuracion_negocio')
+                        .update({ numero_correlativo: data.numero_correlativo + 1 })
+                        .eq('id', data.id);
+                }
             }
         } catch (error) {
             console.log('Config no encontrada, usando valores por defecto');
@@ -121,25 +127,112 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
         minute: '2-digit'
     });
 
+    // Portal para el ticket de impresión
+    const printTicketContent = (
+        <div className="hidden print:block print-ticket">
+            {/* Encabezado del negocio */}
+            <div className="ticket-header">
+                <p className="negocio-nombre">{config.razon_social}</p>
+                <div className="negocio-info">
+                    {config.ruc && <p>RUC: {config.ruc}</p>}
+                    {config.direccion && <p>{config.direccion}</p>}
+                    {config.telefono && <p>TEL: {config.telefono}</p>}
+                </div>
+            </div>
+
+            {/* Número de boleta */}
+            <div className="ticket-boleta-num">
+                <p className="boleta-titulo">{title}</p>
+                {title === 'BOLETA DE VENTA' && <p className="boleta-numero">{numeroBoleta}</p>}
+            </div>
+
+            {/* Fecha, hora, mesa */}
+            <div className="ticket-meta">
+                <div className="ticket-meta-row">
+                    <span>FECHA: {fechaFormateada}</span>
+                    <span>HORA: {horaFormateada}</span>
+                </div>
+            </div>
+            {mesaNumero && (
+                <div className="ticket-mesa">
+                    MESA: {mesaNumero}
+                </div>
+            )}
+
+            {/* Datos del cliente */}
+            {(dni && clienteNombre) && (
+                <div className="ticket-cliente">
+                    <p style={{ fontSize: '9pt', textDecoration: 'underline', textTransform: 'uppercase' }}>Datos del Cliente:</p>
+                    <p>DNI: {dni}</p>
+                    <p>SR(A): {clienteNombre.toUpperCase()}</p>
+                </div>
+            )}
+
+            {/* Cabecera de items */}
+            <div className="ticket-items-header">
+                <span>CANT  DESCRIPCIÓN</span>
+                <span>TOTAL</span>
+            </div>
+
+            {/* Items de venta */}
+            <div>
+                {items.map((item, idx) => {
+                    const cantidad = Number(item.cantidad) || 0;
+                    const precio = Number(item.precio) || 0;
+                    const subtotal = Number((item as any).subtotal) || (cantidad * precio);
+                    return (
+                        <div key={idx} className="ticket-item">
+                            <span className="item-cantidad">{cantidad}</span>
+                            <span className="item-nombre">{item.nombre?.toUpperCase()}</span>
+                            <span className="item-precio">S/ {subtotal.toFixed(2)}</span>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Total */}
+            <div className="ticket-total-box">
+                <div className="ticket-total-row">
+                    <span className="ticket-total-label">TOTAL A PAGAR:</span>
+                    <span className="ticket-total-amount">S/ {total.toFixed(2)}</span>
+                </div>
+            </div>
+
+            {/* Footer */}
+            <div className="ticket-footer">
+                <p className="footer-mensaje">"{config.mensaje_boleta}"</p>
+                <div className="footer-slogan">LA PASIÓN HECHA SAZÓN</div>
+                <p className="footer-sistema">SISTEMA POCHOLO'S V1.0</p>
+            </div>
+        </div>
+    );
+
+    // Renderizar el portal solo en el cliente
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => {
+        setMounted(true);
+        return () => setMounted(false);
+    }, []);
+
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm print:absolute print:inset-0 print:p-0 print:m-0 print:bg-white print:block">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm print:hidden">
 
                     {/* Contenedor Principal (Visible en Pantalla) */}
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.9 }}
-                        className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[96vh] print:hidden"
+                        className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[96vh]"
                     >
                         {/* Header Visual */}
                         <div className="bg-pocholo-red text-white p-4 text-center">
                             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-1 p-1.5 shadow-lg">
                                 <img src="/images/logo-pocholos-icon.png" alt="Logo" className="w-full h-full object-contain" />
                             </div>
-                            <h2 className="text-lg font-bold">Boleta de Venta</h2>
-                            <p className="text-white/80 text-xs">{numeroBoleta}</p>
+                            <h2 className="text-lg font-bold">{title}</h2>
+                            <p className="text-white/80 text-xs">{title === 'BOLETA DE VENTA' ? numeroBoleta : ''}</p>
                         </div>
 
                         {/* Sección de Cliente / DNI */}
@@ -272,84 +365,9 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                         </div>
                     </motion.div>
 
-                    {/* ÁREA DE IMPRESIÓN — ADVANCE 80mm USB */}
-                    <div className="hidden print:block print-ticket">
+                    {/* El Ticket ahora se renderiza vía Portal */}
+                    {mounted && printTicketContent && createPortal(printTicketContent, document.body)}
 
-                        {/* Encabezado del negocio */}
-                        <div className="ticket-header">
-                            <p className="negocio-nombre">{config.razon_social}</p>
-                            <div className="negocio-info">
-                                {config.ruc && <p>RUC: {config.ruc}</p>}
-                                {config.direccion && <p>{config.direccion}</p>}
-                                {config.telefono && <p>TEL: {config.telefono}</p>}
-                            </div>
-                        </div>
-
-                        {/* Número de boleta */}
-                        <div className="ticket-boleta-num">
-                            <p className="boleta-titulo">BOLETA DE VENTA</p>
-                            <p className="boleta-numero">{numeroBoleta}</p>
-                        </div>
-
-                        {/* Fecha, hora, mesa */}
-                        <div className="ticket-meta">
-                            <div className="ticket-meta-row">
-                                <span>FECHA: {fechaFormateada}</span>
-                                <span>HORA: {horaFormateada}</span>
-                            </div>
-                        </div>
-                        {mesaNumero && (
-                            <div className="ticket-mesa">
-                                MESA: {mesaNumero}
-                            </div>
-                        )}
-
-                        {/* Datos del cliente */}
-                        {(dni && clienteNombre) && (
-                            <div className="ticket-cliente">
-                                <p style={{ fontSize: '9pt', textDecoration: 'underline', textTransform: 'uppercase' }}>Datos del Cliente:</p>
-                                <p>DNI: {dni}</p>
-                                <p>SR(A): {clienteNombre.toUpperCase()}</p>
-                            </div>
-                        )}
-
-                        {/* Cabecera de items */}
-                        <div className="ticket-items-header">
-                            <span>CANT  DESCRIPCIÓN</span>
-                            <span>TOTAL</span>
-                        </div>
-
-                        {/* Items de venta */}
-                        <div>
-                            {items.map((item, idx) => {
-                                const cantidad = Number(item.cantidad) || 0;
-                                const precio = Number(item.precio) || 0;
-                                const subtotal = Number((item as any).subtotal) || (cantidad * precio);
-                                return (
-                                    <div key={idx} className="ticket-item">
-                                        <span className="item-cantidad">{cantidad}</span>
-                                        <span className="item-nombre">{item.nombre?.toUpperCase()}</span>
-                                        <span className="item-precio">S/ {subtotal.toFixed(2)}</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        {/* Total */}
-                        <div className="ticket-total-box">
-                            <div className="ticket-total-row">
-                                <span className="ticket-total-label">TOTAL A PAGAR:</span>
-                                <span className="ticket-total-amount">S/ {total.toFixed(2)}</span>
-                            </div>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="ticket-footer">
-                            <p className="footer-mensaje">"{config.mensaje_boleta}"</p>
-                            <div className="footer-slogan">LA PASIÓN HECHA SAZÓN</div>
-                            <p className="footer-sistema">SISTEMA POCHOLO'S V1.0</p>
-                        </div>
-                    </div>
                 </div>
             )}
         </AnimatePresence>

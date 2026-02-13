@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ShoppingCart, Plus, Minus, Trash2, Check, Loader2, Search, Star, TrendingUp, RefreshCw, X } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, Check, Loader2, Search, Star, TrendingUp, RefreshCw, X, Printer } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { registrarVenta, actualizarVenta } from '@/lib/ventas';
 import { useInventario } from '@/hooks/useInventario';
@@ -45,6 +45,7 @@ function POSContent() {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const [showReceipt, setShowReceipt] = useState(false);
+    const [receiptTitle, setReceiptTitle] = useState('BOLETA DE VENTA');
     const [lastSaleItems, setLastSaleItems] = useState<ItemCarrito[]>([]);
     const [lastSaleTotal, setLastSaleTotal] = useState(0);
 
@@ -360,6 +361,17 @@ function POSContent() {
         } finally {
             setProcesando(false);
         }
+    };
+
+    const handlePrintPreCuenta = () => {
+        if (carrito.length === 0) {
+            toast.error('El carrito está vacío');
+            return;
+        }
+        setLastSaleItems(carrito);
+        setLastSaleTotal(calcularTotal());
+        setReceiptTitle('ESTADO DE CUENTA'); // Título personalizado
+        setShowReceipt(true);
     };
 
     if (view === 'mesas') {
@@ -696,6 +708,12 @@ function POSContent() {
                                     <button onClick={vaciarCarrito} className="w-full py-2 text-xs font-bold text-pocholo-brown/50 hover:text-pocholo-red uppercase tracking-widest">
                                         Cancelar
                                     </button>
+                                    <button
+                                        onClick={handlePrintPreCuenta}
+                                        className="w-full py-2 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors uppercase tracking-widest flex items-center justify-center gap-1"
+                                    >
+                                        <Printer size={14} /> Imprimir Pre-Cuenta
+                                    </button>
                                 </div>
                             </>
                         )}
@@ -704,7 +722,7 @@ function POSContent() {
             </div>
 
             <ProductOptionsModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onConfirm={agregarAlCarrito} producto={selectedProduct} />
-            <ReceiptModal isOpen={showReceipt} onClose={() => setShowReceipt(false)} items={lastSaleItems} total={lastSaleTotal} />
+            <ReceiptModal isOpen={showReceipt} onClose={() => setShowReceipt(false)} items={lastSaleItems} total={lastSaleTotal} title={receiptTitle} />
 
             {/* Modal Cambiar Mesa */}
             {showCambiarMesaModal && selectedTable && (

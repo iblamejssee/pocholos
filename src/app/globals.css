@@ -302,7 +302,8 @@ body::before {
     margin: 0mm !important;
   }
 
-  html, body {
+  html,
+  body {
     width: 80mm !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -315,12 +316,24 @@ body::before {
     display: none !important;
   }
 
-  /* Ocultar TODO excepto .print-ticket */
-  body * {
-    visibility: hidden !important;
+  /* Ocultar la aplicación principal y otros elementos, EXCEPTO el ticket */
+  #app-root,
+  body>*:not(.print-ticket) {
+    display: none !important;
   }
 
-  .print-ticket,
+  /* Asegurar que el ticket sea visible y tenga prioridad */
+  .print-ticket {
+    display: block !important;
+    visibility: visible !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    z-index: 99999 !important;
+    background: white !important;
+    width: 100% !important;
+  }
+
   .print-ticket * {
     visibility: visible !important;
   }

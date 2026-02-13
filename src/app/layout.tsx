@@ -73,7 +73,7 @@ export default function RootLayout({
             </main>
           ) : (
             // Páginas normales con sidebar y UserMenu
-            <div className="flex min-h-screen">
+            <div id="app-root" className="flex min-h-screen">
               {/* Sidebar */}
               <div className="print:hidden">
                 <Sidebar
