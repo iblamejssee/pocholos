@@ -446,7 +446,6 @@ function MesasActivasContent() {
                     items={receiptData.items}
                     total={receiptData.total}
                     orderId={receiptData.orderId}
-                    orderId={receiptData.orderId}
                     mesaNumero={receiptData.mesaNumero}
                     title={receiptData.title}
                 />
