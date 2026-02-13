@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Printer, X, CheckCircle, Receipt, Search, User, RefreshCw, Trash2 } from 'lucide-react';
+import { Printer, X, Search, User, RefreshCw, Trash2, ReceiptText } from 'lucide-react';
 import type { ItemCarrito, ItemVenta } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
 import { consultarDNI } from '@/services/dniService';
@@ -51,220 +51,188 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
 
     const cargarConfiguracion = async () => {
         try {
-            const { data } = await supabase
-                .from('configuracion_negocio')
-                .select('*')
-                .limit(1)
-                .single();
-
+            const { data } = await supabase.from('configuracion_negocio').select('*').limit(1).single();
             if (data) {
                 setConfig(data);
-                const numero = String(data.numero_correlativo).padStart(8, '0');
-                setNumeroBoleta(`${data.serie_boleta}-${numero}`);
+                setNumeroBoleta(`${data.serie_boleta}-${String(data.numero_correlativo).padStart(8, '0')}`);
             }
         } catch (error) {
-            console.log('Config no encontrada, usando valores por defecto');
-            const numero = String(Math.floor(Math.random() * 10000)).padStart(8, '0');
-            setNumeroBoleta(`B001-${numero}`);
+            setNumeroBoleta(`B001-${Math.floor(Math.random() * 1000000).toString().padStart(8, '0')}`);
         }
     };
 
     const handleDNISearch = async () => {
-        if (dni.length !== 8) {
-            setErrorDni('El DNI debe tener 8 dígitos');
-            return;
-        }
+        if (dni.length !== 8) return setErrorDni('DNI inválido');
         setIsSearching(true);
         setErrorDni(null);
         try {
             const response = await consultarDNI(dni);
-            if (response.success && response.data) {
-                setClienteNombre(response.data.nombre_completo);
-            } else {
-                setErrorDni(response.message || 'No se encontró');
-                setClienteNombre('');
-            }
+            if (response.success && response.data) setClienteNombre(response.data.nombre_completo);
+            else setErrorDni('No encontrado');
         } catch (error) {
-            setErrorDni('Error al consultar');
+            setErrorDni('Error de conexión');
         } finally {
             setIsSearching(false);
         }
     };
 
     const handlePrint = () => {
-        // Pequeño delay para asegurar que el DOM de impresión esté listo
-        setTimeout(() => {
-            window.print();
-        }, 150);
+        window.print();
     };
 
     const fecha = new Date();
-    const fechaFormateada = fecha.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const horaFormateada = fecha.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+    const fechaStr = fecha.toLocaleDateString('es-PE');
+    const horaStr = fecha.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
 
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm print:bg-white print:p-0 print:block">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md print:static print:bg-white print:p-0">
                     
-                    {/* ESTILOS INYECTADOS PARA IMPRESORA TÉRMICA 80mm */}
+                    {/* CSS CRÍTICO DE IMPRESIÓN - ESTO ARREGLA LA HOJA EN BLANCO */}
                     <style dangerouslySetInnerHTML={{ __html: `
                         @media print {
-                            @page { margin: 0; size: 80mm auto; }
-                            body { margin: 0; padding: 0; background: white; }
-                            .print-area { 
-                                display: block !important; 
-                                width: 80mm; 
-                                padding: 4mm;
-                                font-family: 'Courier New', Courier, monospace;
-                                color: black;
+                            /* Ocultamos absolutamente todo lo que no sea el ticket */
+                            body * { visibility: hidden; }
+                            #ticket-impresion, #ticket-impresion * { visibility: visible; }
+                            #ticket-impresion {
+                                position: absolute;
+                                left: 0;
+                                top: 0;
+                                width: 80mm; /* Ancho real de tu impresora Advance */
+                                padding: 2mm;
+                                background: white;
+                                display: block !important;
+                                visibility: visible !important;
                             }
-                            .no-print { display: none !important; }
-                            .ticket-header { text-align: center; margin-bottom: 5mm; }
-                            .negocio-nombre { font-size: 14pt; font-weight: bold; text-transform: uppercase; margin: 0; }
-                            .negocio-info { font-size: 8pt; margin-top: 2mm; }
-                            .ticket-divider { border-top: 1px dashed black; margin: 3mm 0; }
-                            .ticket-boleta-num { text-align: center; font-weight: bold; margin: 3mm 0; }
-                            .ticket-meta { font-size: 8pt; display: flex; justify-content: space-between; }
-                            .ticket-items-header { display: flex; justify-content: space-between; font-size: 8pt; font-weight: bold; border-bottom: 1px solid black; }
-                            .ticket-item { display: flex; justify-content: space-between; font-size: 8pt; margin-top: 1mm; }
-                            .ticket-total-box { border-top: 1px double black; margin-top: 4mm; padding-top: 2mm; text-align: right; }
-                            .ticket-total-row { display: flex; justify-content: space-between; font-size: 12pt; font-weight: bold; }
-                            .ticket-footer { text-align: center; margin-top: 6mm; font-size: 8pt; }
+                            @page { size: 80mm auto; margin: 0; }
                         }
                     `}} />
 
-                    {/* VISTA EN PANTALLA (NO SE IMPRIME) */}
+                    {/* MODAL EN PANTALLA (NO SE IMPRIME) */}
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[96vh] print:hidden"
+                        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
+                        className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh] print:hidden border border-gray-100"
                     >
-                        {/* Header */}
-                        <div className="bg-pocholo-red text-white p-4 text-center">
-                            <h2 className="text-lg font-bold">Boleta de Venta</h2>
-                            <p className="text-white/80 text-xs">{numeroBoleta}</p>
+                        {/* Banner Superior */}
+                        <div className="bg-gradient-to-r from-red-600 to-red-700 text-white p-6 text-center relative">
+                            <div className="absolute top-4 right-4 text-white/20"><ReceiptText size={48} /></div>
+                            <h2 className="text-xl font-black uppercase tracking-tight">Pocholo's Chicken</h2>
+                            <p className="text-sm font-medium opacity-90">{numeroBoleta}</p>
                         </div>
 
-                        {/* Buscador DNI */}
-                        <div className="p-4 bg-gray-50 border-b border-gray-100">
-                            <div className="flex gap-2">
+                        {/* Buscador de Cliente */}
+                        <div className="p-5 bg-gray-50/80 border-b border-gray-100">
+                            <div className="flex gap-3">
                                 <div className="relative flex-1">
                                     <input
-                                        type="text"
-                                        value={dni}
-                                        onChange={(e) => setDni(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                                        placeholder="DNI del cliente"
-                                        className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-pocholo-red/20 outline-none"
+                                        type="text" value={dni} onChange={(e) => setDni(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                                        placeholder="Ingrese DNI"
+                                        className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm focus:ring-4 focus:ring-red-500/10 outline-none transition-all"
                                     />
-                                    <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
+                                    <Search className="absolute left-3.5 top-3.5 text-gray-400" size={18} />
                                 </div>
-                                <button 
-                                    onClick={handleDNISearch} 
-                                    disabled={isSearching || dni.length !== 8}
-                                    className="bg-pocholo-yellow text-pocholo-red font-bold px-4 rounded-xl text-xs disabled:opacity-50"
-                                >
-                                    {isSearching ? <RefreshCw className="animate-spin" size={16} /> : 'BUSCAR'}
+                                <button onClick={handleDNISearch} disabled={isSearching || dni.length !== 8} className="bg-yellow-400 hover:bg-yellow-500 text-red-700 font-bold px-5 rounded-2xl transition-transform active:scale-95 disabled:opacity-50">
+                                    {isSearching ? <RefreshCw className="animate-spin" size={20} /> : 'BUSCAR'}
                                 </button>
                             </div>
                             {clienteNombre && (
-                                <div className="mt-2 text-[11px] font-bold text-gray-700 uppercase bg-white p-2 rounded-lg border border-green-100">
-                                    👤 {clienteNombre}
-                                </div>
+                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-3 p-3 bg-white rounded-xl border border-green-100 flex items-center gap-3">
+                                    <div className="bg-green-500 text-white p-1.5 rounded-full"><User size={14} /></div>
+                                    <p className="text-xs font-bold text-gray-800 uppercase truncate">{clienteNombre}</p>
+                                    <button onClick={() => {setDni(''); setClienteNombre('');}} className="ml-auto text-gray-300 hover:text-red-500"><Trash2 size={16} /></button>
+                                </motion.div>
                             )}
                         </div>
 
-                        {/* Preview Scrollable */}
-                        <div className="flex-1 overflow-y-auto p-4 bg-gray-100">
-                            <div className="bg-white p-4 shadow-sm font-mono text-[12px] text-black">
-                                <div className="text-center border-b border-black pb-2 mb-2">
-                                    <p className="font-bold text-base">{config.razon_social}</p>
-                                    <p className="text-[10px]">RUC: {config.ruc}</p>
-                                    <p className="text-[10px]">{config.direccion}</p>
-                                </div>
-                                <div className="space-y-1 mb-2">
-                                    {items.map((item, idx) => (
-                                        <div key={idx} className="flex justify-between">
-                                            <span>{item.cantidad} x {item.nombre?.substring(0, 15)}</span>
-                                            <span>S/ {(Number(item.cantidad) * Number(item.precio)).toFixed(2)}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="border-t-2 border-black pt-2 flex justify-between font-bold text-sm">
-                                    <span>TOTAL</span>
-                                    <span>S/ {total.toFixed(2)}</span>
-                                </div>
+                        {/* Vista Previa del Contenido */}
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                            <div className="border-b border-dashed border-gray-200 pb-4">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase mb-2 tracking-widest">Resumen de Orden</p>
+                                {items.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between items-center text-sm mb-2">
+                                        <p className="text-gray-700 font-medium"><span className="text-red-600 font-bold">{item.cantidad}x</span> {item.nombre?.toUpperCase()}</p>
+                                        <p className="font-bold text-gray-900">S/ {(Number(item.cantidad) * Number(item.precio)).toFixed(2)}</p>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex justify-between items-center pt-2">
+                                <p className="text-lg font-black text-gray-900 uppercase">Total a Pagar</p>
+                                <p className="text-2xl font-black text-red-600">S/ {total.toFixed(2)}</p>
                             </div>
                         </div>
 
-                        {/* Botones */}
-                        <div className="p-4 grid grid-cols-2 gap-3">
-                            <button onClick={onClose} className="py-3 text-gray-500 font-semibold hover:bg-gray-100 rounded-xl transition-colors">Cerrar</button>
-                            <button onClick={handlePrint} className="py-3 bg-pocholo-red text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2">
-                                <Printer size={18} /> IMPRIMIR
+                        {/* Acciones */}
+                        <div className="p-6 bg-white border-t border-gray-100 grid grid-cols-2 gap-4">
+                            <button onClick={onClose} className="py-4 text-gray-400 font-bold hover:text-gray-600 hover:bg-gray-50 rounded-2xl transition-all">DESCARTAR</button>
+                            <button onClick={handlePrint} className="py-4 bg-red-600 text-white font-black rounded-2xl shadow-xl shadow-red-500/20 hover:bg-red-700 transition-all flex items-center justify-center gap-2">
+                                <Printer size={20} /> IMPRIMIR
                             </button>
                         </div>
                     </motion.div>
 
-                    {/* ÁREA DE IMPRESIÓN (SOLO VISIBLE AL IMPRIMIR) */}
-                    <div className="hidden print:block print-area">
-                        <div className="ticket-header">
-                            <p className="negocio-nombre">{config.razon_social}</p>
-                            <div className="negocio-info">
-                                <p>RUC: {config.ruc}</p>
-                                <p>{config.direccion}</p>
-                                <p>TEL: {config.telefono}</p>
-                            </div>
+                    {/* TICKET DE IMPRESIÓN (SOLO VISIBLE AL IMPRIMIR) */}
+                    <div id="ticket-impresion" className="hidden">
+                        <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+                            <p style={{ fontSize: '14pt', fontWeight: 'bold', margin: 0 }}>{config.razon_social}</p>
+                            <p style={{ fontSize: '8pt', margin: '2px 0' }}>RUC: {config.ruc}</p>
+                            <p style={{ fontSize: '8pt', margin: 0 }}>{config.direccion}</p>
+                            <p style={{ fontSize: '8pt', margin: 0 }}>TEL: {config.telefono}</p>
                         </div>
 
-                        <div className="ticket-divider"></div>
+                        <div style={{ borderTop: '1px dashed black', margin: '10px 0' }}></div>
 
-                        <div className="ticket-boleta-num">
-                            <p>BOLETA DE VENTA</p>
-                            <p>{numeroBoleta}</p>
+                        <div style={{ textAlign: 'center', fontWeight: 'bold' }}>
+                            <p style={{ margin: 0 }}>BOLETA DE VENTA</p>
+                            <p style={{ fontSize: '12pt', margin: 0 }}>{numeroBoleta}</p>
                         </div>
 
-                        <div className="ticket-meta">
-                            <span>FECHA: {fechaFormateada}</span>
-                            <span>HORA: {horaFormateada}</span>
-                        </div>
-                        {mesaNumero && <div className="ticket-boleta-num" style={{textAlign: 'left'}}>MESA: {mesaNumero}</div>}
+                        <div style={{ borderTop: '1px dashed black', margin: '10px 0' }}></div>
 
-                        <div className="ticket-divider"></div>
+                        <div style={{ fontSize: '8pt' }}>
+                            <p style={{ margin: 0 }}>FECHA: {fechaStr} - {horaStr}</p>
+                            {mesaNumero && <p style={{ margin: 0, fontWeight: 'bold' }}>MESA: {mesaNumero}</p>}
+                        </div>
 
                         {clienteNombre && (
-                            <div className="negocio-info" style={{marginBottom: '3mm'}}>
-                                <p>CLIENTE: {clienteNombre.toUpperCase()}</p>
-                                <p>DNI: {dni}</p>
-                                <div className="ticket-divider"></div>
+                            <div style={{ fontSize: '8pt', marginTop: '10px' }}>
+                                <p style={{ margin: 0 }}>CLIENTE: {clienteNombre.toUpperCase()}</p>
+                                <p style={{ margin: 0 }}>DNI: {dni}</p>
                             </div>
                         )}
 
-                        <div className="ticket-items-header">
-                            <span>CANT  DESCRIPCION</span>
-                            <span>TOTAL</span>
-                        </div>
+                        <div style={{ borderTop: '1px dashed black', margin: '10px 0' }}></div>
 
-                        {items.map((item, idx) => (
-                            <div key={idx} className="ticket-item">
-                                <span style={{width: '15%'}}>{item.cantidad}</span>
-                                <span style={{width: '55%', textTransform: 'uppercase'}}>{item.nombre}</span>
-                                <span style={{width: '30%', textAlign: 'right'}}>S/ {(Number(item.cantidad) * Number(item.precio)).toFixed(2)}</span>
-                            </div>
-                        ))}
+                        <table style={{ width: '100%', fontSize: '8pt', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '1px solid black' }}>
+                                    <th style={{ textAlign: 'left' }}>CANT</th>
+                                    <th style={{ textAlign: 'left' }}>DESC.</th>
+                                    <th style={{ textAlign: 'right' }}>TOTAL</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {items.map((item, idx) => (
+                                    <tr key={idx}>
+                                        <td style={{ verticalAlign: 'top' }}>{item.cantidad}</td>
+                                        <td style={{ textTransform: 'uppercase' }}>{item.nombre}</td>
+                                        <td style={{ textAlign: 'right', verticalAlign: 'top' }}>{(Number(item.cantidad) * Number(item.precio)).toFixed(2)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
 
-                        <div className="ticket-total-box">
-                            <div className="ticket-total-row">
+                        <div style={{ borderTop: '1px double black', marginTop: '10px', paddingTop: '5px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '11pt' }}>
                                 <span>TOTAL:</span>
                                 <span>S/ {total.toFixed(2)}</span>
                             </div>
                         </div>
 
-                        <div className="ticket-footer">
-                            <p className="footer-mensaje">"{config.mensaje_boleta}"</p>
-                            <p className="footer-slogan">LA PASIÓN HECHA SAZÓN</p>
-                            <p style={{fontSize: '6pt', marginTop: '4mm'}}>KODEFY TECH - SISTEMAS</p>
+                        <div style={{ textAlign: 'center', marginTop: '15px', fontSize: '8pt' }}>
+                            <p style={{ fontStyle: 'italic', margin: 0 }}>"{config.mensaje_boleta}"</p>
+                            <p style={{ fontWeight: 'bold', marginTop: '5px' }}>LA PASIÓN HECHA SAZÓN</p>
+                            <p style={{ fontSize: '6pt', color: '#666', marginTop: '10px' }}>KODEFY TECH - SISTEMAS</p>
                         </div>
                     </div>
                 </div>
