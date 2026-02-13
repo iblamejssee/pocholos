@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Printer, X, Search, User, RefreshCw, Trash2, ReceiptText } from 'lucide-react';
+import { Printer, X, CheckCircle, Receipt, Search, User, RefreshCw, Trash2 } from 'lucide-react';
 import type { ItemCarrito, ItemVenta } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
 import { consultarDNI } from '@/services/dniService';
@@ -43,6 +43,7 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
     useEffect(() => {
         if (isOpen) {
             cargarConfiguracion();
+            // Reset client data when opening modal
             setDni('');
             setClienteNombre('');
             setErrorDni(null);
@@ -51,29 +52,58 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
 
     const cargarConfiguracion = async () => {
         try {
-            const { data } = await supabase.from('configuracion_negocio').select('*').limit(1).single();
+            const { data } = await supabase
+                .from('configuracion_negocio')
+                .select('*')
+                .limit(1)
+                .single();
+
             if (data) {
                 setConfig(data);
-                setNumeroBoleta(`${data.serie_boleta}-${String(data.numero_correlativo).padStart(8, '0')}`);
+                const numero = String(data.numero_correlativo).padStart(8, '0');
+                setNumeroBoleta(`${data.serie_boleta}-${numero}`);
+
+                await supabase
+                    .from('configuracion_negocio')
+                    .update({ numero_correlativo: data.numero_correlativo + 1 })
+                    .eq('id', data.id);
             }
         } catch (error) {
-            setNumeroBoleta(`B001-${Math.floor(Math.random() * 1000000).toString().padStart(8, '0')}`);
+            console.log('Config no encontrada, usando valores por defecto');
+            const numero = String(Math.floor(Math.random() * 10000)).padStart(8, '0');
+            setNumeroBoleta(`B001-${numero}`);
         }
     };
 
     const handleDNISearch = async () => {
-        if (dni.length !== 8) return setErrorDni('DNI inválido');
+        if (dni.length !== 8) {
+            setErrorDni('El DNI debe tener 8 dígitos');
+            return;
+        }
+
         setIsSearching(true);
         setErrorDni(null);
+
         try {
             const response = await consultarDNI(dni);
-            if (response.success && response.data) setClienteNombre(response.data.nombre_completo);
-            else setErrorDni('No encontrado');
+            if (response.success && response.data) {
+                setClienteNombre(response.data.nombre_completo);
+            } else {
+                setErrorDni(response.message || 'No se encontró el DNI');
+                setClienteNombre('');
+            }
         } catch (error) {
-            setErrorDni('Error de conexión');
+            setErrorDni('Error al consultar DNI');
+            setClienteNombre('');
         } finally {
             setIsSearching(false);
         }
+    };
+
+    const clearClientData = () => {
+        setDni('');
+        setClienteNombre('');
+        setErrorDni(null);
     };
 
     const handlePrint = () => {
@@ -81,158 +111,243 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
     };
 
     const fecha = new Date();
-    const fechaStr = fecha.toLocaleDateString('es-PE');
-    const horaStr = fecha.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+    const fechaFormateada = fecha.toLocaleDateString('es-PE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+    const horaFormateada = fecha.toLocaleTimeString('es-PE', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md print:static print:bg-white print:p-0">
-                    
-                    {/* CSS CRÍTICO DE IMPRESIÓN - ESTO ARREGLA LA HOJA EN BLANCO */}
-                    <style dangerouslySetInnerHTML={{ __html: `
-                        @media print {
-                            /* Ocultamos absolutamente todo lo que no sea el ticket */
-                            body * { visibility: hidden; }
-                            #ticket-impresion, #ticket-impresion * { visibility: visible; }
-                            #ticket-impresion {
-                                position: absolute;
-                                left: 0;
-                                top: 0;
-                                width: 80mm; /* Ancho real de tu impresora Advance */
-                                padding: 2mm;
-                                background: white;
-                                display: block !important;
-                                visibility: visible !important;
-                            }
-                            @page { size: 80mm auto; margin: 0; }
-                        }
-                    `}} />
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm print:absolute print:inset-0 print:p-0 print:m-0 print:bg-white print:block">
 
-                    {/* MODAL EN PANTALLA (NO SE IMPRIME) */}
+                    {/* Contenedor Principal (Visible en Pantalla) */}
                     <motion.div
-                        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
-                        className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh] print:hidden border border-gray-100"
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[96vh] print:hidden"
                     >
-                        {/* Banner Superior */}
-                        <div className="bg-gradient-to-r from-red-600 to-red-700 text-white p-6 text-center relative">
-                            <div className="absolute top-4 right-4 text-white/20"><ReceiptText size={48} /></div>
-                            <h2 className="text-xl font-black uppercase tracking-tight">Pocholo's Chicken</h2>
-                            <p className="text-sm font-medium opacity-90">{numeroBoleta}</p>
-                        </div>
-
-                        {/* Buscador de Cliente */}
-                        <div className="p-5 bg-gray-50/80 border-b border-gray-100">
-                            <div className="flex gap-3">
-                                <div className="relative flex-1">
-                                    <input
-                                        type="text" value={dni} onChange={(e) => setDni(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                                        placeholder="Ingrese DNI"
-                                        className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm focus:ring-4 focus:ring-red-500/10 outline-none transition-all"
-                                    />
-                                    <Search className="absolute left-3.5 top-3.5 text-gray-400" size={18} />
-                                </div>
-                                <button onClick={handleDNISearch} disabled={isSearching || dni.length !== 8} className="bg-yellow-400 hover:bg-yellow-500 text-red-700 font-bold px-5 rounded-2xl transition-transform active:scale-95 disabled:opacity-50">
-                                    {isSearching ? <RefreshCw className="animate-spin" size={20} /> : 'BUSCAR'}
-                                </button>
+                        {/* Header Visual */}
+                        <div className="bg-pocholo-red text-white p-4 text-center">
+                            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-1 p-1.5 shadow-lg">
+                                <img src="/images/logo-pocholos-icon.png" alt="Logo" className="w-full h-full object-contain" />
                             </div>
-                            {clienteNombre && (
-                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-3 p-3 bg-white rounded-xl border border-green-100 flex items-center gap-3">
-                                    <div className="bg-green-500 text-white p-1.5 rounded-full"><User size={14} /></div>
-                                    <p className="text-xs font-bold text-gray-800 uppercase truncate">{clienteNombre}</p>
-                                    <button onClick={() => {setDni(''); setClienteNombre('');}} className="ml-auto text-gray-300 hover:text-red-500"><Trash2 size={16} /></button>
-                                </motion.div>
-                            )}
+                            <h2 className="text-lg font-bold">Boleta de Venta</h2>
+                            <p className="text-white/80 text-xs">{numeroBoleta}</p>
                         </div>
 
-                        {/* Vista Previa del Contenido */}
-                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                            <div className="border-b border-dashed border-gray-200 pb-4">
-                                <p className="text-[10px] font-bold text-gray-400 uppercase mb-2 tracking-widest">Resumen de Orden</p>
-                                {items.map((item, idx) => (
-                                    <div key={idx} className="flex justify-between items-center text-sm mb-2">
-                                        <p className="text-gray-700 font-medium"><span className="text-red-600 font-bold">{item.cantidad}x</span> {item.nombre?.toUpperCase()}</p>
-                                        <p className="font-bold text-gray-900">S/ {(Number(item.cantidad) * Number(item.precio)).toFixed(2)}</p>
+                        {/* Sección de Cliente / DNI */}
+                        <div className="p-4 bg-gray-50 border-b border-gray-100">
+                            <div className="flex flex-col gap-2">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Identificación del Cliente (Opcional)</label>
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                        <input
+                                            type="text"
+                                            value={dni}
+                                            onChange={(e) => setDni(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                                            placeholder="DNI (8 dígitos)"
+                                            className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-pocholo-red/20 focus:border-pocholo-red transition-all"
+                                        />
+                                        <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
                                     </div>
-                                ))}
-                            </div>
-                            <div className="flex justify-between items-center pt-2">
-                                <p className="text-lg font-black text-gray-900 uppercase">Total a Pagar</p>
-                                <p className="text-2xl font-black text-red-600">S/ {total.toFixed(2)}</p>
+                                    <button
+                                        onClick={handleDNISearch}
+                                        disabled={isSearching || dni.length !== 8}
+                                        className="bg-pocholo-yellow hover:bg-yellow-500 disabled:bg-gray-200 text-pocholo-red font-bold px-3 py-2 rounded-xl text-xs transition-colors flex items-center gap-1 min-w-[90px] justify-center"
+                                    >
+                                        {isSearching ? <RefreshCw className="animate-spin" size={14} /> : 'Consultar'}
+                                    </button>
+                                    {(dni || clienteNombre) && (
+                                        <button
+                                            onClick={clearClientData}
+                                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors rounded-xl"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    )}
+                                </div>
+
+                                {errorDni && <p className="text-[10px] text-red-500 ml-1 font-medium">{errorDni}</p>}
+
+                                {clienteNombre && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -5 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="bg-white p-2 rounded-xl border border-green-100 flex items-center gap-2"
+                                    >
+                                        <div className="bg-green-100 text-green-600 p-1.5 rounded-lg">
+                                            <User size={14} />
+                                        </div>
+                                        <div className="flex-1 overflow-hidden">
+                                            <p className="text-[10px] text-gray-500 leading-none mb-0.5">Nombre Registrado:</p>
+                                            <p className="text-[11px] font-bold text-gray-800 truncate uppercase">{clienteNombre}</p>
+                                        </div>
+                                    </motion.div>
+                                )}
                             </div>
                         </div>
 
-                        {/* Acciones */}
-                        <div className="p-6 bg-white border-t border-gray-100 grid grid-cols-2 gap-4">
-                            <button onClick={onClose} className="py-4 text-gray-400 font-bold hover:text-gray-600 hover:bg-gray-50 rounded-2xl transition-all">DESCARTAR</button>
-                            <button onClick={handlePrint} className="py-4 bg-red-600 text-white font-black rounded-2xl shadow-xl shadow-red-500/20 hover:bg-red-700 transition-all flex items-center justify-center gap-2">
-                                <Printer size={20} /> IMPRIMIR
+                        {/* Vista Previa del Ticket en Pantalla */}
+                        <div className="flex-1 overflow-y-auto p-4 bg-gray-50/50">
+                            <div className="bg-white shadow-sm border border-gray-200 p-5 rounded-xl text-[13px] font-mono text-gray-700">
+                                <div className="text-center pb-3 mb-3 border-b-2 border-black">
+                                    <p className="font-black text-xl text-black leading-tight mb-1 uppercase tracking-tighter">{config.razon_social}</p>
+                                    <div className="space-y-0.5 text-[10px] text-gray-500 font-bold uppercase">
+                                        {config.ruc && <p>RUC: {config.ruc}</p>}
+                                        {config.direccion && <p className="leading-tight">{config.direccion}</p>}
+                                        {config.telefono && <p>TEL: {config.telefono}</p>}
+                                    </div>
+                                    <div className="mt-3 pt-2 border-t border-gray-100">
+                                        <p className="font-black text-base text-pocholo-red tracking-widest">{numeroBoleta}</p>
+                                        <p className="text-[11px] text-gray-400 mt-1">{fechaFormateada} - {horaFormateada}</p>
+                                        {mesaNumero && <p className="text-[11px] bg-pocholo-red text-white font-bold rounded-full px-3 py-0.5 inline-block mt-2">MESA: {mesaNumero}</p>}
+                                    </div>
+                                </div>
+
+                                {/* Información del Cliente en Ticket On-Screen */}
+                                {(dni && clienteNombre) && (
+                                    <div className="mb-4 pb-3 border-b-2 border-black text-[11px] space-y-1">
+                                        <p className="text-[9px] font-bold text-gray-400 uppercase mb-1">Datos del Cliente</p>
+                                        <div className="flex gap-2">
+                                            <span className="font-black text-black w-12 italic">DNI:</span>
+                                            <span className="text-black">{dni}</span>
+                                        </div>
+                                        <div className="flex gap-2 items-start">
+                                            <span className="font-black text-black w-12 italic">SR(A):</span>
+                                            <p className="uppercase text-black flex-1 leading-tight">{clienteNombre}</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="mb-4">
+                                    <div className="flex justify-between text-[11px] font-black text-black border-b border-black pb-1 mb-2 uppercase">
+                                        <span>CANT  DESCRIPCIÓN</span>
+                                        <span>TOTAL</span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {items.map((item, idx) => {
+                                            const cantidad = Number(item.cantidad) || 0;
+                                            const precio = Number(item.precio) || 0;
+                                            const subtotal = Number((item as any).subtotal) || (cantidad * precio);
+                                            return (
+                                                <div key={idx} className="flex justify-between text-black leading-snug items-start">
+                                                    <span className="pr-4"><span className="font-black">{cantidad}</span> {item.nombre?.toUpperCase()}</span>
+                                                    <span className="font-black whitespace-nowrap">S/ {subtotal.toFixed(2)}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                <div className="border-t-4 border-black pt-3 mb-4">
+                                    <div className="flex justify-between items-center">
+                                        <span className="font-black text-base text-black uppercase">TOTAL A PAGAR</span>
+                                        <span className="text-xl font-black text-black">S/ {total.toFixed(2)}</span>
+                                    </div>
+                                </div>
+
+                                <div className="text-center mt-6 pt-4 border-t-2 border-black">
+                                    <p className="text-[11px] leading-tight font-bold italic mb-2">"{config.mensaje_boleta}"</p>
+                                    <div className="bg-black text-white py-1 px-4 inline-block transform -rotate-1">
+                                        <p className="text-[10px] uppercase font-black tracking-widest">La Pasión Hecha Sazón</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-4 border-t border-gray-100 grid grid-cols-2 gap-3 bg-white">
+                            <button onClick={onClose} className="py-3 px-4 rounded-xl font-semibold text-gray-500 hover:bg-gray-100 transition-colors flex items-center justify-center gap-2">
+                                <X size={20} /> Cerrar
+                            </button>
+                            <button onClick={handlePrint} className="py-3 px-4 rounded-xl font-bold text-white bg-pocholo-red hover:bg-red-700 shadow-lg transition-all flex items-center justify-center gap-2">
+                                <Printer size={20} /> Imprimir
                             </button>
                         </div>
                     </motion.div>
 
-                    {/* TICKET DE IMPRESIÓN (SOLO VISIBLE AL IMPRIMIR) */}
-                    <div id="ticket-impresion" className="hidden">
-                        <div style={{ textAlign: 'center', marginBottom: '10px' }}>
-                            <p style={{ fontSize: '14pt', fontWeight: 'bold', margin: 0 }}>{config.razon_social}</p>
-                            <p style={{ fontSize: '8pt', margin: '2px 0' }}>RUC: {config.ruc}</p>
-                            <p style={{ fontSize: '8pt', margin: 0 }}>{config.direccion}</p>
-                            <p style={{ fontSize: '8pt', margin: 0 }}>TEL: {config.telefono}</p>
+                    {/* ÁREA DE IMPRESIÓN — ADVANCE 80mm USB */}
+                    <div className="hidden print:block print-ticket">
+
+                        {/* Encabezado del negocio */}
+                        <div className="ticket-header">
+                            <p className="negocio-nombre">{config.razon_social}</p>
+                            <div className="negocio-info">
+                                {config.ruc && <p>RUC: {config.ruc}</p>}
+                                {config.direccion && <p>{config.direccion}</p>}
+                                {config.telefono && <p>TEL: {config.telefono}</p>}
+                            </div>
                         </div>
 
-                        <div style={{ borderTop: '1px dashed black', margin: '10px 0' }}></div>
-
-                        <div style={{ textAlign: 'center', fontWeight: 'bold' }}>
-                            <p style={{ margin: 0 }}>BOLETA DE VENTA</p>
-                            <p style={{ fontSize: '12pt', margin: 0 }}>{numeroBoleta}</p>
+                        {/* Número de boleta */}
+                        <div className="ticket-boleta-num">
+                            <p className="boleta-titulo">BOLETA DE VENTA</p>
+                            <p className="boleta-numero">{numeroBoleta}</p>
                         </div>
 
-                        <div style={{ borderTop: '1px dashed black', margin: '10px 0' }}></div>
-
-                        <div style={{ fontSize: '8pt' }}>
-                            <p style={{ margin: 0 }}>FECHA: {fechaStr} - {horaStr}</p>
-                            {mesaNumero && <p style={{ margin: 0, fontWeight: 'bold' }}>MESA: {mesaNumero}</p>}
+                        {/* Fecha, hora, mesa */}
+                        <div className="ticket-meta">
+                            <div className="ticket-meta-row">
+                                <span>FECHA: {fechaFormateada}</span>
+                                <span>HORA: {horaFormateada}</span>
+                            </div>
                         </div>
-
-                        {clienteNombre && (
-                            <div style={{ fontSize: '8pt', marginTop: '10px' }}>
-                                <p style={{ margin: 0 }}>CLIENTE: {clienteNombre.toUpperCase()}</p>
-                                <p style={{ margin: 0 }}>DNI: {dni}</p>
+                        {mesaNumero && (
+                            <div className="ticket-mesa">
+                                MESA: {mesaNumero}
                             </div>
                         )}
 
-                        <div style={{ borderTop: '1px dashed black', margin: '10px 0' }}></div>
+                        {/* Datos del cliente */}
+                        {(dni && clienteNombre) && (
+                            <div className="ticket-cliente">
+                                <p style={{ fontSize: '9pt', textDecoration: 'underline', textTransform: 'uppercase' }}>Datos del Cliente:</p>
+                                <p>DNI: {dni}</p>
+                                <p>SR(A): {clienteNombre.toUpperCase()}</p>
+                            </div>
+                        )}
 
-                        <table style={{ width: '100%', fontSize: '8pt', borderCollapse: 'collapse' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '1px solid black' }}>
-                                    <th style={{ textAlign: 'left' }}>CANT</th>
-                                    <th style={{ textAlign: 'left' }}>DESC.</th>
-                                    <th style={{ textAlign: 'right' }}>TOTAL</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {items.map((item, idx) => (
-                                    <tr key={idx}>
-                                        <td style={{ verticalAlign: 'top' }}>{item.cantidad}</td>
-                                        <td style={{ textTransform: 'uppercase' }}>{item.nombre}</td>
-                                        <td style={{ textAlign: 'right', verticalAlign: 'top' }}>{(Number(item.cantidad) * Number(item.precio)).toFixed(2)}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        {/* Cabecera de items */}
+                        <div className="ticket-items-header">
+                            <span>CANT  DESCRIPCIÓN</span>
+                            <span>TOTAL</span>
+                        </div>
 
-                        <div style={{ borderTop: '1px double black', marginTop: '10px', paddingTop: '5px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '11pt' }}>
-                                <span>TOTAL:</span>
-                                <span>S/ {total.toFixed(2)}</span>
+                        {/* Items de venta */}
+                        <div>
+                            {items.map((item, idx) => {
+                                const cantidad = Number(item.cantidad) || 0;
+                                const precio = Number(item.precio) || 0;
+                                const subtotal = Number((item as any).subtotal) || (cantidad * precio);
+                                return (
+                                    <div key={idx} className="ticket-item">
+                                        <span className="item-cantidad">{cantidad}</span>
+                                        <span className="item-nombre">{item.nombre?.toUpperCase()}</span>
+                                        <span className="item-precio">S/ {subtotal.toFixed(2)}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Total */}
+                        <div className="ticket-total-box">
+                            <div className="ticket-total-row">
+                                <span className="ticket-total-label">TOTAL A PAGAR:</span>
+                                <span className="ticket-total-amount">S/ {total.toFixed(2)}</span>
                             </div>
                         </div>
 
-                        <div style={{ textAlign: 'center', marginTop: '15px', fontSize: '8pt' }}>
-                            <p style={{ fontStyle: 'italic', margin: 0 }}>"{config.mensaje_boleta}"</p>
-                            <p style={{ fontWeight: 'bold', marginTop: '5px' }}>LA PASIÓN HECHA SAZÓN</p>
-                            <p style={{ fontSize: '6pt', color: '#666', marginTop: '10px' }}>KODEFY TECH - SISTEMAS</p>
+                        {/* Footer */}
+                        <div className="ticket-footer">
+                            <p className="footer-mensaje">"{config.mensaje_boleta}"</p>
+                            <div className="footer-slogan">LA PASIÓN HECHA SAZÓN</div>
+                            <p className="footer-sistema">SISTEMA POCHOLO'S V1.0</p>
                         </div>
                     </div>
                 </div>
