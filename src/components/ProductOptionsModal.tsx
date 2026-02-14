@@ -11,7 +11,7 @@ type TipoTrozado = '1/8' | '1/4' | 'entero';
 interface ProductOptionsModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (producto: Producto, opciones: { parte?: PartesPollo, trozado?: TipoTrozado, notas: string }) => void;
+    onConfirm: (producto: Producto, opciones: { parte?: PartesPollo, trozado?: TipoTrozado, notas: string, detalle_bebida?: { marca: string, tipo: string } }) => void;
     producto: Producto | null;
 }
 
@@ -19,32 +19,37 @@ export default function ProductOptionsModal({ isOpen, onClose, onConfirm, produc
     const [parte, setParte] = useState<PartesPollo | undefined>(undefined);
     const [trozado, setTrozado] = useState<TipoTrozado>('entero');
     const [notas, setNotas] = useState('');
+    const [marcaGaseosa, setMarcaGaseosa] = useState<'inca_kola' | 'coca_cola'>('inca_kola');
 
     useEffect(() => {
         if (isOpen) {
             setParte(undefined);
             setTrozado('entero');
             setNotas('');
+            setMarcaGaseosa('inca_kola');
         }
     }, [isOpen, producto]);
 
     if (!producto) return null;
 
     const nombreLower = producto.nombre.toLowerCase();
+    const esPromocion = producto.tipo === 'promocion';
     const esPollo = producto.tipo === 'pollo' || nombreLower.includes('pollo') || nombreLower.includes('mostrito');
 
     // Para pollo entero o medio pollo: mostrar opción de trozado
-    // Detectamos: "entero", "medio", "1/2", "1 pollo" (sin fracción como 1/4)
-    const esPolloEnteroOMedio = esPollo && (
+    const esPolloEnteroOMedio = !esPromocion && esPollo && (
         nombreLower.includes('entero') ||
         nombreLower.includes('medio') ||
         nombreLower.includes('1/2') ||
-        /^1\s*pollo/i.test(nombreLower) || // "1 pollo" o "1pollo"
+        /^1\s*pollo/i.test(nombreLower) ||
         (nombreLower.includes('pollo') && !nombreLower.includes('1/4') && !nombreLower.includes('1/8') && !nombreLower.includes('combo') && !nombreLower.includes('mostrito'))
     );
 
     // Para platos con pollo (no entero): mostrar selección de parte
-    const permiteParte = esPollo && !esPolloEnteroOMedio;
+    const permiteParte = !esPromocion && esPollo && !esPolloEnteroOMedio;
+
+    // Detectar si la promo incluye gaseosa (no chicha)
+    const promoConGaseosa = esPromocion && nombreLower.includes('gaseosa');
 
 
     const partesPollo: { valor: PartesPollo; emoji: string; label: string }[] = [
@@ -66,10 +71,17 @@ export default function ProductOptionsModal({ isOpen, onClose, onConfirm, produc
             notasFinales = notasFinales ? `${trozadoTexto}, ${notasFinales}` : trozadoTexto;
         }
 
+        // Si es promo con gaseosa, agregar la marca seleccionada a las notas
+        if (promoConGaseosa) {
+            const marcaTexto = marcaGaseosa === 'inca_kola' ? 'Inca Kola' : 'Coca Cola';
+            notasFinales = notasFinales ? `${marcaTexto} 1.5L, ${notasFinales}` : `${marcaTexto} 1.5L`;
+        }
+
         onConfirm(producto, {
             parte,
             trozado: esPolloEnteroOMedio ? trozado : undefined,
-            notas: notasFinales
+            notas: notasFinales,
+            detalle_bebida: promoConGaseosa ? { marca: marcaGaseosa, tipo: 'litro_medio' } : undefined
         });
         onClose();
     };
@@ -165,6 +177,39 @@ export default function ProductOptionsModal({ isOpen, onClose, onConfirm, produc
                                         ))}
                                     </div>
                                     {!parte && <p className="text-amber-500 text-xs mt-1">* Selección opcional</p>}
+                                </div>
+                            )}
+
+                            {/* Selección de Gaseosa para Promos */}
+                            {promoConGaseosa && (
+                                <div className="space-y-3">
+                                    <label className="block text-sm font-medium text-pocholo-brown/80 mb-2">
+                                        🥤 Elegir Gaseosa de 1.5L
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setMarcaGaseosa('inca_kola')}
+                                            className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${marcaGaseosa === 'inca_kola'
+                                                ? 'border-yellow-500 bg-yellow-50 text-yellow-700'
+                                                : 'border-gray-100 hover:border-yellow-300 text-gray-600'
+                                                }`}
+                                        >
+                                            <span className="text-2xl">🟡</span>
+                                            <span className="font-bold text-sm">Inca Kola</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setMarcaGaseosa('coca_cola')}
+                                            className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${marcaGaseosa === 'coca_cola'
+                                                ? 'border-red-500 bg-red-50 text-red-700'
+                                                : 'border-gray-100 hover:border-red-300 text-gray-600'
+                                                }`}
+                                        >
+                                            <span className="text-2xl">🔴</span>
+                                            <span className="font-bold text-sm">Coca Cola</span>
+                                        </button>
+                                    </div>
                                 </div>
                             )}
 

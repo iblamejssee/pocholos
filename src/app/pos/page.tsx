@@ -205,7 +205,7 @@ function POSContent() {
         setIsModalOpen(true);
     };
 
-    const agregarAlCarrito = (producto: Producto, opciones: { parte?: string, trozado?: string, notas: string }) => {
+    const agregarAlCarrito = (producto: Producto, opciones: { parte?: string, trozado?: string, notas: string, detalle_bebida?: { marca: string, tipo: string } }) => {
         const itemKey = `${producto.id}-${opciones.parte || ''}-${opciones.notas || ''}`;
 
         const itemExistenteIndex = carrito.findIndex((item) => {
@@ -219,6 +219,13 @@ function POSContent() {
             nuevoCarrito[itemExistenteIndex].subtotal = nuevoCarrito[itemExistenteIndex].cantidad * nuevoCarrito[itemExistenteIndex].precio;
             setCarrito(nuevoCarrito);
         } else {
+            // Determinar detalle_bebida: priorizar la selección del modal (promos), luego la del producto
+            const detalleBebida = opciones.detalle_bebida
+                ? { marca: opciones.detalle_bebida.marca as any, tipo: opciones.detalle_bebida.tipo as any }
+                : (producto.marca_gaseosa && producto.tipo_gaseosa)
+                    ? { marca: producto.marca_gaseosa, tipo: producto.tipo_gaseosa }
+                    : undefined;
+
             const nuevoItem: ItemCarrito = {
                 producto_id: producto.id,
                 nombre: producto.nombre,
@@ -230,11 +237,7 @@ function POSContent() {
                     parte: opciones.parte,
                     notas: opciones.notas
                 },
-                // Mapear detalle de bebida si existe en el producto
-                detalle_bebida: (producto.marca_gaseosa && producto.tipo_gaseosa) ? {
-                    marca: producto.marca_gaseosa,
-                    tipo: producto.tipo_gaseosa
-                } : undefined
+                detalle_bebida: detalleBebida
             };
             setCarrito([...carrito, nuevoItem]);
         }
