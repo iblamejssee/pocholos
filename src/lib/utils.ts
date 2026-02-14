@@ -93,28 +93,44 @@ export function descomponerStockPollos(cantidad: number) {
     return { entero, cuartosTexto, octavosTexto };
 }
 
+// Redondea cualquier número al octavo (1/8) más cercano
+export function redondearAOctavo(valor: number): number {
+    return Math.round(valor * 8) / 8;
+}
+
 // Función para convertir fracción decimal a texto de fracción
 export function formatearFraccionPollo(fraccion: number): string {
-    if (fraccion === 0) return '0';
-    if (fraccion === 1) return '1';
+    // Primero redondear al octavo más cercano para corregir imprecisiones de BD
+    const redondeado = redondearAOctavo(fraccion);
 
-    // Fracciones comunes
-    if (Math.abs(fraccion - 0.125) < 0.01) return '1/8';
-    if (Math.abs(fraccion - 0.25) < 0.01) return '1/4';
-    if (Math.abs(fraccion - 0.375) < 0.01) return '3/8';
-    if (Math.abs(fraccion - 0.5) < 0.01) return '1/2';
-    if (Math.abs(fraccion - 0.625) < 0.01) return '5/8';
-    if (Math.abs(fraccion - 0.75) < 0.01) return '3/4';
-    if (Math.abs(fraccion - 0.875) < 0.01) return '7/8';
+    if (redondeado === 0) return '0';
+    if (redondeado === 1) return '1';
 
     // Para números mayores a 1, separar entero y fracción
-    const entero = Math.floor(fraccion);
-    const decimal = fraccion - entero;
+    const entero = Math.floor(redondeado);
+    const decimal = +(redondeado - entero).toFixed(3); // evitar errores de punto flotante
 
-    if (entero > 0 && decimal > 0) {
-        const fraccionParte = formatearFraccionPollo(decimal);
-        return `${entero} ${fraccionParte}`;
+    // Mapa de fracciones conocidas
+    const FRACCIONES: Record<number, string> = {
+        0.125: '1/8',
+        0.25: '1/4',
+        0.375: '3/8',
+        0.5: '1/2',
+        0.625: '5/8',
+        0.75: '3/4',
+        0.875: '7/8',
+    };
+
+    const fraccionTexto = FRACCIONES[decimal];
+
+    if (entero > 0 && fraccionTexto) {
+        return `${entero} ${fraccionTexto}`;
+    } else if (entero > 0 && decimal === 0) {
+        return `${entero}`;
+    } else if (fraccionTexto) {
+        return fraccionTexto;
     }
 
-    return fraccion.toFixed(2);
+    // Fallback (no debería llegar aquí después de redondear)
+    return redondeado.toFixed(2);
 }
