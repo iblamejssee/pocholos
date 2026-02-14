@@ -30,6 +30,8 @@ import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReceiptModal from '@/components/ReceiptModal';
 import AdminReportModal from '@/components/AdminReportModal';
+import EditPaymentModal from '@/components/EditPaymentModal';
+import { Pencil } from 'lucide-react';
 
 type TipoRango = 'dia' | 'rango';
 
@@ -48,6 +50,11 @@ export default function ReportesPage() {
 
     const [showReceipt, setShowReceipt] = useState(false);
     const [selectedVenta, setSelectedVenta] = useState<Venta | null>(null);
+
+    const [showEditPayment, setShowEditPayment] = useState(false);
+    const [ventaToEdit, setVentaToEdit] = useState<Venta | null>(null);
+
+    const [limit, setLimit] = useState(20);
 
     const [showAdminReport, setShowAdminReport] = useState(false);
     const [inventarios, setInventarios] = useState<InventarioDiario[]>([]);
@@ -158,16 +165,47 @@ export default function ReportesPage() {
             setConsumoPollos(calcularConsumoPollosPorDia(ventasData));
             setDistribucionTipo(calcularDistribucionTipoVenta(ventasData));
             setVentasPorHora(obtenerVentasPorHora(ventasData));
+            setLoading(false);
 
         } catch (error) {
             console.error('[Reportes] Error:', error);
-        } finally {
             setLoading(false);
         }
     };
 
+    // Cálculos de Caja (Cuadre)
+    const totalInicial = inventarios.reduce((sum, inv) => sum + (inv.dinero_inicial || 0), 0);
+
+    const ventasEfectivo = ventas.reduce((sum, v) => {
+        if (v.metodo_pago === 'efectivo') return sum + v.total;
+        if (v.metodo_pago === 'mixto' && v.pago_dividido?.efectivo) return sum + v.pago_dividido.efectivo;
+        return sum;
+    }, 0);
+
+    const ventasDigital = ventas.reduce((sum, v) => {
+        if (['yape', 'plin', 'tarjeta'].includes(v.metodo_pago)) return sum + v.total;
+        if (v.metodo_pago === 'mixto') {
+            const digital = (v.pago_dividido?.yape || 0) + (v.pago_dividido?.plin || 0) + (v.pago_dividido?.tarjeta || 0);
+            return sum + digital;
+        }
+        return sum;
+    }, 0);
+
+    const gastosEfectivo = gastos.reduce((sum, g) => {
+        // Asumimos efectivo si no se especifica, o si es explícitamente efectivo
+        if (!g.metodo_pago || g.metodo_pago === 'efectivo') return sum + g.monto;
+        return sum;
+    }, 0);
+
+    const gastosDigital = gastos.reduce((sum, g) => {
+        if (['yape', 'plin'].includes(g.metodo_pago || '')) return sum + g.monto;
+        return sum;
+    }, 0);
+
+    const efectivoEnCaja = totalInicial + ventasEfectivo - gastosEfectivo;
+
     const exportarExcel = async () => {
-        if (ventas.length === 0) {
+        if (ventas.length === 0 && inventarios.length === 0) {
             toast.error('No hay datos para exportar');
             return;
         }
@@ -184,6 +222,14 @@ export default function ReportesPage() {
                 ventasPorHora,
                 inventarios,
                 gastos,
+                caja: {
+                    inicial: totalInicial,
+                    ventasEfectivo,
+                    ventasDigital,
+                    gastosEfectivo,
+                    gastosDigital,
+                    efectivoEnCaja
+                }
             });
             toast.success(`Excel descargado: ${fileName}`, { icon: '📊' });
         } catch (error) {
@@ -506,6 +552,73 @@ export default function ReportesPage() {
                                 <p className="text-xs text-slate-400 mt-1">Consumo total</p>
                             </motion.div>
                         </div>
+
+                        {/* Resumen de Caja (Cuadre) */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8"
+                        >
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <h3 className="font-bold text-slate-800 text-lg">Cuadre de Caja</h3>
+                                    <p className="text-sm text-slate-500">Resumen de efectivo físico vs digital</p>
+                                </div>
+                                <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                                    <DollarSign size={20} className="text-emerald-600" />
+                                </div>
+                            </div>
+
+                            <div className="grid md:grid-cols-2 gap-8">
+                                {/* Columna Efectivo */}
+                                <div className="space-y-4">
+                                    <h4 className="font-semibold text-slate-700 border-b border-slate-100 pb-2">💵 Efectivo Físico</h4>
+
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-slate-500">(+) Caja Inicial (Base)</span>
+                                        <span className="font-medium text-slate-700">S/ {totalInicial.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-slate-500">(+) Ventas Efectivo</span>
+                                        <span className="font-medium text-emerald-600">S/ {ventasEfectivo.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-slate-500">(-) Gastos Efectivo</span>
+                                        <span className="font-medium text-red-500">- S/ {gastosEfectivo.toFixed(2)}</span>
+                                    </div>
+
+                                    <div className="pt-3 border-t border-slate-200 mt-2">
+                                        <div className="flex justify-between items-center">
+                                            <span className="font-bold text-slate-800">TOTAL EN CAJA</span>
+                                            <span className="font-bold text-xl text-slate-900">S/ {efectivoEnCaja.toFixed(2)}</span>
+                                        </div>
+                                        <p className="text-xs text-slate-400 mt-1 text-right">Debe haber físico</p>
+                                    </div>
+                                </div>
+
+                                {/* Columna Digital */}
+                                <div className="space-y-4 md:border-l md:border-slate-100 md:pl-8">
+                                    <h4 className="font-semibold text-slate-700 border-b border-slate-100 pb-2">💳 Digital / Banco</h4>
+
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-slate-500">(+) Ventas Digitales (Yape/Plin/Tarj)</span>
+                                        <span className="font-medium text-blue-600">S/ {ventasDigital.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-slate-500">(-) Gastos Digitales</span>
+                                        <span className="font-medium text-red-500">- S/ {gastosDigital.toFixed(2)}</span>
+                                    </div>
+
+                                    <div className="pt-3 border-t border-slate-200 mt-2">
+                                        <div className="flex justify-between items-center">
+                                            <span className="font-bold text-slate-800">TOTAL BANCO</span>
+                                            <span className="font-bold text-xl text-blue-700">S/ {(ventasDigital - gastosDigital).toFixed(2)}</span>
+                                        </div>
+                                        <p className="text-xs text-slate-400 mt-1 text-right">Saldo en cuentas</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
 
                         {/* Comparativa Semanal */}
                         {comparativa && (
@@ -847,7 +960,8 @@ export default function ReportesPage() {
                                     <table className="w-full">
                                         <thead className="bg-slate-50">
                                             <tr>
-                                                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Fecha</th>
+                                                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Hora Pago</th>
+                                                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Mesa / Tipo</th>
                                                 <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">ID</th>
                                                 <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Productos</th>
                                                 <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Pago</th>
@@ -856,10 +970,13 @@ export default function ReportesPage() {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
-                                            {ventas.slice(0, 20).map((v, i) => (
+                                            {ventas.slice(0, limit).map((v, i) => (
                                                 <tr key={v.id} className="hover:bg-slate-50 transition-colors">
                                                     <td className="px-6 py-4 text-sm text-slate-600">
-                                                        {format(new Date(v.created_at), "dd/MM/yy HH:mm")}
+                                                        {format(new Date(v.updated_at || v.created_at), "HH:mm")}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-sm font-bold text-slate-700">
+                                                        {v.mesas?.numero ? `Mesa ${v.mesas.numero}` : 'Para Llevar'}
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <span className="text-xs font-mono text-slate-400">#{v.id.slice(0, 8)}</span>
@@ -901,25 +1018,42 @@ export default function ReportesPage() {
                                                         S/ {v.total.toFixed(2)}
                                                     </td>
                                                     <td className="px-6 py-4 text-center">
-                                                        <button
-                                                            onClick={() => {
-                                                                setSelectedVenta(v);
-                                                                setShowReceipt(true);
-                                                            }}
-                                                            className="p-2 text-slate-400 hover:text-pocholo-red hover:bg-red-50 rounded-lg transition-all"
-                                                            title="Imprimir Boleta"
-                                                        >
-                                                            <Printer size={18} />
-                                                        </button>
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setVentaToEdit(v);
+                                                                    setShowEditPayment(true);
+                                                                }}
+                                                                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                                                title="Editar Pago"
+                                                            >
+                                                                <Pencil size={18} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedVenta(v);
+                                                                    setShowReceipt(true);
+                                                                }}
+                                                                className="p-2 text-slate-400 hover:text-pocholo-red hover:bg-red-50 rounded-lg transition-all"
+                                                                title="Imprimir Boleta"
+                                                            >
+                                                                <Printer size={18} />
+                                                            </button>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
                                 </div>
-                                {ventas.length > 20 && (
-                                    <div className="p-4 bg-slate-50 text-center text-sm text-slate-500">
-                                        Mostrando 20 de {ventas.length} transacciones • Exporta para ver todas
+                                {ventas.length > limit && (
+                                    <div className="p-4 bg-slate-50 text-center">
+                                        <button
+                                            onClick={() => setLimit(prev => prev + 20)}
+                                            className="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all shadow-sm"
+                                        >
+                                            Cargar más transacciones ({ventas.length - limit} restantes)
+                                        </button>
                                     </div>
                                 )}
                             </motion.div>
@@ -939,18 +1073,20 @@ export default function ReportesPage() {
             </div>
 
             {/* Modal de Boleta */}
-            {selectedVenta && (
-                <ReceiptModal
-                    isOpen={showReceipt}
-                    onClose={() => {
-                        setShowReceipt(false);
-                        setSelectedVenta(null);
-                    }}
-                    items={selectedVenta.items}
-                    total={selectedVenta.total}
-                    orderId={selectedVenta.id}
-                />
-            )}
+            {
+                selectedVenta && (
+                    <ReceiptModal
+                        isOpen={showReceipt}
+                        onClose={() => {
+                            setShowReceipt(false);
+                            setSelectedVenta(null);
+                        }}
+                        items={selectedVenta.items}
+                        total={selectedVenta.total}
+                        orderId={selectedVenta.id}
+                    />
+                )
+            }
 
             {/* Modal de Reporte Administrativo */}
             <AdminReportModal
@@ -962,6 +1098,19 @@ export default function ReportesPage() {
                 fechaInicio={tipoRango === 'dia' ? fechaSeleccionada : fechaInicio}
                 fechaFin={tipoRango === 'dia' ? fechaSeleccionada : fechaFin}
             />
-        </div>
+
+            {/* Modal de Edición de Pago */}
+            <EditPaymentModal
+                isOpen={showEditPayment}
+                onClose={() => {
+                    setShowEditPayment(false);
+                    setVentaToEdit(null);
+                }}
+                venta={ventaToEdit}
+                onUpdate={() => {
+                    cargarDatos(); // Refresh data to update charts and vault status
+                }}
+            />
+        </div >
     );
 }

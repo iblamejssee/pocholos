@@ -26,10 +26,10 @@ export const obtenerVentasDelDia = async (): Promise<Venta[]> => {
         const fechaHoy = obtenerFechaHoy();
         const { data, error } = await supabase
             .from('ventas')
-            .select('*')
+            .select('*, mesas(numero)')
             .eq('fecha', fechaHoy)
             .eq('estado_pago', 'pagado')
-            .order('created_at', { ascending: false });
+            .order('updated_at', { ascending: false });
 
         if (error) throw error;
         return data || [];
@@ -51,11 +51,11 @@ export const obtenerVentasPorRango = async (
 
         const { data, error } = await supabase
             .from('ventas')
-            .select('*')
+            .select('*, mesas(numero)')
             .eq('estado_pago', 'pagado')
             .gte('fecha', fechaInicio)
             .lte('fecha', fechaFin)
-            .order('created_at', { ascending: false });
+            .order('updated_at', { ascending: false });
 
         console.log('[obtenerVentasPorRango] Resultado:', { error, dataLength: data?.length, data });
 

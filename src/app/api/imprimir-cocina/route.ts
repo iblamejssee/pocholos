@@ -130,10 +130,25 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: true, message: 'Impreso correctamente en cocina' });
 
     } catch (error: any) {
-        console.error('Error de impresión:', error);
+        console.error('Error de impresión (CATCH BLOCK):', error);
+
+        let errorMessage = 'Error desconocido';
+        if (error instanceof Error) {
+            errorMessage = error.message;
+            console.error('Stack:', error.stack);
+        } else if (typeof error === 'string') {
+            errorMessage = error;
+        } else {
+            try {
+                errorMessage = JSON.stringify(error);
+            } catch (e) {
+                errorMessage = 'Error no serializable';
+            }
+        }
+
         return NextResponse.json({
             success: false,
-            message: `Error al imprimir: ${error.message}. Verifique la IP ${PRINTER_IP}`
+            message: `Error al imprimir: ${errorMessage}. (IP: ${PRINTER_IP})`
         }, { status: 500 });
     }
 }

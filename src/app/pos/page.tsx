@@ -80,6 +80,41 @@ function POSContent() {
         return () => { supabase.removeChannel(channel); };
     }, []);
 
+    // Suscripción a cambios en la venta actual (Prevención de conflictos)
+    useEffect(() => {
+        if (!currentVentaId) return;
+
+        console.log('Suscribiendo a cambios en venta:', currentVentaId);
+        const channel = supabase
+            .channel(`venta-${currentVentaId}`)
+            .on(
+                'postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'ventas', filter: `id=eq.${currentVentaId}` },
+                (payload) => {
+                    console.log('Cambio detectado en venta:', payload);
+                    // Mostrar notificación persistente para recargar
+                    toast((t) => (
+                        <div className="flex flex-col gap-2">
+                            <span className="font-bold text-sm">⚠️ La orden ha sido modificada</span>
+                            <span className="text-xs">Alguien más actualizó este pedido.</span>
+                            <button
+                                onClick={() => {
+                                    if (selectedTable) handleTableClick(selectedTable);
+                                    toast.dismiss(t.id);
+                                }}
+                                className="bg-pocholo-red text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-600 transition-colors"
+                            >
+                                🔄 Recargar Datos
+                            </button>
+                        </div>
+                    ), { duration: Infinity, position: 'top-right', id: 'update-conflict' });
+                }
+            )
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, [currentVentaId, selectedTable]);
+
     const cargarProductos = async () => {
         try {
             const { data, error } = await supabase
@@ -207,7 +242,7 @@ function POSContent() {
         setIsModalOpen(true);
     };
 
-    const agregarAlCarrito = (producto: Producto, opciones: { parte?: string, trozado?: string, notas: string, detalle_bebida?: { marca: string, tipo: string } }) => {
+    const agregarAlCarrito = (producto: Producto, opciones: { parte?: string, trozado?: string, notas: string, detalle_bebida?: { marca: string, tipo: string }, cantidad?: number }) => {
         const itemKey = `${producto.id}-${opciones.parte || ''}-${opciones.notas || ''}`;
 
         const itemExistenteIndex = carrito.findIndex((item) => {
@@ -217,7 +252,7 @@ function POSContent() {
 
         if (itemExistenteIndex >= 0) {
             const nuevoCarrito = [...carrito];
-            nuevoCarrito[itemExistenteIndex].cantidad += 1;
+            nuevoCarrito[itemExistenteIndex].cantidad += (opciones.cantidad || 1);
             nuevoCarrito[itemExistenteIndex].subtotal = nuevoCarrito[itemExistenteIndex].cantidad * nuevoCarrito[itemExistenteIndex].precio;
             setCarrito(nuevoCarrito);
         } else {
@@ -231,10 +266,10 @@ function POSContent() {
             const nuevoItem: ItemCarrito = {
                 producto_id: producto.id,
                 nombre: producto.nombre,
-                cantidad: 1,
+                cantidad: opciones.cantidad || 1,
                 precio: producto.precio,
                 fraccion_pollo: producto.fraccion_pollo,
-                subtotal: producto.precio,
+                subtotal: producto.precio * (opciones.cantidad || 1),
                 detalles: {
                     parte: opciones.parte,
                     trozado: opciones.trozado,
@@ -370,15 +405,26 @@ function POSContent() {
                         });
 
                         if (!printRes.ok) {
-                            const errorData = await printRes.json();
+                            let errorData;
+                            try {
+                                errorData = await printRes.json();
+                            } catch (e) {
+                                errorData = { message: 'Error de conexión o respuesta inválida del servidor' };
+                            }
                             console.error('Error impresión:', errorData);
-                            toast.error('Pedido guardado, pero error al imprimir en cocina');
+                            toast.error(`Error imp. cocina: ${errorData.message}`);
                         } else {
                             toast.success('Enviado a cocina (Solo nuevos items) 🖨️');
                         }
-                    } catch (printErr) {
-                        console.error('Error de red al imprimir:', printErr);
-                        toast.error('Error de conexión con impresora');
+                    } catch (err: any) {
+                        console.error('Error impresión (CLIENTE CATCH):', err);
+
+                        let msg = 'Error de conexión con la impresora';
+                        if (err instanceof Error) msg = err.message;
+                        else if (typeof err === 'string') msg = err;
+
+                        toast.error(`Error impresión: ${msg}`);
+                        // No bloqueamos el flujo, seguimos a éxito
                     }
                 } else {
                     toast.success('Pedido guardado (Nada nuevo para cocina)');

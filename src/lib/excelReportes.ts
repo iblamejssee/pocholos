@@ -28,6 +28,14 @@ interface ReportesExportData {
     ventasPorHora: { hora: string; total: number; cantidad: number }[];
     inventarios: InventarioDiario[];
     gastos: Gasto[];
+    caja?: {
+        inicial: number;
+        ventasEfectivo: number;
+        ventasDigital: number;
+        gastosEfectivo: number;
+        gastosDigital: number;
+        efectivoEnCaja: number;
+    };
 }
 
 function sectionHeader(ws: ExcelJS.Worksheet, row: number, text: string, bgColor: string, cols: number = 6) {
@@ -123,6 +131,22 @@ export async function generarReporteExcelReportes(data: ReportesExportData) {
     row = dataRow(ws1, row, '🎫 Ticket Promedio', `S/ ${data.metricas.promedioPorPedido.toFixed(2)}`, C.cream);
     row = dataRow(ws1, row, '🍗 Pollos Vendidos', formatearFraccionPollo(data.metricas.pollosVendidos), C.white, true);
     row++;
+
+    // === CUADRE DE CAJA ===
+    if (data.caja) {
+        row = sectionHeader(ws1, row, '💵  CUADRE DE CAJA', C.green);
+        row = dataRow(ws1, row, '(+) Caja Inicial (Base)', `S/ ${data.caja.inicial.toFixed(2)}`, C.lightGreen);
+        row = dataRow(ws1, row, '(+) Ventas Efectivo', `S/ ${data.caja.ventasEfectivo.toFixed(2)}`, C.white);
+        row = dataRow(ws1, row, '(-) Gastos Efectivo', `- S/ ${data.caja.gastosEfectivo.toFixed(2)}`, 'FFEBEE'); // Light Red
+        row = totalRow(ws1, row, '(=) EFECTIVO EN CAJA', `S/ ${data.caja.efectivoEnCaja.toFixed(2)}`, C.green);
+        row++;
+
+        row = dataRow(ws1, row, 'Ventas Digitales', `S/ ${data.caja.ventasDigital.toFixed(2)}`, C.lightBlue);
+        row = dataRow(ws1, row, 'Gastos Digitales', `- S/ ${data.caja.gastosDigital.toFixed(2)}`, 'FFEBEE');
+        const saldoBanco = data.caja.ventasDigital - data.caja.gastosDigital;
+        row = totalRow(ws1, row, '(=) SALDO BANCO', `S/ ${saldoBanco.toFixed(2)}`, C.blue);
+        row++;
+    }
 
     // === COMPARATIVA SEMANAL ===
     if (data.comparativa) {

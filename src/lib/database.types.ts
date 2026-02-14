@@ -78,6 +78,8 @@ export interface Venta {
     mesa_id?: number; // ID de la mesa asignada
     notas?: string; // Comentarios del pedido
     created_at: string;
+    updated_at?: string; // Add updated_at
+    mesas?: { numero: number } | null; // Join result
 }
 
 export interface Mesa {

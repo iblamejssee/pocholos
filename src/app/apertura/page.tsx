@@ -107,16 +107,25 @@ function AperturaContent() {
         try {
             const { data } = await supabase
                 .from('inventario_diario')
-                .select('bebidas_detalle, gaseosas_disponibles')
+                .select('bebidas_detalle')
                 .eq('estado', 'cerrado')
+                .not('bebidas_detalle', 'is', null) // Asegurar que tenga detalle
                 .order('fecha', { ascending: false })
                 .limit(1)
                 .single();
 
-            if (data && data.bebidas_detalle) {
-                setBebidasDetalle(data.bebidas_detalle as BebidasDetalle);
+            if (data) {
+                if (data.bebidas_detalle) {
+                    setBebidasDetalle(data.bebidas_detalle as BebidasDetalle);
+                }
+                // Si hay stock de gaseosas disponible, lo usamos como base, pero el detalle es la fuente de verdad.
+                // El usuario pidió que se cargue solo una vez y se guarde para el día siguiente.
+                // Al cargar el detalle del cierre anterior, ya estamos cumpliendo esto.
+                // Solo falta confirmar que esto se guarde como "stock inicial" del nuevo día.
+                // En `handleGuardarApertura` se usa `bebidasDetalle` para init.
+
                 setPreviousDayLoaded(true);
-                toast.success('Stock de bebidas del día anterior cargado', { icon: '📦' });
+                toast.success('Stock de bebidas del día anterior cargado automáticamente (Continuidad)', { icon: '📦' });
             }
         } catch {
             console.log('No se encontró stock previo de bebidas');
@@ -147,6 +156,9 @@ function AperturaContent() {
         });
         return total;
     };
+
+    // Efecto para actualizar el total visual si se carga el detalle
+    // No necesitamos state extra, usamos la función en el render.
 
     const resetBeverages = () => {
         setBebidasDetalle({

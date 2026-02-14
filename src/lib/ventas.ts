@@ -198,30 +198,22 @@ export const actualizarVenta = async (
             return { success: false, message: 'No se encontró la venta a actualizar' };
         }
 
-        // 2. Preparar la lista final de items
+        // 2. Preparar la lista final de items (REEMPLAZO TOTAL para permitir eliminaciones)
+        // IMPORTANTE: Esto permite borrar items y que el stock retorne.
+        // La concurrencia se manejará via Realtime en el frontend.
         const listaFinalItems: ItemVenta[] = itemsActualizados.map(({ subtotal, ...item }) => item);
 
         // 3. Calcular nuevos valores
-        const { pollosRestados: nuevoPollos, gaseosasRestadas: nuevoGaseosas, bebidasDetalle: nuevoDetalle } = calcularStockRestado(itemsActualizados);
+        // Reconstruimos ItemCarrito para cálculo correcto
+        const itemsParaCalculo: ItemCarrito[] = listaFinalItems.map(it => ({
+            ...it,
+            subtotal: it.precio * it.cantidad
+        }));
 
-        // 4. Validar Incrementos (Simplificado: Validamos el TOTAL nuevo contra el STOCK actual)
-        // OJO: Esto es complicado porque 'validarStockDisponible' compara contra el stock ACTUAL (restante).
-        // Si yo ya había comprado 1 coca cola, y ahora pido 2 (total), necesito que haya 1 MÁS disponible.
-        // Pero el stock en BD ya descuenta la 1ra coca cola si usé triggers.
-        // Como NO uso triggers para restar stock (se hace al vuelo con `obtener_stock_actual` sumando ventas),
-        // entonces el stock devuelto por `obtener_stock_actual` YA TIENE RESTADA la venta original si esta en la BD?
-        // SÍ, `obtener_stock_actual` suma todas las ventas del día.
-        // Entonces, para validar, deberíamos comparar el INCREMENTO.
+        const { pollosRestados: nuevoPollos, gaseosasRestadas: nuevoGaseosas, bebidasDetalle: nuevoDetalle } = calcularStockRestado(itemsParaCalculo);
 
-        // Calcular Diferencia para validación
-        // Esta lógica es compleja sin una transacción de base de datos o lógica dedicada.
-        // Por seguridad, validaremos solo si se agregan items NUEVOS significativos.
-        // Dada la complejidad y que el usuario quiere algo funcional YA:
-        // Omitiré validación estricta en actualización por ahora para evitar bloqueos por falsos negativos,
-        // confiando en que el cajero verifica visualmente. (Se mantiene la validación básica de pollos si aumenta drásticamente)
-
-        // 5. Recalcular total
-        const nuevoTotal = itemsActualizados.reduce((sum, item) => sum + item.subtotal, 0);
+        // 5. Recalcular total monetario
+        const nuevoTotal = itemsParaCalculo.reduce((sum, item) => sum + item.subtotal, 0);
 
         // 6. Actualizar en BD
         const { data, error: errorUpdate } = await supabase
