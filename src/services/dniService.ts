@@ -1,5 +1,4 @@
-const API_TOKEN = process.env.NEXT_PUBLIC_APIPERU_TOKEN;
-const API_URL = process.env.NEXT_PUBLIC_APIPERU_URL;
+
 
 export interface DNIResponse {
     success: boolean;
@@ -15,10 +14,20 @@ export interface DNIResponse {
 }
 
 export const consultarDNI = async (dni: string): Promise<DNIResponse> => {
+    const API_TOKEN = process.env.NEXT_PUBLIC_APIPERU_TOKEN;
+    const API_URL = process.env.NEXT_PUBLIC_APIPERU_URL;
+
+    console.log('DNI Service Config:', {
+        hasToken: !!API_TOKEN,
+        hasUrl: !!API_URL,
+        url: API_URL
+    });
+
     if (!API_TOKEN || !API_URL) {
-        console.error('DNI API credentials not configured');
+        console.error('DNI API credentials not configured. Token:', !!API_TOKEN, 'URL:', !!API_URL);
         return { success: false, message: 'Configuración de API faltante' };
     }
+
 
     try {
         const response = await fetch(API_URL, {
