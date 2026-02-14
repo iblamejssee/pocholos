@@ -53,6 +53,8 @@ export interface ItemVenta {
         marca: 'inca_kola' | 'coca_cola' | 'sprite' | 'fanta' | 'chicha';
         tipo: 'personal_retornable' | 'descartable' | 'gordita' | 'litro' | 'litro_medio' | 'tres_litros' | 'medio_litro';
     };
+    tipo?: 'pollo' | 'bebida' | 'complemento' | 'promocion';
+    printed?: boolean;
 }
 
 export interface Venta {

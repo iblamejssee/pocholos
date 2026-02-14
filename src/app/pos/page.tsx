@@ -172,9 +172,11 @@ function POSContent() {
                     // El usuario pidió: "ver lo q esta ordenado, y la opcion de añadir otro producto"
 
                     // Transformar de ItemVenta a ItemCarrito (añadiendo subtotal)
+                    // MARCAMOS COMO IMPRESOS los items que ya vienen de la BD
                     const itemsPrevios: ItemCarrito[] = data.items.map((it: any) => ({
                         ...it,
-                        subtotal: it.cantidad * it.precio
+                        subtotal: it.cantidad * it.precio,
+                        printed: true // Ya fueron enviados a cocina previamente
                     }));
 
                     setCarrito(itemsPrevios);
@@ -235,9 +237,11 @@ function POSContent() {
                 subtotal: producto.precio,
                 detalles: {
                     parte: opciones.parte,
+                    trozado: opciones.trozado,
                     notas: opciones.notas
                 },
-                detalle_bebida: detalleBebida
+                detalle_bebida: detalleBebida,
+                tipo: producto.tipo // Guardamos el tipo para filtrar en impresión
             };
             setCarrito([...carrito, nuevoItem]);
         }
@@ -322,32 +326,62 @@ function POSContent() {
                 resultado = await registrarVenta(carrito, selectedTable?.id, orderNotes);
             }
 
-            if (resultado.success) {
-                // Imprimir en cocina silenciosamente
-                try {
-                    const printRes = await fetch('/api/imprimir-cocina', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            mesa: selectedTable ? selectedTable.numero : 'LLEVAR',
-                            items: carrito,
-                            notas: orderNotes,
-                            id: resultado.data?.id,
-                            tipo: isParaLlevar ? 'llevar' : 'mesa',
-                            fecha: resultado.data?.created_at
-                        })
-                    });
 
-                    if (!printRes.ok) {
-                        const errorData = await printRes.json();
-                        console.error('Error impresión:', errorData);
-                        toast.error('Pedido guardado, pero error al imprimir en cocina');
-                    } else {
-                        toast.success('Enviado a cocina correctamente 🖨️');
+            if (resultado.success) {
+                // Filtrar items para cocina:
+                // 1. NO deben estar ya impresos (!item.printed)
+                // 2. NO deben ser bebidas (item.tipo !== 'bebida')
+                // 3. Excepción: Promos. Las promos SI van a cocina, aunque tengan bebida.
+                //    Pero idealmente solo la parte de comida. Por ahora mandamos la promo completa.
+                //    Si el usuario quiere ocultar las bebidas, podemos filtrar por nombre quizás?
+                //    "solo el platillo que deben peparar ellos"
+
+                const itemsParaCocina = carrito.filter(item => {
+                    // Si ya se imprimió, ignorar
+                    if (item.printed) return false;
+
+                    // Si es bebida pura, ignorar (Gaseosas, Chicha, Gorditas...)
+                    // Usamos item.tipo si existe (lo agregamos recién) o inferimos si es fracción 0 y no es promo.
+                    if (item.tipo === 'bebida') return false;
+
+                    // Fallback para items viejos sin tipo: si dice "gaseosa", "chicha", "agua" en nombre
+                    const nombreLower = item.nombre.toLowerCase();
+                    if (nombreLower.includes('gaseosa') || nombreLower.includes('chicha') || nombreLower.includes('agua') || nombreLower.includes('cerveza')) {
+                        return false;
                     }
-                } catch (printErr) {
-                    console.error('Error de red al imprimir:', printErr);
-                    toast.error('Error de conexión con impresora');
+
+                    return true;
+                });
+
+                if (itemsParaCocina.length > 0) {
+                    // Imprimir en cocina silenciosamente
+                    try {
+                        const printRes = await fetch('/api/imprimir-cocina', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                mesa: selectedTable ? selectedTable.numero : 'LLEVAR',
+                                items: itemsParaCocina, // ENVIAMOS SOLO LO NUEVO Y DE COCINA
+                                notas: orderNotes,
+                                id: resultado.data?.id,
+                                tipo: isParaLlevar ? 'llevar' : 'mesa',
+                                fecha: resultado.data?.created_at
+                            })
+                        });
+
+                        if (!printRes.ok) {
+                            const errorData = await printRes.json();
+                            console.error('Error impresión:', errorData);
+                            toast.error('Pedido guardado, pero error al imprimir en cocina');
+                        } else {
+                            toast.success('Enviado a cocina (Solo nuevos items) 🖨️');
+                        }
+                    } catch (printErr) {
+                        console.error('Error de red al imprimir:', printErr);
+                        toast.error('Error de conexión con impresora');
+                    }
+                } else {
+                    toast.success('Pedido guardado (Nada nuevo para cocina)');
                 }
 
                 playKitchenBell();
