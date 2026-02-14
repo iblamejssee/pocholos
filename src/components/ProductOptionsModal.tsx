@@ -20,6 +20,7 @@ export default function ProductOptionsModal({ isOpen, onClose, onConfirm, produc
     const [trozado, setTrozado] = useState<TipoTrozado>('entero');
     const [notas, setNotas] = useState('');
     const [marcaGaseosa, setMarcaGaseosa] = useState<'inca_kola' | 'coca_cola'>('inca_kola');
+    const [saborInfusion, setSaborInfusion] = useState<string>('');
 
     useEffect(() => {
         if (isOpen) {
@@ -27,6 +28,7 @@ export default function ProductOptionsModal({ isOpen, onClose, onConfirm, produc
             setTrozado('entero');
             setNotas('');
             setMarcaGaseosa('inca_kola');
+            setSaborInfusion('');
         }
     }, [isOpen, producto]);
 
@@ -55,6 +57,17 @@ export default function ProductOptionsModal({ isOpen, onClose, onConfirm, produc
     // Detectar si la promo incluye gaseosa (no chicha)
     const promoConGaseosa = esPromocion && nombreLower.includes('gaseosa');
 
+    // Detectar si es infusión (té, anis, manzanilla...)
+    // El usuario pidió: "te manzanilla . canela y clavo, anis"
+    const esInfusion = !esPromocion && (
+        nombreLower.includes('infusion') ||
+        nombreLower.includes('te') ||
+        nombreLower.includes('té') ||
+        nombreLower.includes('mate') ||
+        nombreLower.includes('anis') ||
+        nombreLower.includes('manzanilla')
+    );
+
 
     const partesPollo: { valor: PartesPollo; emoji: string; label: string }[] = [
         { valor: 'pecho', emoji: '🍗', label: 'Pecho' },
@@ -79,6 +92,11 @@ export default function ProductOptionsModal({ isOpen, onClose, onConfirm, produc
         if (promoConGaseosa) {
             const marcaTexto = marcaGaseosa === 'inca_kola' ? 'Inca Kola' : 'Coca Cola';
             notasFinales = notasFinales ? `${marcaTexto} 1.5L, ${notasFinales}` : `${marcaTexto} 1.5L`;
+        }
+
+        // Si es infusión, agregar el sabor
+        if (esInfusion && saborInfusion) {
+            notasFinales = notasFinales ? `${saborInfusion}, ${notasFinales}` : saborInfusion;
         }
 
         onConfirm(producto, {
@@ -213,6 +231,30 @@ export default function ProductOptionsModal({ isOpen, onClose, onConfirm, produc
                                             <span className="text-2xl">🔴</span>
                                             <span className="font-bold text-sm">Coca Cola</span>
                                         </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Selección de Infusiones */}
+                            {esInfusion && (
+                                <div className="space-y-3">
+                                    <label className="block text-sm font-medium text-pocholo-brown/80 mb-2">
+                                        🍵 Elegir Sabor
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {['Manzanilla', 'Anís', 'Té Puro', 'Canela y Clavo'].map((sabor) => (
+                                            <button
+                                                key={sabor}
+                                                type="button"
+                                                onClick={() => setSaborInfusion(sabor)}
+                                                className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${saborInfusion === sabor
+                                                    ? 'border-green-500 bg-green-50 text-green-700'
+                                                    : 'border-gray-100 hover:border-green-300 text-gray-600'
+                                                    }`}
+                                            >
+                                                <span className="font-semibold text-sm">{sabor}</span>
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
                             )}

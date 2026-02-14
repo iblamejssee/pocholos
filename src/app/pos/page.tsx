@@ -583,8 +583,16 @@ function POSContent() {
                                             <div className="flex justify-between items-start mb-2">
                                                 <div className="flex-1 min-w-0">
                                                     <p className="font-semibold text-pocholo-brown text-sm">
-                                                        {item.nombre} {item.detalles?.parte && `(${item.detalles.parte})`}
+                                                        {item.nombre}
                                                     </p>
+                                                    <div className="text-xs text-pocholo-brown/70 space-y-0.5 mt-1">
+                                                        {item.detalles?.parte && <p>• Parte: {item.detalles.parte}</p>}
+                                                        {item.detalles?.trozado && <p>• Trozado: {item.detalles.trozado}</p>}
+                                                        {item.detalles?.notas && <p className="italic">"{item.detalles.notas}"</p>}
+                                                        {item.detalle_bebida && (
+                                                            <p>• Bebida: <span className="capitalize">{item.detalle_bebida.marca?.replace('_', ' ')}</span></p>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <button onClick={() => eliminarDelCarrito(index)} className="text-pocholo-red p-1"><Trash2 size={14} /></button>
                                             </div>
