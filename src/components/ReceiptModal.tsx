@@ -37,7 +37,11 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
         serie_boleta: 'B001',
         numero_correlativo: 1
     });
+
     const [numeroBoleta, setNumeroBoleta] = useState('');
+    const [tipoComprobante, setTipoComprobante] = useState<'boleta' | 'ticket'>('boleta'); // Nuevo estado
+    const [serieTicket, setSerieTicket] = useState('T001'); // Serie interna para tickets
+    const [numeroTicket, setNumeroTicket] = useState(''); // Correlativo para tickets
     const [dni, setDni] = useState('');
     const [clienteNombre, setClienteNombre] = useState('');
     const [isSearching, setIsSearching] = useState(false);
@@ -47,11 +51,17 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
         if (isOpen) {
             cargarConfiguracion();
             // Reset client data when opening modal
-            setDni('');
             setClienteNombre('');
             setErrorDni(null);
+
+            // Si viene título forzado, respetar, sino default a Boleta
+            if (title && title !== 'BOLETA DE VENTA') {
+                setTipoComprobante('ticket');
+            } else {
+                setTipoComprobante('boleta');
+            }
         }
-    }, [isOpen]);
+    }, [isOpen, title]);
 
     const cargarConfiguracion = async () => {
         try {
@@ -79,6 +89,11 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
             const numero = String(Math.floor(Math.random() * 10000)).padStart(8, '0');
             setNumeroBoleta(`B001-${numero}`);
         }
+
+        // Generar número de ticket (simple, basado en timestamp o random para demo)
+        // En producción real, esto debería venir de una tabla de correlativos de tickets interna
+        const numTicket = String(Math.floor(Date.now() / 1000) % 1000000).padStart(6, '0');
+        setNumeroTicket(`${serieTicket}-${numTicket}`);
     };
 
     const handleDNISearch = async () => {
@@ -140,10 +155,12 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                 </div>
             </div>
 
-            {/* Número de boleta */}
+            {/* Número de boleta/ticket */}
             <div className="ticket-boleta-num">
-                <p className="boleta-titulo">{title}</p>
-                {title === 'BOLETA DE VENTA' && <p className="boleta-numero">{numeroBoleta}</p>}
+                <p className="boleta-titulo">{tipoComprobante === 'boleta' ? 'BOLETA DE VENTA' : 'TICKET DE VENTA'}</p>
+                <p className="boleta-numero">
+                    {tipoComprobante === 'boleta' ? numeroBoleta : numeroTicket}
+                </p>
             </div>
 
             {/* Fecha, hora, mesa */}
@@ -153,7 +170,7 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                     <span>HORA: {horaFormateada}</span>
                 </div>
             </div>
-            {mesaNumero && (
+            {mesaNumero && tipoComprobante === 'ticket' && ( // MESA solo en Ticket, no en Boleta
                 <div className="ticket-mesa">
                     MESA: {mesaNumero}
                 </div>
@@ -184,7 +201,7 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                         <div key={idx} className="ticket-item">
                             <span className="item-cantidad">{cantidad}</span>
                             <span className="item-nombre">{item.nombre?.toUpperCase()}</span>
-                            <span className="item-precio">S/ {subtotal.toFixed(2)}</span>
+                            <span className="item-precio" style={{ whiteSpace: 'nowrap' }}>S/ {subtotal.toFixed(2)}</span>
                         </div>
                     );
                 })}
@@ -231,8 +248,33 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-1 p-1.5 shadow-lg">
                                 <img src="/images/logo-pocholos-icon.png" alt="Logo" className="w-full h-full object-contain" />
                             </div>
-                            <h2 className="text-lg font-bold">{title}</h2>
-                            <p className="text-white/80 text-xs">{title === 'BOLETA DE VENTA' ? numeroBoleta : ''}</p>
+
+                            <h2 className="text-lg font-bold">{tipoComprobante === 'boleta' ? 'BOLETA DE VENTA' : 'TICKET DE VENTA'}</h2>
+                            <p className="text-white/80 text-xs">
+                                {tipoComprobante === 'boleta' ? numeroBoleta : numeroTicket}
+                            </p>
+
+                            {/* Selector de Tipo */}
+                            <div className="flex justify-center gap-2 mt-3">
+                                <button
+                                    onClick={() => setTipoComprobante('boleta')}
+                                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${tipoComprobante === 'boleta'
+                                        ? 'bg-white text-pocholo-red shadow-lg'
+                                        : 'bg-red-700/50 text-white hover:bg-red-700'
+                                        }`}
+                                >
+                                    BOLETA
+                                </button>
+                                <button
+                                    onClick={() => setTipoComprobante('ticket')}
+                                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${tipoComprobante === 'ticket'
+                                        ? 'bg-white text-pocholo-red shadow-lg'
+                                        : 'bg-red-700/50 text-white hover:bg-red-700'
+                                        }`}
+                                >
+                                    TICKET
+                                </button>
+                            </div>
                         </div>
 
                         {/* Sección de Cliente / DNI */}
@@ -298,9 +340,13 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                                         {config.telefono && <p>TEL: {config.telefono}</p>}
                                     </div>
                                     <div className="mt-3 pt-2 border-t border-gray-100">
-                                        <p className="font-black text-base text-pocholo-red tracking-widest">{numeroBoleta}</p>
+                                        <p className="font-black text-base text-pocholo-red tracking-widest">
+                                            {tipoComprobante === 'boleta' ? numeroBoleta : numeroTicket}
+                                        </p>
                                         <p className="text-[11px] text-gray-400 mt-1">{fechaFormateada} - {horaFormateada}</p>
-                                        {mesaNumero && <p className="text-[11px] bg-pocholo-red text-white font-bold rounded-full px-3 py-0.5 inline-block mt-2">MESA: {mesaNumero}</p>}
+                                        {mesaNumero && tipoComprobante === 'ticket' && (
+                                            <p className="text-[11px] bg-pocholo-red text-white font-bold rounded-full px-3 py-0.5 inline-block mt-2">MESA: {mesaNumero}</p>
+                                        )}
                                     </div>
                                 </div>
 
@@ -370,6 +416,6 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
 
                 </div>
             )}
-        </AnimatePresence>
+        </AnimatePresence >
     );
 }
