@@ -18,7 +18,7 @@ import { playKitchenBell } from '@/lib/sounds';
 import { formatearFraccionPollo } from '@/lib/utils';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
-type Categoria = 'pollos' | 'especiales' | 'extras' | 'bebidas' | 'todos' | 'populares';
+type Categoria = 'pollos' | 'especiales' | 'extras' | 'bebidas' | 'todos' | 'populares' | 'promociones';
 
 export default function POSPage() {
     return (
@@ -101,6 +101,7 @@ function POSContent() {
     const categorias: { id: Categoria; nombre: string; emoji: string }[] = [
         { id: 'todos', nombre: 'Todos', emoji: '🍽️' },
         { id: 'populares', nombre: 'Populares', emoji: '🔥' },
+        { id: 'promociones', nombre: 'Promos', emoji: '🎉' },
         { id: 'pollos', nombre: 'Pollos', emoji: '🍗' },
         { id: 'especiales', nombre: 'Especiales', emoji: '⭐' },
         { id: 'extras', nombre: 'Extras', emoji: '🍟' },
@@ -129,6 +130,7 @@ function POSContent() {
             return nombresEspeciales.some(nombre => producto.nombre.toLowerCase().includes(nombre));
         }
 
+        if (categoriaActiva === 'promociones') return producto.tipo === 'promocion';
         if (categoriaActiva === 'extras') return producto.tipo === 'complemento';
         if (categoriaActiva === 'bebidas') return producto.tipo === 'bebida';
 

@@ -21,7 +21,7 @@ export interface InventarioDiario {
 export interface Producto {
     id: string;
     nombre: string;
-    tipo: 'pollo' | 'bebida' | 'complemento';
+    tipo: 'pollo' | 'bebida' | 'complemento' | 'promocion';
     precio: number;
     fraccion_pollo: number; // 1.0, 0.25, 0.125, 0
     // Campos para trackeo de bebidas
