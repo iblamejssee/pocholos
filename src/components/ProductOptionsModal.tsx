@@ -37,16 +37,20 @@ export default function ProductOptionsModal({ isOpen, onClose, onConfirm, produc
     const esPollo = producto.tipo === 'pollo' || nombreLower.includes('pollo') || nombreLower.includes('mostrito');
 
     // Para pollo entero o medio pollo: mostrar opción de trozado
-    const esPolloEnteroOMedio = !esPromocion && esPollo && (
+    // También aplica para promos que incluyan pollo entero
+    const esPolloEnteroOMedio = esPollo && (
         nombreLower.includes('entero') ||
         nombreLower.includes('medio') ||
         nombreLower.includes('1/2') ||
         /^1\s*pollo/i.test(nombreLower) ||
-        (nombreLower.includes('pollo') && !nombreLower.includes('1/4') && !nombreLower.includes('1/8') && !nombreLower.includes('combo') && !nombreLower.includes('mostrito'))
+        (!esPromocion && nombreLower.includes('pollo') && !nombreLower.includes('1/4') && !nombreLower.includes('1/8') && !nombreLower.includes('combo') && !nombreLower.includes('mostrito'))
     );
 
-    // Para platos con pollo (no entero): mostrar selección de parte
-    const permiteParte = !esPromocion && esPollo && !esPolloEnteroOMedio;
+    // Para platos con porción de pollo (1/4, 1/8): mostrar selección de parte (presa)
+    // También aplica para promos que incluyan "1/4 pollo"
+    const permiteParte = esPollo && !esPolloEnteroOMedio && (
+        !esPromocion || nombreLower.includes('1/4')
+    );
 
     // Detectar si la promo incluye gaseosa (no chicha)
     const promoConGaseosa = esPromocion && nombreLower.includes('gaseosa');
