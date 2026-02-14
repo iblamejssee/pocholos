@@ -54,19 +54,25 @@ export async function POST(request: Request) {
         items.forEach((item: any) => {
             encoder
                 .bold(true)
-                .size(1, 1) // DOBLE TAMAÑO
+                .size(2, 2) // TRIPLE TAMAÑO (Gigante)
                 .text(`${item.cantidad}x ${item.nombre}`)
                 .newline()
                 .size(0, 0); // Reset
 
-            if (item.detalles?.parte) {
-                encoder.bold(false).text(`   Parte: ${item.detalles.parte}`).newline();
-            }
-            if (item.detalles?.trozado) {
-                encoder.bold(false).text(`   Corte: ${item.detalles.trozado}`).newline();
-            }
-            if (item.detalles?.notas) {
-                encoder.bold(true).text(`   NOTA: ${item.detalles.notas}`).newline();
+            // Detalles más grandes (Doble tamaño) para que se lean bien
+            if (item.detalles?.parte || item.detalles?.trozado || item.detalles?.notas) {
+                encoder.size(1, 1).bold(false);
+
+                if (item.detalles?.parte) {
+                    encoder.text(`   Parte: ${item.detalles.parte}`).newline();
+                }
+                if (item.detalles?.trozado) {
+                    encoder.text(`   Corte: ${item.detalles.trozado}`).newline();
+                }
+                if (item.detalles?.notas) {
+                    encoder.bold(true).text(`   NOTA: ${item.detalles.notas}`).newline();
+                }
+                encoder.size(0, 0); // Reset
             }
             encoder.newline();
         });
