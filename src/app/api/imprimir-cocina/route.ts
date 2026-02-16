@@ -5,13 +5,16 @@ import net from 'net';
 
 // CONFIGURACIÓN DE LA IMPRESORA
 // Reemplazar con la IP real o usar variable de entorno
-const PRINTER_IP = process.env.PRINTER_IP || '192.168.18.101';
+const PRINTER_IP = process.env.PRINTER_IP || '192.168.1.200';
 const PRINTER_PORT = parseInt(process.env.PRINTER_PORT || '9100');
 
 export async function POST(request: Request) {
     try {
         const body = await request.json();
         const { mesa, items, notas, id, tipo, fecha } = body;
+        console.error('--- [DEBUG] INICIO DE IMPRESIÓN ---');
+        console.error(`[DEBUG] IP Objetivo: ${PRINTER_IP}, Puerto: ${PRINTER_PORT}`);
+
 
         // Validar datos mínimos
         if (!items || items.length === 0) {
@@ -96,6 +99,7 @@ export async function POST(request: Request) {
             .feed(4)
             .cut()
             .encode();
+
 
         // 5. Enviar a la impresora
         await new Promise<void>((resolve, reject) => {
