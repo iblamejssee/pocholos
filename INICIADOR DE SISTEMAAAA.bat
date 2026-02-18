@@ -5,6 +5,23 @@ echo ===================================================
 echo   POCHOLO'S CHICKEN - PREPARANDO SISTEMA
 echo ===================================================
 echo.
+
+REM Ir a la carpeta del proyecto
+cd /d "%~dp0"
+
+echo Descargando ultimos cambios del servidor...
+git pull origin main
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo [AVISO] No se pudo conectar a Git. Continuando con version local...
+    echo.
+)
+
+echo.
+echo Instalando dependencias (si hay nuevas)...
+call npm install --legacy-peer-deps
+echo.
+
 echo Aplicando ultimos cambios (Construyendo aplicacion)...
 echo Esto puede tomar unos minutos...
 call npm run build
