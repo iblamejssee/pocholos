@@ -934,7 +934,7 @@ export default function ReportesPage() {
                                             </span>
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-medium text-slate-800 truncate">{p.nombre_producto}</p>
-                                                <p className="text-xs text-slate-500">{p.veces_vendido} ventas</p>
+                                                <p className="text-xs text-slate-500">{p.cantidad_total} unidades</p>
                                             </div>
                                             <div className="text-right">
                                                 <p className="font-bold text-slate-800">S/ {Number(p.ingresos_total).toFixed(0)}</p>

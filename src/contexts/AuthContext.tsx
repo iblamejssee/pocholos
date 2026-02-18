@@ -43,7 +43,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const loadUser = async () => {
         try {
             console.log('[AuthContext] Loading user session...');
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session }, error } = await supabase.auth.getSession();
+
+            if (error) {
+                console.error('[AuthContext] Error getting session:', error);
+                throw error;
+            }
+
             console.log('[AuthContext] Session:', session ? 'Found' : 'Not found');
 
             if (session?.user) {
@@ -53,8 +59,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 console.log('[AuthContext] No session, setting user to null');
                 setUser(null);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('[AuthContext] Error loading user:', error);
+
+            // Si el error es de token invalido, cerramos sesión para limpiar el estado
+            if (error?.message?.includes('Refresh Token Not Found') ||
+                error?.message?.includes('Invalid Refresh Token')) {
+                console.log('[AuthContext] Invalid token detected, clearing session...');
+                await supabase.auth.signOut();
+            }
+
             setUser(null);
         } finally {
             setLoading(false);

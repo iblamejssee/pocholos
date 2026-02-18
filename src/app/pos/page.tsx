@@ -372,20 +372,9 @@ function POSContent() {
                 //    "solo el platillo que deben peparar ellos"
 
                 const itemsParaCocina = carrito.filter(item => {
-                    // Si ya se imprimió, ignorar
-                    if (item.printed) return false;
-
-                    // Si es bebida pura, ignorar (Gaseosas, Chicha, Gorditas...)
-                    // Usamos item.tipo si existe (lo agregamos recién) o inferimos si es fracción 0 y no es promo.
-                    if (item.tipo === 'bebida') return false;
-
-                    // Fallback para items viejos sin tipo: si dice "gaseosa", "chicha", "agua" en nombre
-                    const nombreLower = item.nombre.toLowerCase();
-                    if (nombreLower.includes('gaseosa') || nombreLower.includes('chicha') || nombreLower.includes('agua') || nombreLower.includes('cerveza')) {
-                        return false;
-                    }
-
-                    return true;
+                    // Si ya se imprimió (mesa ocupada), ignorar.
+                    // Pero si es nuevo, IMPRIMIR TODO (Comida, Bebida, Chicha, etc.)
+                    return !item.printed;
                 });
 
                 if (itemsParaCocina.length > 0) {

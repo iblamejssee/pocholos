@@ -40,6 +40,11 @@ function CocinaContent() {
 
     const cargarPedidos = async () => {
         try {
+            // Solo mostrar pedidos del día actual — los de días anteriores se ocultan automáticamente
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            const todayStart = hoy.toISOString();
+
             const { data, error } = await supabase
                 .from('ventas')
                 .select(`
@@ -49,6 +54,7 @@ function CocinaContent() {
                     )
                 `)
                 .eq('estado_pedido', 'pendiente')
+                .gte('created_at', todayStart)
                 .order('created_at', { ascending: true });
 
             if (error) throw error;

@@ -299,6 +299,7 @@ body::before {
   /* ---- RESET GLOBAL ---- */
   @page {
     size: 80mm auto;
+    /* auto height to avoid fixed page length */
     margin: 0mm !important;
   }
 
@@ -338,7 +339,7 @@ body::before {
     visibility: visible !important;
   }
 
-  /* ---- CONTENEDOR DEL TICKET ---- */
+  /* ---- CONTENEDOR DEL TICKET (COMPACTO) ---- */
   .print-ticket {
     position: absolute !important;
     top: 0 !important;
@@ -346,15 +347,18 @@ body::before {
     width: 72mm !important;
     max-width: 72mm !important;
     margin: 0 !important;
-    padding: 3mm 4mm !important;
+    padding: 0mm 2mm 1mm 2mm !important;
+    /* Top 0mm, Bottom 1mm */
     background: white !important;
     color: #000 !important;
 
-    /* Arial rinde MUCHO más legible que Courier en térmica */
+    /* Arial es legible en tamaños pequeños */
     font-family: Arial, Helvetica, 'Liberation Sans', sans-serif !important;
-    font-size: 13pt !important;
-    line-height: 1.35 !important;
-    letter-spacing: 0 !important;
+    font-size: 9pt !important;
+    /* Reducido de 13pt */
+    line-height: 1.1 !important;
+    /* Reducido de 1.35 */
+    letter-spacing: -0.2px !important;
   }
 
   /* ---- FORZAR NEGRO ABSOLUTO EN TODO ---- */
@@ -377,93 +381,102 @@ body::before {
   /* ---- ENCABEZADO DEL NEGOCIO ---- */
   .print-ticket .ticket-header {
     text-align: center !important;
-    padding-bottom: 2mm !important;
-    margin-bottom: 2mm !important;
-    border-bottom: 3px solid #000 !important;
+    padding-bottom: 0.5mm !important;
+    margin-bottom: 0.5mm !important;
+    border-bottom: 1px solid #000 !important;
+    /* Reducido grosor */
   }
 
   .print-ticket .ticket-header .negocio-nombre {
-    font-size: 18pt !important;
+    font-size: 12pt !important;
+    /* Reducido de 18pt */
     font-weight: 900 !important;
-    line-height: 1.1 !important;
-    margin: 0 0 2mm 0 !important;
+    line-height: 1 !important;
+    margin: 0 0 1mm 0 !important;
     letter-spacing: -0.5px !important;
   }
 
   .print-ticket .ticket-header .negocio-info {
-    font-size: 9pt !important;
-    font-weight: 700 !important;
-    line-height: 1.3 !important;
+    font-size: 7pt !important;
+    /* Reducido de 9pt */
+    font-weight: 600 !important;
+    line-height: 1.1 !important;
   }
 
   .print-ticket .ticket-header .negocio-info p {
-    margin: 0.5mm 0 !important;
+    margin: 0 !important;
   }
 
   /* ---- NÚMERO DE BOLETA ---- */
   .print-ticket .ticket-boleta-num {
     text-align: center !important;
-    padding: 2mm 0 !important;
-    margin: 1mm 0 !important;
-    border-bottom: 2px dashed #000 !important;
+    padding: 1mm 0 !important;
+    margin: 0.5mm 0 !important;
+    border-bottom: 1px dashed #000 !important;
   }
 
   .print-ticket .ticket-boleta-num .boleta-titulo {
-    font-size: 11pt !important;
+    font-size: 8pt !important;
+    /* Reducido de 11pt */
     font-weight: 700 !important;
-    letter-spacing: 2px !important;
-    margin-bottom: 1mm !important;
+    letter-spacing: 0px !important;
+    margin-bottom: 0.5mm !important;
   }
 
   .print-ticket .ticket-boleta-num .boleta-numero {
-    font-size: 16pt !important;
+    font-size: 11pt !important;
+    /* Reducido de 16pt */
     font-weight: 900 !important;
   }
 
   /* ---- FECHA / HORA / MESA ---- */
   .print-ticket .ticket-meta {
-    font-size: 10pt !important;
-    font-weight: 700 !important;
-    padding: 1.5mm 0 !important;
+    font-size: 7pt !important;
+    /* Reducido de 10pt */
+    font-weight: 600 !important;
+    padding: 1mm 0 !important;
   }
 
   .print-ticket .ticket-meta-row {
     display: flex !important;
     justify-content: space-between !important;
-    margin-bottom: 1mm !important;
+    margin-bottom: 0.5mm !important;
   }
 
   .print-ticket .ticket-mesa {
     text-align: center !important;
-    font-size: 14pt !important;
+    font-size: 10pt !important;
+    /* Reducido de 14pt */
     font-weight: 900 !important;
-    border: 2px solid #000 !important;
-    padding: 1.5mm 0 !important;
-    margin: 1.5mm 0 !important;
+    border: 1px solid #000 !important;
+    padding: 0.5mm 0 !important;
+    margin: 1mm 0 !important;
   }
 
   /* ---- DATOS DEL CLIENTE ---- */
   .print-ticket .ticket-cliente {
-    font-size: 10pt !important;
-    font-weight: 700 !important;
-    padding: 1.5mm 0 !important;
+    font-size: 7pt !important;
+    /* Reducido de 10pt */
+    font-weight: 600 !important;
+    padding: 1mm 0 !important;
     margin-bottom: 1mm !important;
-    border-bottom: 2px dashed #000 !important;
+    border-bottom: 1px dashed #000 !important;
   }
 
   .print-ticket .ticket-cliente p {
-    margin: 0.5mm 0 !important;
+    margin: 0 !important;
   }
 
   /* ---- TABLA DE ITEMS ---- */
   .print-ticket .ticket-items-header {
     display: flex !important;
     justify-content: space-between !important;
-    font-size: 10pt !important;
-    font-weight: 900 !important;
-    padding-bottom: 1mm !important;
-    margin-bottom: 2mm !important;
-    border-bottom: 2px solid #000 !important;
+    font-size: 7pt !important;
+    /* Reducido explícitamente */
+    font-weight: 800 !important;
+    padding-bottom: 0.5mm !important;
+    margin-bottom: 1mm !important;
+    border-bottom: 1px solid #000 !important;
     text-transform: uppercase !important;
   }
 
@@ -471,10 +484,11 @@ body::before {
     display: flex !important;
     justify-content: space-between !important;
     align-items: flex-start !important;
-    font-size: 11pt !important;
-    line-height: 1.3 !important;
-    padding: 1mm 0 !important;
-    border-bottom: 1px dotted #000 !important;
+    font-size: 8pt !important;
+    /* Reducido de 11pt */
+    line-height: 1.1 !important;
+    padding: 0.5mm 0 !important;
+    border-bottom: 0.5px dotted #000 !important;
   }
 
   .print-ticket .ticket-item:last-child {
@@ -483,12 +497,12 @@ body::before {
 
   .print-ticket .ticket-item .item-cantidad {
     font-weight: 900 !important;
-    min-width: 6mm !important;
+    min-width: 4mm !important;
   }
 
   .print-ticket .ticket-item .item-nombre {
     flex: 1 !important;
-    padding: 0 2mm !important;
+    padding: 0 1mm !important;
     font-weight: 500 !important;
     text-transform: uppercase !important;
     word-break: break-word !important;
@@ -502,58 +516,64 @@ body::before {
 
   /* ---- TOTAL ---- */
   .print-ticket .ticket-total-box {
-    border-top: 4px solid #000 !important;
-    margin-top: 2mm !important;
-    padding-top: 2mm !important;
+    border-top: 2px solid #000 !important;
+    margin-top: 1mm !important;
+    padding-top: 1mm !important;
   }
 
   .print-ticket .ticket-total-row {
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
-    padding: 1mm 0 !important;
+    padding: 0.5mm 0 !important;
   }
 
   .print-ticket .ticket-total-label {
-    font-size: 13pt !important;
+    font-size: 9pt !important;
+    /* Reducido */
     font-weight: 900 !important;
     text-transform: uppercase !important;
   }
 
   .print-ticket .ticket-total-amount {
-    font-size: 18pt !important;
+    font-size: 12pt !important;
+    /* Reducido de 18pt */
     font-weight: 900 !important;
   }
 
   /* ---- FOOTER ---- */
   .print-ticket .ticket-footer {
     text-align: center !important;
-    margin-top: 3mm !important;
-    padding-top: 2mm !important;
-    border-top: 2px solid #000 !important;
+    margin-top: 1mm !important;
+    padding-top: 0.5mm !important;
+    border-top: 1px solid #000 !important;
   }
 
   .print-ticket .ticket-footer .footer-mensaje {
-    font-size: 10pt !important;
-    font-weight: 700 !important;
+    font-size: 8pt !important;
+    /* Reducido */
+    font-weight: 600 !important;
     font-style: italic !important;
-    margin-bottom: 2mm !important;
+    margin-bottom: 1mm !important;
   }
 
   .print-ticket .ticket-footer .footer-slogan {
-    font-size: 11pt !important;
-    font-weight: 900 !important;
-    letter-spacing: 1.5px !important;
-    border: 2px solid #000 !important;
-    padding: 1.5mm 3mm !important;
+    font-size: 8pt !important;
+    /* Reducido */
+    font-weight: 800 !important;
+    letter-spacing: 0.5px !important;
+    border: 1px solid #000 !important;
+    padding: 1mm 2mm !important;
     display: inline-block !important;
-    margin-bottom: 3mm !important;
+    margin-bottom: 1mm !important;
   }
 
   .print-ticket .ticket-footer .footer-sistema {
-    font-size: 7pt !important;
+    font-size: 5pt !important;
+    /* Muy pequeño */
     font-weight: 400 !important;
-    padding-bottom: 8mm !important;
+    color: #666 !important;
+    padding-bottom: 2mm !important;
   }
 
   /* ---- EVITAR CORTES ---- */

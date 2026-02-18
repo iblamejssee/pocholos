@@ -84,35 +84,39 @@ export default function UserMenu() {
                                 <p className="text-xs text-pocholo-brown/50 truncate">{user.email}</p>
                             </div>
 
-                            {/* Restablecer Button */}
-                            {!showResetConfirm ? (
-                                <button
-                                    onClick={() => setShowResetConfirm(true)}
-                                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-orange-50 transition-colors text-orange-600 font-semibold border-b border-gray-100"
-                                >
-                                    <RotateCcw size={18} />
-                                    <span>Restablecer Sistema</span>
-                                </button>
-                            ) : (
-                                <div className="p-3 bg-red-50 border-b border-red-100">
-                                    <p className="text-xs text-red-600 mb-2 font-medium">¿Borrar TODAS las ventas y el inventario de hoy?</p>
-                                    <div className="flex gap-2">
+                            {/* Restablecer Button - solo admin y cajera */}
+                            {(user.rol === 'administrador' || user.rol === 'cajera') && (
+                                <>
+                                    {!showResetConfirm ? (
                                         <button
-                                            onClick={handleReset}
-                                            disabled={resetting}
-                                            className="flex-1 bg-red-500 text-white text-xs py-2 rounded-lg hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-1"
+                                            onClick={() => setShowResetConfirm(true)}
+                                            className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-orange-50 transition-colors text-orange-600 font-semibold border-b border-gray-100"
                                         >
-                                            {resetting ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
-                                            {resetting ? 'Borrando...' : 'Sí, borrar'}
+                                            <RotateCcw size={18} />
+                                            <span>Restablecer Sistema</span>
                                         </button>
-                                        <button
-                                            onClick={() => setShowResetConfirm(false)}
-                                            className="flex-1 bg-gray-200 text-gray-700 text-xs py-2 rounded-lg hover:bg-gray-300"
-                                        >
-                                            Cancelar
-                                        </button>
-                                    </div>
-                                </div>
+                                    ) : (
+                                        <div className="p-3 bg-red-50 border-b border-red-100">
+                                            <p className="text-xs text-red-600 mb-2 font-medium">¿Borrar TODAS las ventas y el inventario de hoy?</p>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={handleReset}
+                                                    disabled={resetting}
+                                                    className="flex-1 bg-red-500 text-white text-xs py-2 rounded-lg hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-1"
+                                                >
+                                                    {resetting ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                                                    {resetting ? 'Borrando...' : 'Sí, borrar'}
+                                                </button>
+                                                <button
+                                                    onClick={() => setShowResetConfirm(false)}
+                                                    className="flex-1 bg-gray-200 text-gray-700 text-xs py-2 rounded-lg hover:bg-gray-300"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
                             )}
 
                             {/* Logout Button */}

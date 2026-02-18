@@ -40,7 +40,7 @@ export default function ProductOptionsModal({ isOpen, onClose, onConfirm, produc
 
     const nombreLower = producto.nombre.toLowerCase();
     const esPromocion = producto.tipo === 'promocion';
-    const esPollo = producto.tipo === 'pollo' || nombreLower.includes('pollo') || nombreLower.includes('mostrito');
+    const esPollo = (producto.tipo === 'pollo' || nombreLower.includes('pollo') || nombreLower.includes('mostrito')) && !nombreLower.includes('chaufa');
 
     // Para pollo entero o medio pollo: mostrar opción de trozado
     // También aplica para promos que incluyan pollo entero
@@ -251,8 +251,8 @@ export default function ProductOptionsModal({ isOpen, onClose, onConfirm, produc
                                                         }
                                                     }}
                                                     className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${(cantidad === 1 && parte === p.valor) || (cantidad > 1 && count > 0)
-                                                            ? 'border-pocholo-red bg-red-50 text-pocholo-red'
-                                                            : 'border-gray-100 hover:border-pocholo-yellow/50 text-gray-600'
+                                                        ? 'border-pocholo-red bg-red-50 text-pocholo-red'
+                                                        : 'border-gray-100 hover:border-pocholo-yellow/50 text-gray-600'
                                                         }`}
                                                 >
                                                     <div className="relative">

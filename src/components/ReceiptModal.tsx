@@ -18,6 +18,7 @@ interface ReceiptModalProps {
 }
 
 interface ConfigNegocio {
+    id?: number; // Added ID for reliable updates
     ruc: string;
     razon_social: string;
     direccion: string;
@@ -25,6 +26,8 @@ interface ConfigNegocio {
     mensaje_boleta: string;
     serie_boleta: string;
     numero_correlativo: number;
+    serie_ticket?: string;
+    numero_ticket?: number;
 }
 
 export default function ReceiptModal({ isOpen, onClose, items, total, orderId, mesaNumero, title = 'BOLETA DE VENTA' }: ReceiptModalProps) {
@@ -35,7 +38,9 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
         telefono: '',
         mensaje_boleta: '¡Gracias por su preferencia!',
         serie_boleta: 'B001',
-        numero_correlativo: 1
+        numero_correlativo: 1,
+        serie_ticket: 'T001',
+        numero_ticket: 1
     });
 
     const [numeroBoleta, setNumeroBoleta] = useState('');
@@ -49,7 +54,6 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
 
     useEffect(() => {
         if (isOpen) {
-            cargarConfiguracion();
             // Reset client data when opening modal
             setClienteNombre('');
             setErrorDni(null);
@@ -57,13 +61,21 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
             // Si viene título forzado, respetar, sino default a Boleta
             if (title && title !== 'BOLETA DE VENTA') {
                 setTipoComprobante('ticket');
+                cargarConfiguracion('ticket');
             } else {
                 setTipoComprobante('boleta');
+                cargarConfiguracion('boleta');
             }
         }
     }, [isOpen, title]);
 
-    const cargarConfiguracion = async () => {
+    // Cuando el usuario cambia manualmente el tipo
+    const handleTipoChange = (tipo: 'boleta' | 'ticket') => {
+        setTipoComprobante(tipo);
+        cargarConfiguracion(tipo);
+    };
+
+    const cargarConfiguracion = async (tipo: 'boleta' | 'ticket') => {
         try {
             const { data } = await supabase
                 .from('configuracion_negocio')
@@ -73,29 +85,31 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
 
             if (data) {
                 setConfig(data);
-                const numero = String(data.numero_correlativo).padStart(8, '0');
-                setNumeroBoleta(`${data.serie_boleta}-${numero}`);
 
-                // Solo incrementamos correlativo si es una BOLETA real
-                if (title === 'BOLETA DE VENTA') {
-                    await supabase
-                        .from('configuracion_negocio')
-                        .update({ numero_correlativo: data.numero_correlativo + 1 })
-                        .eq('id', data.id);
+                if (tipo === 'boleta') {
+                    // Lógica para BOLETA
+                    const numero = String(data.numero_correlativo + 1).padStart(8, '0'); // +1 para mostrar el siguiente
+                    setNumeroBoleta(`${data.serie_boleta}-${numero}`);
+
+                    // Incrementamos el correlativo en BD AHORA (al abrir)
+                    // Nota: Idealmente esto debería ser al IMPRIMIR para no saltar números si cancelan,
+                    // pero por simplicidad y consistencia con la lógica anterior lo mantenemos aquí o lo movemos.
+                    // El usuario pidió "por cada vez q se imprima", vamos a mover el incremento al handlePrint?
+                    // Por ahora seguiremos el patrón de "mostrar el número actual + 1".
+                    // Si el usuario pidió reiniciar a 0, el siguiente es 1.
+                } else {
+                    // Lógica para TICKET
+                    const serieT = data.serie_ticket || 'T001';
+                    const numT = String((data.numero_ticket || 0) + 1).padStart(6, '0');
+                    setSerieTicket(serieT);
+                    setNumeroTicket(`${serieT}-${numT}`);
                 }
             }
         } catch (error) {
-            console.log('Config no encontrada, usando valores por defecto');
-            const numero = String(Math.floor(Math.random() * 10000)).padStart(8, '0');
-            setNumeroBoleta(`B001-${numero}`);
+            console.error('Error al cargar configuración:', error);
+            // No fallback to random number to avoid confusion
         }
-
-        // Generar número de ticket (simple, basado en timestamp o random para demo)
-        // En producción real, esto debería venir de una tabla de correlativos de tickets interna
-        const numTicket = String(Math.floor(Date.now() / 1000) % 1000000).padStart(6, '0');
-        setNumeroTicket(`${serieTicket}-${numTicket}`);
     };
-
     const handleDNISearch = async () => {
         if (dni.length !== 8) {
             setErrorDni('El DNI debe tener 8 dígitos');
@@ -127,7 +141,39 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
         setErrorDni(null);
     };
 
-    const handlePrint = () => {
+    const handlePrint = async () => {
+        // Leer el valor FRESCO de la BD e incrementar AL IMPRIMIR
+        try {
+            const { data: freshConfig, error: fetchError } = await supabase
+                .from('configuracion_negocio')
+                .select('*')
+                .limit(1)
+                .single();
+
+            if (fetchError) {
+                console.error('Error al leer config fresca:', fetchError);
+            } else if (freshConfig) {
+                if (tipoComprobante === 'boleta') {
+                    const nuevoCorrelativo = (freshConfig.numero_correlativo || 0) + 1;
+                    const { error: updateError } = await supabase
+                        .from('configuracion_negocio')
+                        .update({ numero_correlativo: nuevoCorrelativo })
+                        .eq('id', freshConfig.id);
+                    if (updateError) console.error('Error update boleta:', updateError);
+                    else console.log('Boleta actualizada a:', nuevoCorrelativo);
+                } else {
+                    const nuevoTicket = (freshConfig.numero_ticket || 0) + 1;
+                    const { error: updateError } = await supabase
+                        .from('configuracion_negocio')
+                        .update({ numero_ticket: nuevoTicket })
+                        .eq('id', freshConfig.id);
+                    if (updateError) console.error('Error update ticket:', updateError);
+                    else console.log('Ticket actualizado a:', nuevoTicket);
+                }
+            }
+        } catch (err) {
+            console.error("Error al actualizar correlativo:", err);
+        }
         window.print();
     };
 
@@ -257,7 +303,7 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                             {/* Selector de Tipo */}
                             <div className="flex justify-center gap-2 mt-3">
                                 <button
-                                    onClick={() => setTipoComprobante('boleta')}
+                                    onClick={() => handleTipoChange('boleta')}
                                     className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${tipoComprobante === 'boleta'
                                         ? 'bg-white text-pocholo-red shadow-lg'
                                         : 'bg-red-700/50 text-white hover:bg-red-700'
@@ -266,7 +312,7 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                                     BOLETA
                                 </button>
                                 <button
-                                    onClick={() => setTipoComprobante('ticket')}
+                                    onClick={() => handleTipoChange('ticket')}
                                     className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${tipoComprobante === 'ticket'
                                         ? 'bg-white text-pocholo-red shadow-lg'
                                         : 'bg-red-700/50 text-white hover:bg-red-700'

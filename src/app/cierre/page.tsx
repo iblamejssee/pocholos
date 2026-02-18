@@ -162,7 +162,10 @@ function CierreCajaContent() {
                     stock_gaseosas_real: parseInt(stockGaseosasReal || '0'),
                     papas_finales: parseFloat(stockPapasFinal || '0'),
                     dinero_cierre_real: parseFloat(dineroCajaReal || '0'),
-                    observaciones_cierre: observaciones
+                    observaciones_cierre: observaciones,
+                    // GUARDAR las bebidas RESTANTES (ya calculadas como inicial - vendidas)
+                    // para que la apertura del siguiente día las cargue correctamente
+                    bebidas_detalle: stock.bebidas_detalle || null,
                 })
                 .eq('fecha', obtenerFechaHoy());
 

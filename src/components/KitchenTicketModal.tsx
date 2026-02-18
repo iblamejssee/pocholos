@@ -55,51 +55,52 @@ export default function KitchenTicketModal({ isOpen, onClose, venta }: KitchenTi
                         box-sizing: border-box;
                     }
                     body {
-                        font-family: 'Courier New', Courier, monospace;
-                        font-size: 14px;
-                        width: 80mm;
+                        font-family: 'Arial', sans-serif; /* Cambiado a Arial para mejor lectura en tamaño pequeño */
+                        font-size: 10px; /* Reducido de 14px */
+                        width: 72mm; /* Ajustado al ancho imprimible seguro */
                         margin: 0 auto;
-                        padding: 2mm 4mm;
-                        line-height: 1.4;
+                        padding: 0mm 2mm 2mm 2mm; /* Top 0mm */
+                        line-height: 1.1; /* Reducido de 1.4 */
                         color: black;
                         background: white;
                     }
                     .header {
                         text-align: center;
-                        margin-bottom: 10px;
-                        padding-bottom: 8px;
-                        border-bottom: 2px dashed black;
+                        margin-bottom: 2px; /* Reducido */
+                        padding-bottom: 2px; /* Reducido */
+                        border-bottom: 1px dashed black; /* Reducido grosor */
                     }
                     .header h1 {
-                        font-size: 20px;
-                        margin: 0 0 4px 0;
-                        font-weight: bold;
+                        font-size: 14px; /* Reducido de 20px */
+                        margin: 0 0 2px 0;
+                        font-weight: 900;
                     }
                     .header .hora {
-                        font-size: 12px;
+                        font-size: 9px; /* Reducido de 12px */
                     }
                     .mesa {
                         text-align: center;
-                        font-size: 18px;
+                        font-size: 12px;
                         font-weight: bold;
-                        margin: 12px 0;
+                        margin: 6px 0; /* Reducido de 12px */
                     }
                     .mesa span {
-                        border: 3px solid black;
-                        padding: 8px 20px;
+                        border: 2px solid black; /* Reducido grosor */
+                        padding: 4px 10px; /* Reducido */
                         display: inline-block;
-                        font-size: 20px;
+                        font-size: 14px; /* Reducido de 20px */
+                        font-weight: 900;
                     }
                     .divider {
-                        border-bottom: 2px dashed black;
-                        margin: 10px 0;
+                        border-bottom: 1px dashed black;
+                        margin: 5px 0; /* Reducido de 10px */
                     }
                     .items {
-                        margin: 10px 0;
+                        margin: 5px 0;
                     }
                     .item {
-                        border-bottom: 1px dashed #999;
-                        padding: 8px 0;
+                        border-bottom: 0.5px dashed #000;
+                        padding: 4px 0; /* Reducido */
                     }
                     .item:last-child {
                         border-bottom: none;
@@ -109,44 +110,45 @@ export default function KitchenTicketModal({ isOpen, onClose, venta }: KitchenTi
                         align-items: flex-start;
                     }
                     .item-qty {
-                        font-weight: bold;
-                        font-size: 16px;
-                        margin-right: 10px;
-                        min-width: 35px;
+                        font-weight: 900;
+                        font-size: 12px; /* Reducido de 16px */
+                        margin-right: 5px;
+                        min-width: 25px; /* Reducido */
                     }
                     .item-name {
-                        font-weight: bold;
-                        font-size: 15px;
+                        font-weight: 700;
+                        font-size: 11px; /* Reducido de 15px */
                         flex: 1;
+                        line-height: 1.1;
                     }
                     .item-detail {
-                        font-size: 12px;
-                        padding-left: 45px;
-                        margin-top: 2px;
+                        font-size: 9px; /* Reducido */
+                        padding-left: 30px; /* Reducido */
+                        margin-top: 1px;
                     }
                     .item-parte {
-                        font-weight: 600;
+                        font-weight: 700;
                     }
                     .item-nota {
                         font-style: italic;
                     }
                     .notas {
-                        margin: 10px 0;
-                        padding: 8px;
-                        border: 2px solid black;
-                        font-size: 13px;
+                        margin: 5px 0;
+                        padding: 4px;
+                        border: 1px solid black;
+                        font-size: 10px;
                     }
                     .notas-title {
                         font-weight: bold;
-                        font-size: 12px;
-                        margin-bottom: 4px;
+                        font-size: 9px;
+                        margin-bottom: 2px;
                     }
                     .footer {
                         text-align: center;
-                        font-size: 10px;
-                        margin-top: 10px;
-                        padding-top: 8px;
-                        border-top: 2px dashed black;
+                        font-size: 8px;
+                        margin-top: 2px;
+                        padding-top: 2px;
+                        border-top: 1px dashed black;
                     }
                 </style>
             </head>
