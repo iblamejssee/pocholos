@@ -250,12 +250,15 @@ function POSContent() {
             return currentItemKey === itemKey;
         });
 
-        if (itemExistenteIndex >= 0) {
+        if (itemExistenteIndex >= 0 && !carrito[itemExistenteIndex].printed) {
+            // Item nuevo en el carrito (no impreso aún) — solo incrementar cantidad
             const nuevoCarrito = [...carrito];
             nuevoCarrito[itemExistenteIndex].cantidad += (opciones.cantidad || 1);
             nuevoCarrito[itemExistenteIndex].subtotal = nuevoCarrito[itemExistenteIndex].cantidad * nuevoCarrito[itemExistenteIndex].precio;
             setCarrito(nuevoCarrito);
         } else {
+            // Item no existe O ya fue impreso (printed:true) → crear nuevo entry
+            // Así el filtro !item.printed lo detecta como nuevo y se imprime ticket de cocina
             // Determinar detalle_bebida: priorizar la selección del modal (promos), luego la del producto
             const detalleBebida = opciones.detalle_bebida
                 ? { marca: opciones.detalle_bebida.marca as any, tipo: opciones.detalle_bebida.tipo as any }
