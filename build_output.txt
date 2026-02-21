@@ -1,0 +1,44 @@
+﻿Ôû▓ Next.js 16.1.1 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+Ô£ô Compiled successfully in 22.5s
+  Running TypeScript ...
+node.exe : Failed to compile.
+En línea: 1 Carácter: 1
++ & "C:\Program Files\nodejs/node.exe" 
+"C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecifi 
+   ed: (Failed to compile.:String) [],   
+  RemoteException
+    + FullyQualifiedErrorId : NativeComm 
+   andError
+ 
+
+./src/lib/database.types.ts:15:5
+Type error: Duplicate identifier 
+'cena_personal'.
+
+[0m [90m 13 |[39m     
+papas_iniciales[33m?[39m[33m:[39m 
+number[33m;[39m
+ [90m 14 |[39m     
+papas_finales[33m?[39m[33m:[39m 
+number[33m;[39m
+[31m[1m>[22m[39m[90m 15 |[39m     
+cena_personal[33m?[39m[33m:[39m 
+number[33m;[39m
+ [90m    |[39m     [31m[1m^[22m[39m
+ [90m 16 |[39m     
+pollos_golpeados[33m?[39m[33m:[39m 
+number[33m;[39m
+ [90m 17 |[39m     
+dinero_cierre_real[33m?[39m[33m:[39m 
+number[33m;[39m
+ [90m 18 |[39m     observaciones_cierre
+[33m?[39m[33m:[39m 
+string[33m;[39m[0m
+Next.js build worker exited with code: 1 
+and signal: null
