@@ -126,6 +126,13 @@ export interface BebidasDetalle {
         litro_medio?: number;
         tres_litros?: number;
     };
+    sprite?: {
+        personal_retornable?: number;
+        descartable?: number;
+        litro?: number;
+        litro_medio?: number;
+        tres_litros?: number;
+    };
     fanta?: {
         descartable?: number;
     };
