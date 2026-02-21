@@ -1,0 +1,14 @@
+[2026-02-20T06:19:19.892Z] API /api/chat called
+[2026-02-20T06:19:19.896Z] Query received: test
+[2026-02-20T06:19:19.897Z] API Key loaded: sk-pr...
+[2026-02-20T06:19:19.912Z] Calling OpenAI API...
+[2026-02-20T06:19:20.558Z] OpenAI Response Status: 429
+[2026-02-20T06:19:20.562Z] OpenAI API Error: {"message":"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.","type":"insufficient_quota","param":null,"code":"insufficient_quota"}
+[2026-02-20T06:19:20.564Z] FINAL ERROR CATCH: You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.
+[2026-02-20T06:21:16.162Z] API /api/chat called
+[2026-02-20T06:21:16.164Z] Query received: test
+[2026-02-20T06:21:16.165Z] API Key loaded: sk-pr...
+[2026-02-20T06:21:16.174Z] Calling OpenAI API...
+[2026-02-20T06:21:17.212Z] OpenAI Response Status: 429
+[2026-02-20T06:21:17.215Z] OpenAI API Error: {"message":"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.","type":"insufficient_quota","param":null,"code":"insufficient_quota"}
+[2026-02-20T06:21:17.216Z] FINAL ERROR CATCH: You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.

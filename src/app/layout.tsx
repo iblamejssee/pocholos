@@ -9,6 +9,7 @@ import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { usePathname } from "next/navigation";
 import OfflineIndicator from '@/components/OfflineIndicator';
+import AIChatAssistant from '@/components/AIChatAssistant';
 import { Menu } from 'lucide-react';
 import Image from 'next/image';
 
@@ -127,9 +128,10 @@ export default function RootLayout({
               </div>
             </div>
           )}
+          <AIChatAssistant />
         </AuthProvider>
       </body>
-    </html>
+    </html >
   );
 }
 

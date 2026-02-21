@@ -31,18 +31,7 @@ const MARCAS_CONFIG = [
         sizes: [
             { key: 'personal_retornable', label: 'Personal Ret.', desc: '296ml' },
             { key: 'descartable', label: 'Descartable', desc: '600ml' },
-            { key: 'gordita', label: 'Gordita', desc: '625ml' },
             { key: 'litro', label: '1 Litro', desc: '1L' },
-            { key: 'litro_medio', label: '1.5 Litros', desc: '1.5L' },
-            { key: 'tres_litros', label: '3 Litros', desc: '3L' },
-        ],
-    },
-    {
-        key: 'sprite',
-        name: 'Sprite',
-        dot: 'bg-green-600',
-        sizes: [
-            { key: 'descartable', label: 'Personal', desc: '500ml' },
             { key: 'litro_medio', label: '1.5 Litros', desc: '1.5L' },
             { key: 'tres_litros', label: '3 Litros', desc: '3L' },
         ],
@@ -53,8 +42,6 @@ const MARCAS_CONFIG = [
         dot: 'bg-orange-500',
         sizes: [
             { key: 'descartable', label: 'Personal', desc: '500ml' },
-            { key: 'mediana', label: '2.25 Litros', desc: '2.25L' },
-            { key: 'tres_litros', label: '3 Litros', desc: '3L' },
         ],
     },
     {
@@ -63,7 +50,6 @@ const MARCAS_CONFIG = [
         dot: 'bg-sky-400',
         sizes: [
             { key: 'personal', label: 'Personal', desc: '600ml' },
-            { key: 'grande', label: 'Grande', desc: '2.5L' },
         ],
     },
 ] as const;
@@ -90,10 +76,9 @@ function AperturaContent() {
     // Detailed beverage state
     const [bebidasDetalle, setBebidasDetalle] = useState<BebidasDetalle>({
         inca_kola: { personal_retornable: 0, descartable: 0, gordita: 0, litro: 0, litro_medio: 0, tres_litros: 0 },
-        coca_cola: { personal_retornable: 0, descartable: 0, gordita: 0, litro: 0, litro_medio: 0, tres_litros: 0 },
-        sprite: { descartable: 0, litro_medio: 0, tres_litros: 0 },
-        fanta: { descartable: 0, mediana: 0, tres_litros: 0 },
-        agua_mineral: { personal: 0, grande: 0 },
+        coca_cola: { personal_retornable: 0, descartable: 0, litro: 0, litro_medio: 0, tres_litros: 0 },
+        fanta: { descartable: 0 },
+        agua_mineral: { personal: 0 },
     });
     const [expandedBrands, setExpandedBrands] = useState<Set<string>>(new Set());
 
@@ -163,10 +148,9 @@ function AperturaContent() {
     const resetBeverages = () => {
         setBebidasDetalle({
             inca_kola: { personal_retornable: 0, descartable: 0, gordita: 0, litro: 0, litro_medio: 0, tres_litros: 0 },
-            coca_cola: { personal_retornable: 0, descartable: 0, gordita: 0, litro: 0, litro_medio: 0, tres_litros: 0 },
-            sprite: { descartable: 0, litro_medio: 0, tres_litros: 0 },
-            fanta: { descartable: 0, mediana: 0, tres_litros: 0 },
-            agua_mineral: { personal: 0, grande: 0 },
+            coca_cola: { personal_retornable: 0, descartable: 0, litro: 0, litro_medio: 0, tres_litros: 0 },
+            fanta: { descartable: 0 },
+            agua_mineral: { personal: 0 },
         });
         setPreviousDayLoaded(false);
         toast.success('Stock de bebidas reiniciado');

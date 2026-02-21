@@ -233,8 +233,8 @@ export async function generarReporteExcel(data: ReportData) {
     // === DESGLOSE DE POLLOS ===
     row = applySectionHeader(ws, row, '🍗  DESGLOSE DE POLLOS', COLORS.red);
 
-    row = addDataRow(ws, row, '🐣 Pollos Iniciales', `${data.stock?.pollos_iniciales || 0}`, COLORS.cream);
-    row = addDataRow(ws, row, '✅ Vendidos (Total)', formatearCantidadPollos(data.metricas.pollosVendidos), COLORS.lightGreen);
+    row = addDataRow(ws, row, 'Pollos Iniciales', `${data.stock?.pollos_iniciales || 0}`, COLORS.cream);
+    row = addDataRow(ws, row, 'Vendidos (Total)', formatearCantidadPollos(data.metricas.pollosVendidos), COLORS.lightGreen);
     row = addDataRow(ws, row, '   — Enteros', `${data.desglosePollos.enteros}`, COLORS.white);
     row = addDataRow(ws, row, '   — Medios', `${data.desglosePollos.medios}`, COLORS.white);
     row = addDataRow(ws, row, '   — Cuartos', `${data.desglosePollos.cuartos}`, COLORS.white);

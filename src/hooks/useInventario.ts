@@ -14,10 +14,9 @@ interface UseInventarioResult {
 // Estructura por defecto - siempre se muestra, aunque todo sea 0
 const DEFAULT_BEBIDAS: BebidasDetalle = {
     inca_kola: { personal_retornable: 0, descartable: 0, gordita: 0, litro: 0, litro_medio: 0, tres_litros: 0 },
-    coca_cola: { personal_retornable: 0, descartable: 0, gordita: 0, litro: 0, litro_medio: 0, tres_litros: 0 },
-    sprite: { descartable: 0, litro_medio: 0, tres_litros: 0 },
-    fanta: { descartable: 0, mediana: 0, tres_litros: 0 },
-    agua_mineral: { personal: 0, grande: 0 },
+    coca_cola: { personal_retornable: 0, descartable: 0, litro: 0, litro_medio: 0, tres_litros: 0 },
+    fanta: { descartable: 0 },
+    agua_mineral: { personal: 0 },
 };
 
 /** Resta las bebidas vendidas del stock inicial */

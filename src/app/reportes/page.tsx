@@ -209,6 +209,32 @@ export default function ReportesPage() {
             toast.error('No hay datos para exportar');
             return;
         }
+
+        // Calcular resumen de stock para el rango seleccionado
+        const sortedInventarios = [...inventarios].sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+        const primerInv = sortedInventarios[0];
+        const ultimoInv = sortedInventarios[sortedInventarios.length - 1];
+
+        // Lógica: Inicial toma del primer día, Final toma del último día
+        const stockResumen = {
+            pollosIniciales: primerInv?.pollos_enteros || 0,
+            pollosVendidos: metricas.pollosVendidos,
+            pollosCena: inventarios.reduce((sum, inv) => sum + (inv.cena_personal || 0), 0),
+            pollosGolpeados: inventarios.reduce((sum, inv) => sum + (inv.pollos_golpeados || 0), 0),
+            pollosFinalReal: ultimoInv?.stock_pollos_real || 0,
+
+            papasIniciales: primerInv?.papas_iniciales || 0,
+            papasFinales: ultimoInv?.papas_finales || 0,
+            bebidasFinales: ultimoInv?.bebidas_detalle || null
+        };
+
+        // Si es rango de 'Sumatoria' (ej: pollos iniciales se suman si son días disjuntos? No, stock es un estado)
+        // Pero si selecciono un mes, el "Pollos Iniciales" es el del día 1. "Papas Iniciales" del día 1.
+        // "Consumo" será (Inicial Dia 1 + Entradas(no tracked) - Final Dia N).
+        // En este sistema simple, asumimos Stock Inicial Dia 1.
+        // Pero cuidado: Si hubo reabastecimiento entre días, el cálculo de diferencia global fallará.
+        // Para reporte DIARIO está perfecto. Para Rango, es una aproximación.
+
         try {
             const fileName = await generarReporteExcelReportes({
                 periodo: getPeriodoTexto(),
@@ -229,7 +255,8 @@ export default function ReportesPage() {
                     gastosEfectivo,
                     gastosDigital,
                     efectivoEnCaja
-                }
+                },
+                stockResumen // NEW FIELD
             });
             toast.success(`Excel descargado: ${fileName}`, { icon: '📊' });
         } catch (error) {

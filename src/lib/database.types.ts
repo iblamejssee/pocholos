@@ -12,6 +12,8 @@ export interface InventarioDiario {
     stock_gaseosas_real?: number;
     papas_iniciales?: number;
     papas_finales?: number;
+    cena_personal?: number;
+    pollos_golpeados?: number;
     dinero_cierre_real?: number;
     observaciones_cierre?: string;
     cena_personal?: number;
@@ -122,24 +124,15 @@ export interface BebidasDetalle {
     coca_cola?: {
         personal_retornable?: number;
         descartable?: number;
-        gordita?: number;
         litro?: number;
-        litro_medio?: number;
-        tres_litros?: number;
-    };
-    sprite?: {
-        descartable?: number;
         litro_medio?: number;
         tres_litros?: number;
     };
     fanta?: {
         descartable?: number;
-        mediana?: number;
-        tres_litros?: number;
     };
     agua_mineral?: {
         personal?: number;
-        grande?: number;
     };
 }
 

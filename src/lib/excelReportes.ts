@@ -2,7 +2,7 @@
 
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import type { Venta, InventarioDiario, Gasto } from './database.types';
+import type { Venta, InventarioDiario, Gasto, BebidasDetalle } from './database.types';
 import type { EstadisticaProducto, DesgloseMetodoPago, ConsumoPollosDia, DistribucionTipoVenta, ComparativaSemanal } from './reportes';
 import { formatearFraccionPollo } from './utils';
 import { format } from 'date-fns';
@@ -28,6 +28,16 @@ interface ReportesExportData {
     ventasPorHora: { hora: string; total: number; cantidad: number }[];
     inventarios: InventarioDiario[];
     gastos: Gasto[];
+    stockResumen?: {
+        pollosIniciales: number;
+        pollosVendidos: number;
+        pollosCena: number;
+        pollosGolpeados: number;
+        pollosFinalReal: number;
+        papasIniciales: number;
+        papasFinales: number;
+        bebidasFinales?: BebidasDetalle | null;
+    };
     caja?: {
         inicial: number;
         ventasEfectivo: number;
@@ -207,6 +217,140 @@ export async function generarReporteExcelReportes(data: ReportesExportData) {
 
     ws1.getRow(row).height = 10;
     row++;
+
+    // ===== ROW SECTION 1.5: INVENTARIO DETALLADO (POLLOS Y PAPAS) =====
+    if (data.stockResumen) {
+        sectionTitle(ws1, row, 1, 12, '🍗  CONTROL DE INVENTARIO Y MERMA', C.orange);
+        row++;
+
+        // Headers
+        const INV_H_BG = C.lightOrange;
+        styledCell(ws1, row, 1, 'Concepto', { bg: INV_H_BG, font: { bold: true, size: 10, color: { argb: C.darkGray } }, align: { vertical: 'middle', indent: 1 }, merge: [row, 1, row, 2] });
+        styledCell(ws1, row, 3, 'Cantidad', { bg: INV_H_BG, font: { bold: true, size: 10, color: { argb: C.darkGray } }, align: { vertical: 'middle', horizontal: 'center' }, merge: [row, 3, row, 4] });
+        styledCell(ws1, row, 5, 'Detalle', { bg: INV_H_BG, font: { bold: true, size: 10, color: { argb: C.darkGray } }, align: { vertical: 'middle', indent: 1 }, merge: [row, 5, row, 12] });
+        row++;
+
+        // Pollos Logic
+        const { pollosIniciales, pollosVendidos, pollosCena, pollosGolpeados, pollosFinalReal } = data.stockResumen;
+        const pollosEsperados = pollosIniciales - pollosVendidos; // Teórico
+        const diferenciaPollos = (pollosFinalReal + pollosCena + pollosGolpeados) - pollosEsperados;
+
+        labelValue(ws1, row, 1, 2, 3, 4, 'Pollos Iniciales', formatearFraccionPollo(pollosIniciales), C.white);
+        styledCell(ws1, row, 5, 'Stock al inicio del día', { bg: C.white, font: { size: 9, color: { argb: '666666' } }, align: { vertical: 'middle', indent: 1 }, merge: [row, 5, row, 12] });
+        row++;
+
+        labelValue(ws1, row, 1, 2, 3, 4, 'Pollos Vendidos', formatearFraccionPollo(pollosVendidos), C.lightGray);
+        styledCell(ws1, row, 5, 'Ventas registradas en sistema', { bg: C.lightGray, font: { size: 9, color: { argb: '666666' } }, align: { vertical: 'middle', indent: 1 }, merge: [row, 5, row, 12] });
+        row++;
+
+        labelValue(ws1, row, 1, 2, 3, 4, 'Cena Personal', formatearFraccionPollo(pollosCena), C.white);
+        styledCell(ws1, row, 5, 'Consumo autorizado (No es pérdida)', { bg: C.white, font: { size: 9, color: { argb: '666666' } }, align: { vertical: 'middle', indent: 1 }, merge: [row, 5, row, 12] });
+        row++;
+
+        labelValue(ws1, row, 1, 2, 3, 4, 'Golpeados (Merma)', formatearFraccionPollo(pollosGolpeados), C.white);
+        styledCell(ws1, row, 5, 'Pollo en mal estado (Merma Justificada)', { bg: C.white, font: { size: 9, color: { argb: '666666' } }, align: { vertical: 'middle', indent: 1 }, merge: [row, 5, row, 12] });
+        row++;
+
+        labelValue(ws1, row, 1, 2, 3, 4, 'Stock Final Real', formatearFraccionPollo(pollosFinalReal), C.lightGray, true);
+        styledCell(ws1, row, 5, 'Conteo físico (Aderezados + Caja)', { bg: C.lightGray, font: { size: 9, color: { argb: '666666' } }, align: { vertical: 'middle', indent: 1 }, merge: [row, 5, row, 12] });
+        row++;
+
+        // Diferencia row
+        const diffColor = diferenciaPollos === 0 ? C.lightGreen : (diferenciaPollos > 0 ? C.lightGreen : 'FFEBEE');
+        const diffText = `${diferenciaPollos > 0 ? '+' : ''}${formatearFraccionPollo(diferenciaPollos)}`;
+        labelValue(ws1, row, 1, 2, 3, 4, 'Diferencia', diffText, diffColor, true);
+        styledCell(ws1, row, 5, diferenciaPollos === 0 ? 'Cuadre Perfecto' : (diferenciaPollos > 0 ? 'Sobrante (Positivo)' : 'Faltante (Pérdida)'), { bg: diffColor, font: { size: 9, bold: true, color: { argb: diferenciaPollos >= 0 ? C.green : C.red } }, align: { vertical: 'middle', indent: 1 }, merge: [row, 5, row, 12] });
+        row++;
+
+        // Papas Logic
+        const { papasIniciales, papasFinales } = data.stockResumen;
+        const consumoPapas = papasIniciales - papasFinales;
+
+        ws1.getRow(row).height = 10;
+        row++;
+
+        labelValue(ws1, row, 1, 2, 3, 4, 'Papas Iniciales', `${papasIniciales} Kg`, C.cream);
+        styledCell(ws1, row, 5, '', { bg: C.cream, merge: [row, 5, row, 12] });
+        row++;
+
+        labelValue(ws1, row, 1, 2, 3, 4, 'Papas Finales', `${papasFinales} Kg`, C.white);
+        styledCell(ws1, row, 5, '', { bg: C.white, merge: [row, 5, row, 12] });
+        row++;
+
+        labelValue(ws1, row, 1, 2, 3, 4, 'Consumo Papas', `${consumoPapas.toFixed(2)} Kg`, C.lightOrange, true);
+        styledCell(ws1, row, 5, 'Consumo aproximado del día', { bg: C.lightOrange, font: { size: 9, color: { argb: C.brown } }, align: { vertical: 'middle', indent: 1 }, merge: [row, 5, row, 12] });
+        row++;
+
+        ws1.getRow(row).height = 10;
+        row++;
+
+        // ===== BEBIDAS SOBRANTES (FROM LAST DAY) =====
+        if (data.stockResumen.bebidasFinales) {
+            sectionTitle(ws1, row, 1, 12, '🥤  STOCK DE BEBIDAS (CIERRE)', C.blue);
+            row++;
+
+            const MARCA_LABEL: Record<string, string> = {
+                inca_kola: 'Inca Kola', coca_cola: 'Coca Cola', sprite: 'Sprite', fanta: 'Fanta', agua_mineral: 'Agua Mineral',
+            };
+            const TIPO_LABEL: Record<string, string> = {
+                personal_retornable: 'Personal Ret.', descartable: 'Descartable', gordita: 'Gordita',
+                litro: '1L', litro_medio: '1.5L', tres_litros: '3L', mediana: '2.25L',
+                personal: '600ml', grande: '2.5L', medio_litro: '500ml'
+            };
+            const MARCA_COLORS: Record<string, string> = {
+                inca_kola: C.yellow, coca_cola: 'FFEBEE', sprite: C.lightGreen, fanta: C.lightOrange, agua_mineral: C.lightBlue,
+            };
+
+            const bebidas = data.stockResumen.bebidasFinales;
+            // We'll render them in columns. 
+            // Logic: Iterate brands, then items.
+
+            for (const [marca, tipos] of Object.entries(bebidas)) {
+                if (!tipos) continue;
+                const tiposObj = tipos as Record<string, number>;
+                const items = Object.entries(tiposObj).filter(([, q]) => q !== undefined); // Show all even if 0? better show all to check stock
+
+                if (items.length > 0) {
+                    const bgColor = MARCA_COLORS[marca] || C.lightGray;
+                    const totalMarca = items.reduce((sum, [, q]) => sum + (q || 0), 0);
+
+                    // Brand Header line
+                    styledCell(ws1, row, 1, `${MARCA_LABEL[marca] || marca} (Total: ${totalMarca})`, {
+                        bg: bgColor,
+                        font: { bold: true, size: 10, color: { argb: C.darkGray } },
+                        align: { vertical: 'middle', indent: 1 },
+                        merge: [row, 1, row, 12]
+                    });
+                    ws1.getRow(row).height = 20;
+                    row++;
+
+                    // Items in a grid (3 columns: Item-Qty | Item-Qty | Item-Qty)
+                    const itemsPerRow = 3;
+                    const rowsNeeded = Math.ceil(items.length / itemsPerRow);
+
+                    for (let r = 0; r < rowsNeeded; r++) {
+                        ws1.getRow(row).height = 18;
+                        for (let c = 0; c < itemsPerRow; c++) {
+                            const itemIdx = r * itemsPerRow + c;
+                            if (itemIdx < items.length) {
+                                const [tipo, qty] = items[itemIdx];
+                                const colStart = c * 4 + 1; // 1, 5, 9
+
+                                labelValue(ws1, row, colStart, colStart + 2, colStart + 3, colStart + 3,
+                                    TIPO_LABEL[tipo] || tipo,
+                                    qty || 0,
+                                    C.white
+                                );
+                            }
+                        }
+                        row++;
+                    }
+                }
+            }
+            ws1.getRow(row).height = 10;
+            row++;
+        }
+    }
 
     // ===== ROW SECTION 2: COMPARATIVA SEMANAL (FULL WIDTH) =====
     if (data.comparativa) {

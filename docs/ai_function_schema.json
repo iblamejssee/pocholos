@@ -1,0 +1,64 @@
+{
+    "name": "get_business_data",
+    "description": "Retrieves business data such as sales, inventory, expenses, and product performance from the database. Use this tool when the user asks questions about their business metrics.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query_type": {
+                "type": "string",
+                "enum": [
+                    "sales_summary",
+                    "inventory_check",
+                    "expenses_summary",
+                    "top_products",
+                    "daily_closing_status"
+                ],
+                "description": "The type of data to retrieve. 'sales_summary' for revenue/count. 'inventory_check' for current stock. 'expenses_summary' for costs. 'daily_closing_status' for cash cut info."
+            },
+            "date_range": {
+                "type": "object",
+                "description": "The date range for the query. If asking for 'today', use the current date for both start and end.",
+                "properties": {
+                    "start": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "YYYY-MM-DD format"
+                    },
+                    "end": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "YYYY-MM-DD format"
+                    }
+                },
+                "required": [
+                    "start",
+                    "end"
+                ]
+            },
+            "filters": {
+                "type": "object",
+                "properties": {
+                    "payment_method": {
+                        "type": "string",
+                        "enum": [
+                            "efectivo",
+                            "yape",
+                            "plin",
+                            "tarjeta",
+                            "mixto"
+                        ],
+                        "description": "Filter by payment method"
+                    },
+                    "product_name": {
+                        "type": "string",
+                        "description": "Filter by specific product name (fuzzy match)"
+                    }
+                }
+            }
+        },
+        "required": [
+            "query_type",
+            "date_range"
+        ]
+    }
+}

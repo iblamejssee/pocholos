@@ -117,7 +117,14 @@ function CierreCajaContent() {
         const pollosEsperados = stock.pollos_disponibles;
         const gaseosasEsperadas = stock.gaseosas_disponibles;
 
-        const diffPollos = parseFloat(stockPollosReal || '0') - pollosEsperados;
+        // La diferencia se calcula sumando el stock físico + lo que se comió el personal (justificado)
+        // y restándole lo que debería haber según el sistema
+        const stockFisico = parseFloat(stockPollosReal || '0');
+        const consumoPersonal = parseFloat(cenaPersonal || '0');
+        const mermaGolpeados = parseFloat(pollosGolpeados || '0');
+
+        // Diferencia = (Físico + Cena + Golpeados) - Esperado
+        const diffPollos = (stockFisico + consumoPersonal + mermaGolpeados) - pollosEsperados;
         const diffGaseosas = parseInt(stockGaseosasReal || '0') - gaseosasEsperadas;
 
         return { diffPollos, diffGaseosas };
@@ -249,9 +256,9 @@ ${gastosTexto}
 
 🥔 *INVENTARIO PAPAS*
 --------------------------------
-🥔 Iniciales: ${stock?.papas_iniciales || 0} Kg
-🥔 Finales: ${stockPapasFinal || 0} Kg
-📉 Consumo Aprox: ${((stock?.papas_iniciales || 0) - (parseFloat(stockPapasFinal) || 0)).toFixed(1)} Kg
+Iniciales: ${stock?.papas_iniciales || 0} Kg
+Finales: ${stockPapasFinal || 0} Kg
+Consumo Aprox: ${((stock?.papas_iniciales || 0) - (parseFloat(stockPapasFinal) || 0)).toFixed(1)} Kg
 
 📋 *PLATILLOS VENDIDOS*
 --------------------------------
@@ -263,6 +270,7 @@ ${bebidasTexto}
 
 📊 *CUADRE DE STOCK*
 --------------------------------
+Pollos Diff: ${diffPollos > 0 ? '+' : ''}${formatearFraccionPollo(diffPollos)} ${(parseFloat(cenaPersonal || '0') > 0 || parseFloat(pollosGolpeados || '0') > 0) ? '(Inc. Justificados)' : ''}
 Gaseosas Total: ${stockGaseosasReal} (Diff: ${diffGaseosas > 0 ? '+' : ''}${diffGaseosas})
 
 📝 Notas: ${observaciones || 'Ninguna'}
@@ -512,7 +520,7 @@ _Generado automáticamente por Pocholo's POS_`;
                                     {/* Pollos Aderezados */}
                                     <div className="mb-4">
                                         <label className="text-sm font-medium text-pocholo-brown mb-1 block">
-                                            🍗 Pollos Aderezados
+                                            Pollos Aderezados
                                         </label>
                                         <input
                                             type="number"
@@ -524,10 +532,25 @@ _Generado automáticamente por Pocholo's POS_`;
                                         />
                                     </div>
 
+                                    {/* Pollos Golpeados */}
+                                    <div className="mb-3">
+                                        <label className="text-sm font-medium text-pocholo-brown mb-1 block">
+                                            Pollos Golpeados (Merma)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            step="0.125"
+                                            value={pollosGolpeados}
+                                            onChange={e => setPollosGolpeados(e.target.value)}
+                                            className="w-full p-3 rounded-xl border-2 border-red-200 bg-red-50 focus:border-red-400 focus:outline-none text-lg font-bold"
+                                            placeholder="0"
+                                        />
+                                    </div>
+
                                     {/* Pollos En Caja */}
                                     <div className="mb-3">
                                         <label className="text-sm font-medium text-pocholo-brown mb-1 block">
-                                            📦 Pollos en Caja
+                                            Pollos en Caja (Crudos)
                                         </label>
                                         <input
                                             type="number"
@@ -537,6 +560,24 @@ _Generado automáticamente por Pocholo's POS_`;
                                             className="w-full p-3 rounded-xl border-2 border-blue-200 bg-blue-50 focus:border-blue-400 focus:outline-none text-lg font-bold"
                                             placeholder="0"
                                         />
+                                    </div>
+
+                                    {/* Cena Personal */}
+                                    <div className="mb-4">
+                                        <label className="text-sm font-medium text-pocholo-brown mb-1 block">
+                                            Cena Personal (Consumo)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            step="0.125"
+                                            value={cenaPersonal}
+                                            onChange={e => setCenaPersonal(e.target.value)}
+                                            className="w-full p-3 rounded-xl border-2 border-purple-200 bg-purple-50 focus:border-purple-400 focus:outline-none text-lg font-bold"
+                                            placeholder="0"
+                                        />
+                                        <p className="text-xs text-pocholo-brown/50 mt-1">
+                                            * Se descontará del stock final esperado
+                                        </p>
                                     </div>
 
                                     {/* Total y diferencia */}
@@ -550,36 +591,6 @@ _Generado automáticamente por Pocholo's POS_`;
                                                 </span>
                                             )}
                                         </div>
-                                    </div>
-
-                                    {/* Cena del Personal */}
-                                    <div className="mb-3">
-                                        <label className="text-sm font-medium text-pocholo-brown mb-1 block">
-                                            🍽️ Cena del Personal (se descuenta)
-                                        </label>
-                                        <input
-                                            type="number"
-                                            step="0.125"
-                                            value={cenaPersonal}
-                                            onChange={e => setCenaPersonal(e.target.value)}
-                                            className="w-full p-3 rounded-xl border-2 border-green-200 bg-green-50 focus:border-green-400 focus:outline-none text-lg font-bold"
-                                            placeholder="0"
-                                        />
-                                    </div>
-
-                                    {/* Pollos Golpeados */}
-                                    <div className="mb-3">
-                                        <label className="text-sm font-medium text-pocholo-brown mb-1 block">
-                                            💥 Pollos Golpeados
-                                        </label>
-                                        <input
-                                            type="number"
-                                            step="0.125"
-                                            value={pollosGolpeados}
-                                            onChange={e => setPollosGolpeados(e.target.value)}
-                                            className="w-full p-3 rounded-xl border-2 border-red-200 bg-red-50 focus:border-red-400 focus:outline-none text-lg font-bold"
-                                            placeholder="0"
-                                        />
                                     </div>
 
                                     {/* Pollos Finales Netos */}
