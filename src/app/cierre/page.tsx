@@ -37,6 +37,8 @@ function CierreCajaContent() {
     // Estados para inputs manuales
     const [pollosAderezados, setPollosAderezados] = useState('');
     const [pollosEnCaja, setPollosEnCaja] = useState('');
+    const [cenaPersonal, setCenaPersonal] = useState('');
+    const [pollosGolpeados, setPollosGolpeados] = useState('');
     const [stockGaseosasReal, setStockGaseosasReal] = useState('');
     const [stockPapasFinal, setStockPapasFinal] = useState('');
     const [dineroCajaReal, setDineroCajaReal] = useState('');
@@ -162,6 +164,8 @@ function CierreCajaContent() {
                     stock_gaseosas_real: parseInt(stockGaseosasReal || '0'),
                     papas_finales: parseFloat(stockPapasFinal || '0'),
                     dinero_cierre_real: parseFloat(dineroCajaReal || '0'),
+                    cena_personal: parseFloat(cenaPersonal || '0'),
+                    pollos_golpeados: parseFloat(pollosGolpeados || '0'),
                     observaciones_cierre: observaciones,
                     // GUARDAR las bebidas RESTANTES (ya calculadas como inicial - vendidas)
                     // para que la apertura del siguiente día las cargue correctamente
@@ -239,6 +243,9 @@ ${gastosTexto}
 ❌ Sobrantes Total: ${stockPollosReal}
    - 🍗 Aderezados: ${pollosAderezados || '0'}
    - 📦 En Caja: ${pollosEnCaja || '0'}
+🍽️ Cena del Personal: ${cenaPersonal || '0'}
+💥 Pollos Golpeados: ${pollosGolpeados || '0'}
+📊 Pollos Finales Netos: ${(parseFloat(stockPollosReal || '0') - parseFloat(cenaPersonal || '0') - parseFloat(pollosGolpeados || '0')).toFixed(2)}
 
 🥔 *INVENTARIO PAPAS*
 --------------------------------
@@ -297,6 +304,8 @@ _Generado automáticamente por Pocholo's POS_`;
                 stockPollosReal,
                 pollosAderezados,
                 pollosEnCaja,
+                cenaPersonal,
+                pollosGolpeados,
                 stockGaseosasReal,
                 stockPapasFinal,
                 dineroCajaReal,
@@ -542,6 +551,46 @@ _Generado automáticamente por Pocholo's POS_`;
                                             )}
                                         </div>
                                     </div>
+
+                                    {/* Cena del Personal */}
+                                    <div className="mb-3">
+                                        <label className="text-sm font-medium text-pocholo-brown mb-1 block">
+                                            🍽️ Cena del Personal (se descuenta)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            step="0.125"
+                                            value={cenaPersonal}
+                                            onChange={e => setCenaPersonal(e.target.value)}
+                                            className="w-full p-3 rounded-xl border-2 border-green-200 bg-green-50 focus:border-green-400 focus:outline-none text-lg font-bold"
+                                            placeholder="0"
+                                        />
+                                    </div>
+
+                                    {/* Pollos Golpeados */}
+                                    <div className="mb-3">
+                                        <label className="text-sm font-medium text-pocholo-brown mb-1 block">
+                                            💥 Pollos Golpeados
+                                        </label>
+                                        <input
+                                            type="number"
+                                            step="0.125"
+                                            value={pollosGolpeados}
+                                            onChange={e => setPollosGolpeados(e.target.value)}
+                                            className="w-full p-3 rounded-xl border-2 border-red-200 bg-red-50 focus:border-red-400 focus:outline-none text-lg font-bold"
+                                            placeholder="0"
+                                        />
+                                    </div>
+
+                                    {/* Pollos Finales Netos */}
+                                    {(cenaPersonal || pollosGolpeados) && (
+                                        <div className="flex justify-between items-center p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                                            <span className="font-medium text-emerald-800">Pollos Finales Netos:</span>
+                                            <span className="font-bold text-lg text-emerald-700">
+                                                {(parseFloat(stockPollosReal || '0') - parseFloat(cenaPersonal || '0') - parseFloat(pollosGolpeados || '0')).toFixed(2)}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Papas (Kg) */}

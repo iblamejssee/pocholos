@@ -59,6 +59,8 @@ interface ReportData {
     stockPollosReal: string;
     pollosAderezados: string;
     pollosEnCaja: string;
+    cenaPersonal: string;
+    pollosGolpeados: string;
     stockGaseosasReal: string;
     stockPapasFinal: string;
     dineroCajaReal: string;
@@ -241,6 +243,11 @@ export async function generarReporteExcel(data: ReportData) {
     row = addDataRow(ws, row, '❌ Sobrantes Total', data.stockPollosReal, COLORS.cream, true);
     row = addDataRow(ws, row, '   🍗 Aderezados', data.pollosAderezados || '0', COLORS.white);
     row = addDataRow(ws, row, '   📦 En Caja', data.pollosEnCaja || '0', COLORS.white);
+    row = addDataRow(ws, row, '🍽️ Cena del Personal', data.cenaPersonal || '0', COLORS.lightGreen);
+    row = addDataRow(ws, row, '💥 Pollos Golpeados', data.pollosGolpeados || '0', 'FFEBEE');
+
+    const pollosFinalesNetos = parseFloat(data.stockPollosReal || '0') - parseFloat(data.cenaPersonal || '0') - parseFloat(data.pollosGolpeados || '0');
+    row = addTotalRow(ws, row, '📊 POLLOS FINALES NETOS', `${pollosFinalesNetos.toFixed(2)}`, COLORS.green);
 
     const diffPollosColor = data.diffPollos === 0 ? COLORS.lightGreen : 'FFEBEE';
     row = addDataRow(ws, row, 'Diferencia vs Sistema', `${data.diffPollos > 0 ? '+' : ''}${data.diffPollos}`, diffPollosColor, true);

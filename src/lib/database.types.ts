@@ -14,6 +14,8 @@ export interface InventarioDiario {
     papas_finales?: number;
     dinero_cierre_real?: number;
     observaciones_cierre?: string;
+    cena_personal?: number;
+    pollos_golpeados?: number;
     created_at: string;
     updated_at: string;
 }

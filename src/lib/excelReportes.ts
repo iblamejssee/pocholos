@@ -494,6 +494,75 @@ export async function generarReporteExcelReportes(data: ReportesExportData) {
         row++;
     }
 
+    // ===== ROW SECTION 7: INVENTARIO DETALLADO POR DÍA =====
+    if (data.inventarios.length > 0) {
+        styledCell(ws1, row, 1, '📦  INVENTARIO DETALLADO POR DÍA', {
+            bg: C.brown,
+            font: { bold: true, size: 11, color: { argb: C.white } },
+            align: { vertical: 'middle', horizontal: 'left', indent: 1 },
+            merge: [row, 1, row, 12],
+        });
+        ws1.getRow(row).height = 28;
+        row++;
+
+        // Table headers
+        const invHeaders = ['Fecha', 'Pollos Ini.', 'Pollos Sobr.', 'Cena Personal', 'Golpeados', 'Papas Ini.', 'Papas Fin.', 'Estado'];
+        const invCols = [
+            [1, 2],   // Fecha
+            [3, 3],   // Pollos Ini
+            [4, 4],   // Pollos Sobrantes
+            [5, 5],   // Cena Personal
+            [6, 7],   // Golpeados
+            [8, 9],   // Papas Ini
+            [10, 10], // Papas Final
+            [11, 12], // Estado
+        ];
+
+        for (let h = 0; h < invHeaders.length; h++) {
+            const [cs, ce] = invCols[h];
+            if (cs !== ce) ws1.mergeCells(row, cs, row, ce);
+            const cell = ws1.getCell(row, cs);
+            cell.value = invHeaders[h];
+            cell.font = { bold: true, size: 9, color: { argb: C.white } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '5D4037' } };
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        }
+        ws1.getRow(row).height = 24;
+        row++;
+
+        for (let i = 0; i < data.inventarios.length; i++) {
+            const inv = data.inventarios[i];
+            const bg = i % 2 === 0 ? C.white : C.cream;
+
+            const vals = [
+                format(new Date(inv.fecha), 'dd/MM/yyyy'),
+                `${inv.pollos_enteros || 0}`,
+                `${inv.stock_pollos_real ?? '-'}`,
+                `${inv.cena_personal ?? 0}`,
+                `${inv.pollos_golpeados ?? 0}`,
+                `${inv.papas_iniciales ?? '-'} Kg`,
+                `${inv.papas_finales ?? '-'} Kg`,
+                inv.estado === 'cerrado' ? '✅ Cerrado' : '🔓 Abierto',
+            ];
+
+            for (let h = 0; h < vals.length; h++) {
+                const [cs, ce] = invCols[h];
+                if (cs !== ce) ws1.mergeCells(row, cs, row, ce);
+                const cell = ws1.getCell(row, cs);
+                cell.value = vals[h];
+                cell.font = { size: 10, color: { argb: C.darkGray } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                cell.border = { bottom: { style: 'hair', color: { argb: C.medGray } } };
+            }
+            ws1.getRow(row).height = 20;
+            row++;
+        }
+
+        ws1.getRow(row).height = 10;
+        row++;
+    }
+
     // Footer
     styledCell(ws1, row, 1, `Generado automáticamente por Pocholo's POS — ${new Date().toLocaleString('es-PE')}`, {
         font: { size: 8, italic: true, color: { argb: '999999' } },
