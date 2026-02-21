@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 
 // ============================================================
 // POCHOLO'S CHICKEN - AI CHAT ASSISTANT
-// Dual mode: Gemini AI (primary) + Smart Fallback (backup)
+// Priority: 1) Groq (free, fast) → 2) Gemini → 3) Smart Fallback
 // ============================================================
 
 function getToday() {
@@ -15,6 +15,7 @@ function getToday() {
 const SYSTEM_KNOWLEDGE = `
 Eres "Kodefy Analyst AI", el asistente inteligente del restaurante **Pocholo's Chicken**, una pollería peruana ubicada en Ayacucho.
 Responde SIEMPRE en español. Sé amable, profesional y útil. Usa emojis para hacer las respuestas más visuales.
+Responde cualquier pregunta que te hagan - tanto sobre el negocio como preguntas generales, cálculos matemáticos, etc.
 
 ## CONOCIMIENTO DEL SISTEMA POS
 
@@ -269,7 +270,7 @@ function getSmartResponse(query: string, dbData: any): string {
             `También puedes ver reportes en /reportes`;
     }
 
-    // --- GREETING / DEFAULT (responde como IA con contexto) ---
+    // --- GREETING / DEFAULT ---
     return `¡Hola! 🐔 Soy **Kodefy Analyst AI**, tu asistente de Pocholo's Chicken.\n\n` +
         `Puedo ayudarte con:\n` +
         `• 📋 **"¿Cómo hago la apertura?"** → Te guío paso a paso\n` +
@@ -288,7 +289,6 @@ async function fetchDatabaseContext(supabase: any, today: string) {
     const result: any = { ventas: null, inventario: null, gastos: null, hasApertura: false };
 
     try {
-        // Inventario del día
         const { data: inv } = await supabase
             .from('inventario_diario')
             .select('*')
@@ -302,7 +302,6 @@ async function fetchDatabaseContext(supabase: any, today: string) {
     } catch { }
 
     try {
-        // Ventas del día
         const { data: ventas } = await supabase
             .from('ventas')
             .select('total, metodo_pago, created_at, items')
@@ -312,7 +311,6 @@ async function fetchDatabaseContext(supabase: any, today: string) {
     } catch { }
 
     try {
-        // Gastos del día
         const { data: gastos } = await supabase
             .from('gastos')
             .select('descripcion, monto, metodo_pago')
@@ -323,42 +321,95 @@ async function fetchDatabaseContext(supabase: any, today: string) {
     return result;
 }
 
-// ==================== GEMINI AI CALL ====================
-async function callGemini(query: string, apiKey: string, today: string, dbContext: string): Promise<string | null> {
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
+// ==================== GROQ AI CALL (PRIMARY - FREE & FAST) ====================
+async function callGroq(query: string, apiKey: string, today: string, dbContext: string): Promise<string | null> {
     try {
-        const response = await fetch(geminiUrl, {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
             body: JSON.stringify({
-                contents: [{ role: "user", parts: [{ text: query }] }],
-                systemInstruction: {
-                    parts: [{
-                        text: SYSTEM_KNOWLEDGE + `\n\nFecha de hoy: ${today}\n\n## DATOS EN TIEMPO REAL:\n${dbContext}`
-                    }]
-                }
+                model: 'llama-3.3-70b-versatile',
+                messages: [
+                    {
+                        role: 'system',
+                        content: SYSTEM_KNOWLEDGE + `\n\nFecha de hoy: ${today}\n\n## DATOS EN TIEMPO REAL:\n${dbContext}`
+                    },
+                    { role: 'user', content: query }
+                ],
+                temperature: 0.7,
+                max_tokens: 1024
             })
         });
 
-        if (response.status === 429) return null;
-        if (!response.ok) return null;
+        if (!response.ok) {
+            console.log(`Groq error: ${response.status}`);
+            return null;
+        }
 
         const data = await response.json();
-        if (data.error) return null;
-
-        const parts = data.candidates?.[0]?.content?.parts || [];
-        const textPart = parts.find((p: any) => p.text);
-        return textPart?.text || null;
-    } catch {
+        return data.choices?.[0]?.message?.content || null;
+    } catch (error) {
+        console.error('Groq call failed:', error);
         return null;
     }
+}
+
+// ==================== GEMINI AI CALL (BACKUP) ====================
+async function callGemini(query: string, apiKey: string, today: string, dbContext: string): Promise<string | null> {
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+            const response = await fetch(geminiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ role: "user", parts: [{ text: query }] }],
+                    systemInstruction: {
+                        parts: [{
+                            text: SYSTEM_KNOWLEDGE + `\n\nFecha de hoy: ${today}\n\n## DATOS EN TIEMPO REAL:\n${dbContext}`
+                        }]
+                    }
+                })
+            });
+
+            if (response.status === 429 && attempt === 0) {
+                let waitSeconds = 20;
+                try {
+                    const errorData = await response.json();
+                    const retryInfo = errorData?.error?.details?.find(
+                        (d: any) => d['@type']?.includes('RetryInfo')
+                    );
+                    if (retryInfo?.retryDelay) {
+                        const parsed = parseInt(retryInfo.retryDelay);
+                        if (parsed > 0 && parsed <= 45) waitSeconds = parsed + 2;
+                    }
+                } catch { }
+                console.log(`Gemini 429 - waiting ${waitSeconds}s...`);
+                await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
+                continue;
+            }
+
+            if (!response.ok) return null;
+
+            const data = await response.json();
+            const parts = data.candidates?.[0]?.content?.parts || [];
+            return parts.find((p: any) => p.text)?.text || null;
+        } catch {
+            return null;
+        }
+    }
+    return null;
 }
 
 // ==================== MAIN API ROUTE ====================
 export async function POST(req: Request) {
     try {
         const { query } = await req.json();
+        const GROQ_API_KEY = process.env.GROQ_API_KEY;
         const GEMINI_API_KEY = process.env.GEMINIAI_API_KEY;
         const today = getToday();
 
@@ -371,7 +422,7 @@ export async function POST(req: Request) {
         // Fetch real-time database context
         const dbData = await fetchDatabaseContext(supabase, today);
 
-        // Build context string for Gemini
+        // Build context string for AI
         const dbContext = JSON.stringify({
             apertura: dbData.hasApertura,
             inventario: dbData.inventario ? {
@@ -390,15 +441,23 @@ export async function POST(req: Request) {
             } : null
         });
 
-        // Try Gemini AI first
-        if (GEMINI_API_KEY) {
-            const aiResponse = await callGemini(query, GEMINI_API_KEY, today, dbContext);
-            if (aiResponse) {
-                return NextResponse.json({ reply: aiResponse });
+        // 1) Try Groq first (free, fast, reliable)
+        if (GROQ_API_KEY) {
+            const groqResponse = await callGroq(query, GROQ_API_KEY, today, dbContext);
+            if (groqResponse) {
+                return NextResponse.json({ reply: groqResponse });
             }
         }
 
-        // Fallback: Smart keyword-based response with DB data
+        // 2) Try Gemini as backup
+        if (GEMINI_API_KEY) {
+            const geminiResponse = await callGemini(query, GEMINI_API_KEY, today, dbContext);
+            if (geminiResponse) {
+                return NextResponse.json({ reply: geminiResponse });
+            }
+        }
+
+        // 3) Smart fallback (no AI, but handles known queries)
         const reply = getSmartResponse(query, dbData);
         return NextResponse.json({ reply });
 
