@@ -85,44 +85,45 @@ function MesasActivasContent() {
         try {
             setLoading(true);
 
-            // 1. Obtener mesas ocupadas con sus ventas
-            const { data: mesas, error: mesasError } = await supabase
-                .from('mesas')
-                .select('*')
-                .eq('estado', 'ocupada')
-                .order('numero', { ascending: true });
-
-            if (mesasError) throw mesasError;
-
-            const mesasConVentas: MesaConVenta[] = await Promise.all(
-                (mesas || []).map(async (mesa) => {
-                    const { data: venta } = await supabase
-                        .from('ventas')
-                        .select('*')
-                        .eq('mesa_id', mesa.id)
-                        .eq('estado_pago', 'pendiente')
-                        .order('created_at', { ascending: false })
-                        .limit(1)
-                        .single();
-
-                    return {
-                        ...mesa,
-                        venta: venta || undefined
-                    };
-                })
-            );
-
-            setMesasActivas(mesasConVentas);
-
-            // 2. Obtener ventas PARA LLEVAR (sin mesa_id) pendientes
-            const { data: paraLlevar } = await supabase
+            // 1. Obtener TODAS las ventas pendientes (Mesa o Para Llevar)
+            // Hacemos join con mesas para tener el número
+            const { data: ventasPendientes, error: ventasError } = await supabase
                 .from('ventas')
-                .select('*')
-                .is('mesa_id', null)
+                .select(`
+                    *,
+                    mesas:mesa_id (
+                        id,
+                        numero
+                    )
+                `)
                 .eq('estado_pago', 'pendiente')
                 .order('created_at', { ascending: false });
 
-            setVentasParaLlevar(paraLlevar || []);
+            if (ventasError) throw ventasError;
+
+            // 2. Separar en "Para Llevar" y "Mesas"
+            const paraLlevar: Venta[] = [];
+            const mesasConVentas: MesaConVenta[] = [];
+
+            (ventasPendientes || []).forEach(venta => {
+                if (!venta.mesa_id) {
+                    paraLlevar.push(venta);
+                } else {
+                    // Mapear al formato MesaConVenta que espera el resto de la UI
+                    // Si hay varios pedidos para la misma mesa, aparecerán como tarjetas separadas
+                    // lo cual es CORRECTO para que no se "pierdan" ventas en caja.
+                    mesasConVentas.push({
+                        id: venta.mesa_id,
+                        numero: venta.mesas?.numero || 0,
+                        estado: 'ocupada', // Forzamos ocupada porque tiene venta pendiente en esta vista
+                        created_at: venta.mesas?.created_at || venta.created_at,
+                        venta: venta
+                    });
+                }
+            });
+
+            setVentasParaLlevar(paraLlevar);
+            setMesasActivas(mesasConVentas);
 
         } catch (error) {
             console.error('Error al cargar pedidos pendientes:', error);
