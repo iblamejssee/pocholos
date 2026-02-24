@@ -7,8 +7,9 @@ import type { ItemCarrito, VentaResponse, ItemVenta, BebidasDetalle } from './da
 export const calcularStockRestado = (items: ItemCarrito[]) => {
     let pollosRestados = 0;
     let gaseosasRestadas = 0;
+    let chichaRestada = 0;
     const bebidasDetalle: BebidasDetalle = {
-        inca_kola: {}, coca_cola: {}, sprite: {}, fanta: {}, agua_mineral: {}
+        inca_kola: {}, coca_cola: {}, sprite: {}, fanta: {}, agua_mineral: {}, chicha: {}
     };
 
     items.forEach((item) => {
@@ -17,11 +18,25 @@ export const calcularStockRestado = (items: ItemCarrito[]) => {
             pollosRestados += item.fraccion_pollo * item.cantidad;
         } else if (item.detalle_bebida) {
             // Es una bebida con detalle específico
-            gaseosasRestadas += item.cantidad;
             const { marca, tipo } = item.detalle_bebida;
 
-            // Ignorar chicha ya que no se controla en el inventario detallado de gaseosas
-            if (marca !== 'chicha') {
+            if (marca === 'chicha') {
+                // Descuento en litros según requerimiento
+                // vaso: 250ml (0.25L), litro: 1L, medio_litro: 0.5L
+                let litros = 0;
+                if (tipo === 'vaso') litros = 0.25;
+                else if (tipo === 'litro') litros = 1.0;
+                else if (tipo === 'medio_litro') litros = 0.5;
+
+                chichaRestada += litros * item.cantidad;
+
+                // También sumar al detalle para visibilidad en el desglose
+                if (bebidasDetalle.chicha) {
+                    // @ts-ignore
+                    bebidasDetalle.chicha[tipo] = (bebidasDetalle.chicha[tipo] || 0) + item.cantidad;
+                }
+            } else {
+                gaseosasRestadas += item.cantidad;
                 const marcaKey = marca as keyof BebidasDetalle;
 
                 // Inicializar objeto de marca si no existe
@@ -29,22 +44,19 @@ export const calcularStockRestado = (items: ItemCarrito[]) => {
                     bebidasDetalle[marcaKey] = {};
                 }
 
-                // Sumar cantidad (usando any para evitar error de indexación dinámica complejo)
+                // Sumar cantidad 
                 // @ts-ignore
                 bebidasDetalle[marcaKey][tipo] = (bebidasDetalle[marcaKey][tipo] || 0) + item.cantidad;
             }
         } else {
-            // Es una bebida genérica o sin detalle mapeado (backward compatibility)
-            // Solo suma al total genérico, no al detalle
-            if (item.fraccion_pollo === 0 && item.precio > 0) { // Asumimos que si no es pollo y tiene precio, es bebida/otro
-                // Por ahora solo contamos como gaseosa si el ID o nombre lo sugiere, o si el usuario lo marca.
-                // En la lógica anterior: "else { gaseosasRestadas += item.cantidad }"
+            // Retrocompatibilidad
+            if (item.fraccion_pollo === 0 && item.precio > 0) {
                 gaseosasRestadas += item.cantidad;
             }
         }
     });
 
-    return { pollosRestados, gaseosasRestadas, bebidasDetalle };
+    return { pollosRestados, gaseosasRestadas, chichaRestada, bebidasDetalle };
 };
 
 /**
@@ -129,7 +141,7 @@ export const registrarVenta = async (
 
         // Calcular totales
         const total = items.reduce((sum, item) => sum + item.subtotal, 0);
-        const { pollosRestados, gaseosasRestadas, bebidasDetalle } = calcularStockRestado(items);
+        const { pollosRestados, gaseosasRestadas, chichaRestada, bebidasDetalle } = calcularStockRestado(items);
 
         // Preparar items para guardar (sin el campo subtotal)
         const itemsParaGuardar: ItemVenta[] = items.map(({ subtotal, ...item }) => item);
@@ -143,6 +155,7 @@ export const registrarVenta = async (
                 total: total,
                 pollos_restados: pollosRestados,
                 gaseosas_restadas: gaseosasRestadas,
+                chicha_restada: chichaRestada,
                 bebidas_detalle: bebidasDetalle, // Guardar detalle
                 mesa_id: mesaId,
                 estado_pedido: 'pendiente',
@@ -210,7 +223,7 @@ export const actualizarVenta = async (
             subtotal: it.precio * it.cantidad
         }));
 
-        const { pollosRestados: nuevoPollos, gaseosasRestadas: nuevoGaseosas, bebidasDetalle: nuevoDetalle } = calcularStockRestado(itemsParaCalculo);
+        const { pollosRestados: nuevoPollos, gaseosasRestadas: nuevoGaseosas, chichaRestada: nuevoChicha, bebidasDetalle: nuevoDetalle } = calcularStockRestado(itemsParaCalculo);
 
         // 5. Recalcular total monetario
         const nuevoTotal = itemsParaCalculo.reduce((sum, item) => sum + item.subtotal, 0);
@@ -223,6 +236,7 @@ export const actualizarVenta = async (
                 total: nuevoTotal,
                 pollos_restados: nuevoPollos,
                 gaseosas_restadas: nuevoGaseosas,
+                chicha_restada: nuevoChicha,
                 bebidas_detalle: nuevoDetalle
             })
             .eq('id', ventaId)

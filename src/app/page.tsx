@@ -14,6 +14,8 @@ import { useState, useEffect } from 'react';
 import { resetearSistema } from '@/lib/reset';
 import { supabase, obtenerFechaHoy } from '@/lib/supabase';
 import toast from 'react-hot-toast';
+import AdminAjusteModal from '@/components/AdminAjusteModal';
+import { useAuth } from '@/contexts/AuthContext';
 
 function DashboardContent() {
   const { stock, loading, error, refetch } = useInventario();
@@ -32,8 +34,10 @@ function DashboardContent() {
   const [showGastosModal, setShowGastosModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showBebidasDetalle, setShowBebidasDetalle] = useState(false);
+  const [showAdminAjusteModal, setShowAdminAjusteModal] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [gastosDelDia, setGastosDelDia] = useState<{ id: string; descripcion: string; monto: number; metodo_pago?: string }[]>([]);
+  const { user } = useAuth();
 
   // Cargar gastos del día
   const cargarGastos = async () => {
@@ -145,7 +149,7 @@ function DashboardContent() {
         >
           <div className="flex items-center justify-between mb-4">
             <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-              <DollarSign size={20} className="text-slate-600" />
+              <span className="text-[18px] font-bold leading-none">S/</span>
             </div>
             <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
               +Hoy
@@ -327,7 +331,7 @@ function DashboardContent() {
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-4 bg-slate-50 rounded-xl">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-slate-500">Pollos</span>
@@ -356,6 +360,22 @@ function DashboardContent() {
                   </div>
                   <p className="text-xl font-bold text-slate-800">{stock.gaseosas_disponibles}</p>
                   <p className="text-xs text-blue-500 underline mt-1">{showBebidasDetalle ? 'Ocultar ▲' : 'Ver detalle ▼'}</p>
+                </div>
+
+                <div className="p-4 bg-slate-50 rounded-xl">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-slate-500">Chicha</span>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${((stock.chicha_disponible || 0) / (stock.chicha_inicial || 1)) > 0.3
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-red-100 text-red-700'
+                      }`}>
+                      {Math.round(((stock.chicha_disponible || 0) / (stock.chicha_inicial || 1)) * 100)}%
+                    </span>
+                  </div>
+                  <p className="text-xl font-bold text-slate-800">
+                    {(stock.chicha_disponible || 0).toFixed(2)}L
+                  </p>
+                  <p className="text-xs text-slate-400">de {stock.chicha_inicial || 0}L iniciales</p>
                 </div>
 
                 <div className="p-4 bg-slate-50 rounded-xl">
@@ -475,6 +495,23 @@ function DashboardContent() {
               </div>
               <ArrowRight size={18} className="text-slate-400" />
             </Link>
+
+            {/* Ajuste Administrativo (Solo Admin) */}
+            {user?.rol === 'administrador' && (
+              <button
+                onClick={() => setShowAdminAjusteModal(true)}
+                className="w-full flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl hover:bg-amber-100 transition-colors"
+              >
+                <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                  <Zap size={20} className="text-amber-600" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="font-medium text-amber-900">Ajuste Admin</p>
+                  <p className="text-xs text-amber-700">Stock / Caja +</p>
+                </div>
+                <ArrowRight size={18} className="text-amber-400" />
+              </button>
+            )}
           </div>
         </motion.div>
       </div>
@@ -550,7 +587,7 @@ function DashboardContent() {
             onClick={() => setShowGastosModal(true)}
             className="w-full mt-4 flex items-center justify-center gap-2 p-3 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition-colors font-medium"
           >
-            <DollarSign size={18} />
+            <span className="text-[18px] font-bold leading-none">S/</span>
             Registrar Gasto
           </button>
 
@@ -588,6 +625,18 @@ function DashboardContent() {
           isOpen={showGastosModal}
           onClose={() => setShowGastosModal(false)}
           onGastoRegistrado={cargarGastos}
+        />
+      )}
+
+      {/* Modal de Ajuste Administrativo */}
+      {showAdminAjusteModal && (
+        <AdminAjusteModal
+          isOpen={showAdminAjusteModal}
+          onClose={() => setShowAdminAjusteModal(false)}
+          onSuccess={() => {
+            refetch();
+            refetchVentas();
+          }}
         />
       )}
 

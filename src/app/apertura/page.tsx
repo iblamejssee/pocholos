@@ -68,6 +68,7 @@ function AperturaContent() {
     const router = useRouter();
     const [pollosEnteros, setPollosEnteros] = useState('');
     const [papasIniciales, setPapasIniciales] = useState('');
+    const [chichaInicial, setChichaInicial] = useState('');
     const [dineroInicial, setDineroInicial] = useState('');
     const [loading, setLoading] = useState(false);
     const [loadingPrevious, setLoadingPrevious] = useState(true);
@@ -161,6 +162,7 @@ function AperturaContent() {
 
         const pollos = parseFloat(pollosEnteros);
         const papas = parseFloat(papasIniciales) || 0;
+        const chicha = parseFloat(chichaInicial) || 0;
         const totalBebidas = calculateTotalBeverages();
 
         if (isNaN(pollos) || pollos < 0) {
@@ -188,6 +190,7 @@ function AperturaContent() {
                     .update({
                         pollos_enteros: pollos,
                         papas_iniciales: papas,
+                        chicha_inicial: chicha,
                         gaseosas: totalBebidas,
                         dinero_inicial: parseFloat(dineroInicial) || 0,
                         bebidas_detalle: bebidasDetalle,
@@ -215,6 +218,7 @@ function AperturaContent() {
                     fecha: fechaHoy,
                     pollos_enteros: pollos,
                     papas_iniciales: papas,
+                    chicha_inicial: chicha,
                     gaseosas: totalBebidas,
                     dinero_inicial: parseFloat(dineroInicial) || 0,
                     bebidas_detalle: bebidasDetalle,
@@ -225,7 +229,7 @@ function AperturaContent() {
             if (error) throw error;
 
             toast.success(
-                `¡Día iniciado exitosamente!\nPollos: ${pollos} | Papas: ${papas}kg | Bebidas: ${totalBebidas}`,
+                `¡Día iniciado exitosamente!\nPollos: ${pollos} | Chicha: ${chicha}L | Bebidas: ${totalBebidas}`,
                 { duration: 3000, icon: '✅' }
             );
 
@@ -233,10 +237,10 @@ function AperturaContent() {
                 router.push('/');
             }, 1500);
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('Error al guardar apertura:', error);
-            const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-            toast.error(`Error al iniciar el día: ${errorMessage}`, { duration: 5000 });
+            const errorMessage = error?.message || (typeof error === 'string' ? error : 'Error desconocido');
+            toast.error(`Error al iniciar el día: ${errorMessage}`, { duration: 8000 });
         } finally {
             setLoading(false);
         }
@@ -316,6 +320,37 @@ function AperturaContent() {
                                 className="w-full px-6 py-4 text-3xl font-bold text-pocholo-brown bg-pocholo-cream/30 border-2 border-pocholo-brown/10 rounded-xl focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all"
                             />
                             <span className="absolute right-6 top-1/2 -translate-y-1/2 text-pocholo-brown/40 font-bold">Kg</span>
+                        </div>
+                    </motion.div>
+
+                    {/* Chicha (L) */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.08 }}
+                        className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-purple-500"
+                    >
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-14 h-14 bg-purple-100 rounded-xl flex items-center justify-center">
+                                <span className="text-3xl">🟣</span>
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-pocholo-brown">Chicha (Litros)</h2>
+                                <p className="text-sm text-pocholo-brown/60">Stock de chicha preparada</p>
+                            </div>
+                        </div>
+                        <div className="relative">
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={chichaInicial}
+                                onChange={(e) => setChichaInicial(e.target.value)}
+                                placeholder="0.00"
+                                disabled={loading}
+                                className="w-full px-6 py-4 text-3xl font-bold text-pocholo-brown bg-pocholo-cream/30 border-2 border-pocholo-brown/10 rounded-xl focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                            />
+                            <span className="absolute right-6 top-1/2 -translate-y-1/2 text-pocholo-brown/40 font-bold">L</span>
                         </div>
                     </motion.div>
                 </div>

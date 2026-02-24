@@ -260,11 +260,25 @@ function POSContent() {
             // Item no existe O ya fue impreso (printed:true) → crear nuevo entry
             // Así el filtro !item.printed lo detecta como nuevo y se imprime ticket de cocina
             // Determinar detalle_bebida: priorizar la selección del modal (promos), luego la del producto
-            const detalleBebida = opciones.detalle_bebida
+            let detalleBebida = opciones.detalle_bebida
                 ? { marca: opciones.detalle_bebida.marca as any, tipo: opciones.detalle_bebida.tipo as any }
                 : (producto.marca_gaseosa && producto.tipo_gaseosa)
                     ? { marca: producto.marca_gaseosa, tipo: producto.tipo_gaseosa }
                     : undefined;
+
+            // AUTO-DETECCIÓN DE CHICHA: Si no tiene detalle pero el nombre sugiere chicha, mapearlo
+            if (!detalleBebida && (producto.nombre.toLowerCase().includes('chicha') || producto.tipo === 'bebida')) {
+                const nombreLower = producto.nombre.toLowerCase();
+                if (nombreLower.includes('chicha')) {
+                    let tipo: any = 'vaso';
+                    if (nombreLower.includes('medio') || nombreLower.includes('0.5') || nombreLower.includes('0,5') || nombreLower.includes('1/2')) {
+                        tipo = 'medio_litro';
+                    } else if (nombreLower.includes('litro') || nombreLower.includes('1l') || nombreLower.includes('jarra')) {
+                        tipo = 'litro';
+                    }
+                    detalleBebida = { marca: 'chicha', tipo };
+                }
+            }
 
             const nuevoItem: ItemCarrito = {
                 producto_id: producto.id,
@@ -549,7 +563,7 @@ function POSContent() {
                 {stock && (
                     <div className="hidden md:block p-2 glass-card rounded-lg border-l-4 border-pocholo-yellow">
                         <p className="text-xs text-pocholo-brown font-bold">
-                            📦 {formatearFraccionPollo(stock.pollos_disponibles)} Pollos | {stock.gaseosas_disponibles} Bebidas
+                            📦 {formatearFraccionPollo(stock.pollos_disponibles)} Pollos | {stock.gaseosas_disponibles} Bebidas | {(stock.chicha_disponible || 0).toFixed(2)}L Chicha
                         </p>
                     </div>
                 )}

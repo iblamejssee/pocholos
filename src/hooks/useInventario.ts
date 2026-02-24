@@ -86,7 +86,7 @@ export const useInventario = (): UseInventarioResult => {
             // 2. Obtener TODAS las ventas del día para calcular restas
             const { data: ventasDelDia, error: ventasError } = await supabase
                 .from('ventas')
-                .select('pollos_restados, gaseosas_restadas, bebidas_detalle')
+                .select('pollos_restados, gaseosas_restadas, chicha_restada, bebidas_detalle')
                 .eq('fecha', fechaHoy);
 
             if (ventasError) {
@@ -96,12 +96,14 @@ export const useInventario = (): UseInventarioResult => {
             // 3. Calcular totales de pollos y gaseosas vendidos
             let pollosVendidos = 0;
             let gaseosasVendidas = 0;
+            let chichaVendida = 0;
             const ventasBebidasArray: BebidasDetalle[] = [];
 
             if (ventasDelDia) {
                 for (const v of ventasDelDia) {
                     pollosVendidos += v.pollos_restados || 0;
                     gaseosasVendidas += v.gaseosas_restadas || 0;
+                    chichaVendida += v.chicha_restada || 0;
                     if (v.bebidas_detalle) {
                         ventasBebidasArray.push(v.bebidas_detalle as BebidasDetalle);
                     }
@@ -130,6 +132,9 @@ export const useInventario = (): UseInventarioResult => {
                 gaseosas_vendidas: gaseosasVendidas,
                 papas_iniciales: inventario.papas_iniciales || 0,
                 dinero_inicial: inventario.dinero_inicial || 0,
+                chicha_inicial: inventario.chicha_inicial || 0,
+                chicha_vendida: chichaVendida,
+                chicha_disponible: (inventario.chicha_inicial || 0) - chichaVendida,
                 estado: 'abierto',
                 bebidas_detalle: bebidasActuales,
             };

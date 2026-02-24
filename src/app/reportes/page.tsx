@@ -524,7 +524,7 @@ export default function ReportesPage() {
                                 <div className="flex items-center justify-between mb-3">
                                     <span className="text-sm font-medium text-slate-500">Ingresos Totales</span>
                                     <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
-                                        <DollarSign size={20} className="text-green-600" />
+                                        <span className="text-[18px] font-bold leading-none">S/</span>
                                     </div>
                                 </div>
                                 <p className="text-3xl font-bold text-slate-800">S/ {metricas.totalIngresos.toFixed(2)}</p>

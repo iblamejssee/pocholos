@@ -117,11 +117,27 @@ export default function ProductOptionsModal({ isOpen, onClose, onConfirm, produc
             notasFinales = notasFinales ? `${saborInfusion}, ${notasFinales}` : saborInfusion;
         }
 
+        // Determinar detalle_bebida
+        let detalleBebida: { marca: string, tipo: string } | undefined = promoConGaseosa
+            ? { marca: marcaGaseosa, tipo: 'litro_medio' }
+            : undefined;
+
+        // Auto-detectar Chicha si no es promo
+        if (!detalleBebida && nombreLower.includes('chicha')) {
+            let tipo: any = 'vaso';
+            if (nombreLower.includes('medio') || nombreLower.includes('0.5') || nombreLower.includes('0,5') || nombreLower.includes('1/2')) {
+                tipo = 'medio_litro';
+            } else if (nombreLower.includes('litro') || nombreLower.includes('1l') || nombreLower.includes('jarra')) {
+                tipo = 'litro';
+            }
+            detalleBebida = { marca: 'chicha', tipo };
+        }
+
         onConfirm(producto, {
             parte: cantidad === 1 ? parte : undefined, // Si es 1, enviamos la parte structured. Si son varios, va en notas.
             trozado: esPolloEnteroOMedio ? trozado : undefined,
             notas: notasFinales,
-            detalle_bebida: promoConGaseosa ? { marca: marcaGaseosa, tipo: 'litro_medio' } : undefined,
+            detalle_bebida: detalleBebida,
             cantidad
         });
         onClose();

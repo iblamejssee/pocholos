@@ -41,6 +41,7 @@ function MesasActivasContent() {
         orderId: string;
         mesaNumero?: number;
         title?: string;
+        isNewSale?: boolean;
     } | null>(null);
 
     // Estado para cancelar pedido
@@ -176,7 +177,8 @@ function MesasActivasContent() {
                 items,
                 total,
                 orderId: ventaId,
-                mesaNumero: mesaNumero
+                mesaNumero: mesaNumero,
+                isNewSale: true
             });
 
             setShowReceipt(true);
@@ -449,6 +451,7 @@ function MesasActivasContent() {
                     orderId={receiptData.orderId}
                     mesaNumero={receiptData.mesaNumero}
                     title={receiptData.title}
+                    isNewSale={receiptData.isNewSale}
                 />
             )}
 

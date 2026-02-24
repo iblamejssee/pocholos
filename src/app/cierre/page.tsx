@@ -389,7 +389,8 @@ _Generado automáticamente por Pocholo's POS_`;
                     <AnimatedCard delay={0.1}>
                         <div className="glass-card p-6 rounded-2xl shadow-3d">
                             <h2 className="text-xl font-bold text-pocholo-brown mb-4 flex items-center gap-2">
-                                <DollarSign className="text-pocholo-yellow" /> Resumen Financiero
+                                <span className="text-[18px] font-bold leading-none">S/</span>
+                                Resumen Financiero
                             </h2>
 
                             <div className="space-y-3">

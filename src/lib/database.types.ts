@@ -15,6 +15,7 @@ export interface InventarioDiario {
     cena_personal?: number;
     pollos_golpeados?: number;
     dinero_cierre_real?: number;
+    chicha_inicial?: number; // Litros de chicha
     observaciones_cierre?: string;
     created_at: string;
     updated_at: string;
@@ -28,7 +29,7 @@ export interface Producto {
     fraccion_pollo: number; // 1.0, 0.25, 0.125, 0
     // Campos para trackeo de bebidas
     marca_gaseosa?: 'inca_kola' | 'coca_cola' | 'sprite' | 'fanta' | 'chicha' | null;
-    tipo_gaseosa?: 'personal_retornable' | 'descartable' | 'gordita' | 'litro' | 'litro_medio' | 'tres_litros' | 'medio_litro' | null;
+    tipo_gaseosa?: 'personal_retornable' | 'descartable' | 'gordita' | 'litro' | 'litro_medio' | 'tres_litros' | 'medio_litro' | 'vaso' | null;
     activo: boolean;
     imagen_url?: string; // URL de la imagen del producto
     descripcion?: string; // Descripción detallada del producto
@@ -53,7 +54,7 @@ export interface ItemVenta {
     // Detalle de bebida para este item
     detalle_bebida?: {
         marca: 'inca_kola' | 'coca_cola' | 'sprite' | 'fanta' | 'chicha';
-        tipo: 'personal_retornable' | 'descartable' | 'gordita' | 'litro' | 'litro_medio' | 'tres_litros' | 'medio_litro';
+        tipo: 'personal_retornable' | 'descartable' | 'gordita' | 'litro' | 'litro_medio' | 'tres_litros' | 'medio_litro' | 'vaso';
     };
     tipo?: 'pollo' | 'bebida' | 'complemento' | 'promocion';
     printed?: boolean;
@@ -66,6 +67,7 @@ export interface Venta {
     total: number;
     pollos_restados: number;
     gaseosas_restadas: number;
+    chicha_restada?: number; // Litros restados en esta venta
     bebidas_detalle?: BebidasDetalle; // Consolidado de bebidas restadas en esta venta
     metodo_pago: 'efectivo' | 'tarjeta' | 'yape' | 'plin' | 'mixto';
     pago_dividido?: {
@@ -102,6 +104,9 @@ export interface StockActual {
     gaseosas_iniciales: number;
     pollos_vendidos: number;
     gaseosas_vendidas: number;
+    chicha_inicial?: number;
+    chicha_vendida?: number;
+    chicha_disponible?: number;
     papas_iniciales?: number;
     dinero_inicial: number;
     estado: 'abierto' | 'cerrado';
@@ -138,6 +143,11 @@ export interface BebidasDetalle {
     };
     agua_mineral?: {
         personal?: number;
+    };
+    chicha?: {
+        vaso?: number;
+        litro?: number;
+        medio_litro?: number;
     };
 }
 
