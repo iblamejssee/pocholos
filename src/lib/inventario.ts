@@ -104,3 +104,37 @@ export async function ajustarStockChicha(cantidad: number): Promise<{ success: b
         return { success: false, message: error.message || 'Error al actualizar el stock.' };
     }
 }
+/**
+ * Ajusta el stock de papas (Kg) sumando la cantidad proporcionada.
+ */
+export async function ajustarStockPapas(cantidad: number): Promise<{ success: boolean; message: string }> {
+    try {
+        const fechaHoy = obtenerFechaHoy();
+
+        // 1. Obtener registro actual
+        const { data, error: fetchError } = await supabase
+            .from('inventario_diario')
+            .select('papas_iniciales')
+            .eq('fecha', fechaHoy)
+            .single();
+
+        if (fetchError || !data) {
+            return { success: false, message: 'No se encontró la apertura del día.' };
+        }
+
+        const nuevoTotal = (data.papas_iniciales || 0) + cantidad;
+
+        // 2. Actualizar
+        const { error: updateError } = await supabase
+            .from('inventario_diario')
+            .update({ papas_iniciales: nuevoTotal })
+            .eq('fecha', fechaHoy);
+
+        if (updateError) throw updateError;
+
+        return { success: true, message: `Se añadieron ${cantidad.toFixed(1)}Kg de papas al stock.` };
+    } catch (error: any) {
+        console.error('Error al ajustar stock de papas:', error);
+        return { success: false, message: error.message || 'Error al actualizar el stock.' };
+    }
+}

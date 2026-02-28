@@ -36,6 +36,9 @@ interface ReportesExportData {
         pollosFinalReal: number;
         papasIniciales: number;
         papasFinales: number;
+        chichaInicial?: number;
+        chichaVendida?: number;
+        chichaFinalReal?: number;
         bebidasFinales?: BebidasDetalle | null;
     };
     caja?: {
@@ -280,6 +283,41 @@ export async function generarReporteExcelReportes(data: ReportesExportData) {
         labelValue(ws1, row, 1, 2, 3, 4, 'Consumo Papas', `${consumoPapas.toFixed(2)} Kg`, C.lightOrange, true);
         styledCell(ws1, row, 5, 'Consumo aproximado del día', { bg: C.lightOrange, font: { size: 9, color: { argb: C.brown } }, align: { vertical: 'middle', indent: 1 }, merge: [row, 5, row, 12] });
         row++;
+
+        // Chicha Logic
+        if (data.stockResumen.chichaInicial !== undefined) {
+            const { chichaInicial, chichaVendida, chichaFinalReal } = data.stockResumen;
+            const chichaFinalTeorico = chichaInicial - (chichaVendida || 0);
+
+            ws1.getRow(row).height = 10;
+            row++;
+
+            styledCell(ws1, row, 1, '🟣  INVENTARIO CHICHA MORADA', {
+                bg: C.purple,
+                font: { bold: true, size: 11, color: { argb: C.white } },
+                align: { vertical: 'middle', horizontal: 'left', indent: 1 },
+                merge: [row, 1, row, 12],
+            });
+            row++;
+
+            labelValue(ws1, row, 1, 2, 3, 4, 'Chicha Inicial', `${chichaInicial.toFixed(2)} L`, C.cream);
+            styledCell(ws1, row, 5, 'Litros preparados/disponibles al inicio', { bg: C.cream, font: { size: 9, color: { argb: '666666' } }, align: { vertical: 'middle', indent: 1 }, merge: [row, 5, row, 12] });
+            row++;
+
+            labelValue(ws1, row, 1, 2, 3, 4, 'Chicha Vendida', `${(chichaVendida || 0).toFixed(2)} L`, C.white);
+            styledCell(ws1, row, 5, 'Consumo calculado por el POS', { bg: C.white, font: { size: 9, color: { argb: '666666' } }, align: { vertical: 'middle', indent: 1 }, merge: [row, 5, row, 12] });
+            row++;
+
+            if (chichaFinalReal !== undefined) {
+                labelValue(ws1, row, 1, 2, 3, 4, 'Chicha Sobrante Real', `${chichaFinalReal.toFixed(2)} L`, C.lightPurple, true);
+                const diffChicha = chichaFinalReal - chichaFinalTeorico;
+                const chichaDiffColor = diffChicha === 0 ? C.lightGreen : (diffChicha > 0 ? C.lightGreen : 'FFEBEE');
+                styledCell(ws1, row, 5, `Diferencia: ${diffChicha > 0 ? '+' : ''}${diffChicha.toFixed(2)} L`, { bg: chichaDiffColor, font: { size: 9, bold: true }, align: { vertical: 'middle', indent: 1 }, merge: [row, 5, row, 12] });
+            } else {
+                labelValue(ws1, row, 1, 2, 3, 4, 'Stock Teórico Final', `${chichaFinalTeorico.toFixed(2)} L`, C.lightGray, true);
+            }
+            row++;
+        }
 
         ws1.getRow(row).height = 10;
         row++;

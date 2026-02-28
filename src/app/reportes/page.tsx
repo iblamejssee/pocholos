@@ -14,6 +14,7 @@ import {
     obtenerVentasPorHora,
     obtenerInventarioPorRango,
     obtenerGastosPorRango,
+    calcularConsumoChicha,
     type EstadisticaProducto,
     type DesgloseMetodoPago,
     type ConsumoPollosDia,
@@ -225,6 +226,9 @@ export default function ReportesPage() {
 
             papasIniciales: primerInv?.papas_iniciales || 0,
             papasFinales: ultimoInv?.papas_finales || 0,
+            chichaInicial: primerInv?.chicha_inicial || 0,
+            chichaVendida: calcularConsumoChicha(ventas),
+            chichaFinalReal: ultimoInv?.chicha_inicial || 0, // In this system, chicha_inicial in the last inv is the sobrante literal if they prepared more
             bebidasFinales: ultimoInv?.bebidas_detalle || null
         };
 

@@ -264,6 +264,19 @@ export async function generarReporteExcel(data: ReportData) {
 
     row++; // spacer
 
+    // === INVENTARIO CHICHA ===
+    row = applySectionHeader(ws, row, '🟣  INVENTARIO CHICHA MORADA', COLORS.purple);
+
+    const chichaInicial = data.stock?.chicha_inicial || 0;
+    const chichaVendida = data.stock?.chicha_vendida || 0;
+    const chichaSobranteReal = parseFloat(data.stock?.chicha_disponible?.toString() || '0');
+
+    row = addDataRow(ws, row, 'Chicha Inicial', `${chichaInicial.toFixed(2)} L`, COLORS.cream);
+    row = addDataRow(ws, row, 'Chicha Vendida (POS)', `${chichaVendida.toFixed(2)} L`, COLORS.white);
+    row = addTotalRow(ws, row, '🟣 CHICHA SOBRANTE REAL', `${chichaSobranteReal.toFixed(2)} L`, COLORS.purple);
+
+    row++; // spacer
+
     // === BEBIDAS SOBRANTES ===
     row = applySectionHeader(ws, row, '🥤  BEBIDAS SOBRANTES (para mañana)', COLORS.blue);
 

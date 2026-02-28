@@ -381,6 +381,14 @@ export const calcularDistribucionTipoVenta = (ventas: Venta[]): DistribucionTipo
 };
 
 /**
+ * 🟣 Consumo de Chicha Morada
+ * Calcula el total de litros de chicha vendidos en el periodo
+ */
+export const calcularConsumoChicha = (ventas: Venta[]): number => {
+    return ventas.reduce((sum, v) => sum + (v.chicha_restada || 0), 0);
+};
+
+/**
  * 📈 Comparativa Semanal
  * Compara esta semana con la anterior
  */

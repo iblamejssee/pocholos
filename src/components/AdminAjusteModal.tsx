@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, Loader2, Package, DollarSign } from 'lucide-react';
-import { ajustarStockPollos, ajustarCajaChica, ajustarStockChicha } from '@/lib/inventario';
+import { ajustarStockPollos, ajustarCajaChica, ajustarStockChicha, ajustarStockPapas } from '@/lib/inventario';
 import toast from 'react-hot-toast';
 
 interface AdminAjusteModalProps {
@@ -13,12 +13,12 @@ interface AdminAjusteModalProps {
 }
 
 export default function AdminAjusteModal({ isOpen, onClose, onSuccess }: AdminAjusteModalProps) {
-    const [tipo, setTipo] = useState<'pollos' | 'caja' | 'chicha'>('pollos');
+    const [tipo, setTipo] = useState<'pollos' | 'caja' | 'chicha' | 'papas'>('pollos');
     const [valor, setValor] = useState('');
     const [loading, setLoading] = useState(false);
 
     // Limpiar el valor cuando cambie el tipo para evitar confusiones
-    const cambiarTipo = (nuevoTipo: 'pollos' | 'caja' | 'chicha') => {
+    const cambiarTipo = (nuevoTipo: 'pollos' | 'caja' | 'chicha' | 'papas') => {
         setTipo(nuevoTipo);
         setValor('');
     };
@@ -39,6 +39,8 @@ export default function AdminAjusteModal({ isOpen, onClose, onSuccess }: AdminAj
                 resultado = await ajustarStockPollos(numValor);
             } else if (tipo === 'chicha') {
                 resultado = await ajustarStockChicha(numValor);
+            } else if (tipo === 'papas') {
+                resultado = await ajustarStockPapas(numValor);
             } else {
                 resultado = await ajustarCajaChica(numValor);
             }
@@ -122,12 +124,23 @@ export default function AdminAjusteModal({ isOpen, onClose, onSuccess }: AdminAj
                                 <span className="text-[18px] font-bold leading-none">S/</span>
                                 CAJA
                             </button>
+                            <button
+                                type="button"
+                                onClick={() => cambiarTipo('papas')}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-bold text-sm transition-all ${tipo === 'papas'
+                                    ? 'bg-white text-orange-600 shadow-md'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                            >
+                                <span className="text-lg">🥔</span>
+                                PAPAS
+                            </button>
                         </div>
 
                         {/* Input de Valor */}
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-slate-600 px-1">
-                                {tipo === 'pollos' ? 'Cantidad de pollos a añadir' : 'Monto de dinero a añadir'}
+                                {tipo === 'pollos' ? 'Cantidad de pollos a añadir' : tipo === 'papas' ? 'Kilos de papa a añadir' : 'Monto de dinero a añadir'}
                             </label>
                             <div className="relative">
                                 {tipo === 'caja' && (
@@ -138,6 +151,11 @@ export default function AdminAjusteModal({ isOpen, onClose, onSuccess }: AdminAj
                                 {tipo === 'chicha' && (
                                     <span className="absolute right-6 top-1/2 -translate-y-1/2 text-2xl font-bold text-slate-400">
                                         L
+                                    </span>
+                                )}
+                                {tipo === 'papas' && (
+                                    <span className="absolute right-6 top-1/2 -translate-y-1/2 text-2xl font-bold text-slate-400">
+                                        Kg
                                     </span>
                                 )}
                                 <input
@@ -152,8 +170,10 @@ export default function AdminAjusteModal({ isOpen, onClose, onSuccess }: AdminAj
                                         ? 'text-pocholo-red border-pocholo-red/10 focus:border-pocholo-red focus:ring-pocholo-red/10'
                                         : tipo === 'chicha'
                                             ? 'text-purple-600 border-purple-100 focus:border-purple-500 focus:ring-purple-500/10'
-                                            : 'text-emerald-600 border-emerald-100 focus:border-emerald-500 focus:ring-emerald-500/10'
-                                        } ${tipo === 'caja' ? 'pl-16' : ''} ${tipo === 'chicha' ? 'pr-16' : ''}`}
+                                            : tipo === 'papas'
+                                                ? 'text-orange-600 border-orange-100 focus:border-orange-500 focus:ring-orange-500/10'
+                                                : 'text-emerald-600 border-emerald-100 focus:border-emerald-500 focus:ring-emerald-500/10'
+                                        } ${tipo === 'caja' ? 'pl-16' : ''} ${tipo === 'chicha' || tipo === 'papas' ? 'pr-16' : ''}`}
                                 />
                             </div>
                         </div>
@@ -184,7 +204,9 @@ export default function AdminAjusteModal({ isOpen, onClose, onSuccess }: AdminAj
                                     ? 'bg-linear-to-r from-pocholo-red to-red-600 hover:shadow-red-200'
                                     : tipo === 'chicha'
                                         ? 'bg-linear-to-r from-purple-500 to-indigo-600 hover:shadow-purple-200'
-                                        : 'bg-linear-to-r from-emerald-500 to-teal-600 hover:shadow-emerald-200'
+                                        : tipo === 'papas'
+                                            ? 'bg-linear-to-r from-orange-500 to-amber-600 hover:shadow-orange-200'
+                                            : 'bg-linear-to-r from-emerald-500 to-teal-600 hover:shadow-emerald-200'
                                     }`}
                             >
                                 {loading ? (
