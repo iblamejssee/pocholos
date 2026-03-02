@@ -228,9 +228,17 @@ function DashboardContent() {
               return acc;
             }, {} as Record<string, number>);
 
-            // Gastos en efectivo
+            // Gastos por método
             const gastosEfectivo = gastosDelDia
               .filter(g => !g.metodo_pago || g.metodo_pago === 'efectivo')
+              .reduce((sum, g) => sum + g.monto, 0);
+
+            const gastosYape = gastosDelDia
+              .filter(g => g.metodo_pago === 'yape')
+              .reduce((sum, g) => sum + g.monto, 0);
+
+            const gastosPlin = gastosDelDia
+              .filter(g => g.metodo_pago === 'plin')
               .reduce((sum, g) => sum + g.monto, 0);
 
             const cajaChica = (stock.dinero_inicial || 0) + (montosPorMetodo['efectivo'] || 0) - gastosEfectivo;
@@ -239,28 +247,28 @@ function DashboardContent() {
               {
                 label: 'Caja Chica',
                 monto: cajaChica,
-                icon: '/images/cash-icon.png', // opcional si quieres uno personalizado
+                icon: '/images/cash-icon.png',
                 color: 'emerald',
                 desc: `Base S/${stock.dinero_inicial?.toFixed(0) || 0} + Ventas - Gastos`
               },
               {
                 label: 'Yape',
-                monto: montosPorMetodo['yape'] || 0,
+                monto: (montosPorMetodo['yape'] || 0) - gastosYape,
                 icon: '/images/yape-logo.png',
                 color: 'purple',
-                desc: 'Cobros por Yape'
+                desc: gastosYape > 0 ? `Ventas - Gastos (S/${gastosYape.toFixed(0)})` : 'Cobros por Yape'
               },
               {
                 label: 'Plin',
-                monto: montosPorMetodo['plin'] || 0,
+                monto: (montosPorMetodo['plin'] || 0) - gastosPlin,
                 icon: '/images/plin-logo.png',
                 color: 'cyan',
-                desc: 'Cobros por Plin'
+                desc: gastosPlin > 0 ? `Ventas - Gastos (S/${gastosPlin.toFixed(0)})` : 'Cobros por Plin'
               },
               {
                 label: 'Tarjeta',
                 monto: montosPorMetodo['tarjeta'] || 0,
-                icon: '/images/card-icon.png', // opcional
+                icon: '/images/card-icon.png',
                 color: 'blue',
                 desc: 'Cobros por Tarjeta'
               },

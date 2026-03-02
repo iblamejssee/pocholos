@@ -188,10 +188,15 @@ export async function generarReporteExcel(data: ReportData) {
     // === VENTAS POR MÉTODO DE PAGO ===
     row = applySectionHeader(ws, row, '💰  VENTAS POR MÉTODO DE PAGO', COLORS.red);
 
+    // Calcular gastos por método
+    const gastosEfectivo = data.gastosDelDia.filter(g => !g.metodo_pago || g.metodo_pago === 'efectivo').reduce((sum, g) => sum + g.monto, 0);
+    const gastosYape = data.gastosDelDia.filter(g => g.metodo_pago === 'yape').reduce((sum, g) => sum + g.monto, 0);
+    const gastosPlin = data.gastosDelDia.filter(g => g.metodo_pago === 'plin').reduce((sum, g) => sum + g.monto, 0);
+
     row = addDataRow(ws, row, '💵 Efectivo', `S/ ${(data.ventasPorMetodo['efectivo'] || 0).toFixed(2)}`, COLORS.cream);
     row = addDataRow(ws, row, '💳 Tarjeta', `S/ ${(data.ventasPorMetodo['tarjeta'] || 0).toFixed(2)}`, COLORS.white);
-    row = addDataRow(ws, row, '📱 Yape', `S/ ${(data.ventasPorMetodo['yape'] || 0).toFixed(2)}`, COLORS.lightPurple);
-    row = addDataRow(ws, row, '💠 Plin', `S/ ${(data.ventasPorMetodo['plin'] || 0).toFixed(2)}`, COLORS.lightBlue);
+    row = addDataRow(ws, row, '📱 Yape', `S/ ${((data.ventasPorMetodo['yape'] || 0) - gastosYape).toFixed(2)}`, COLORS.lightPurple);
+    row = addDataRow(ws, row, '💠 Plin', `S/ ${((data.ventasPorMetodo['plin'] || 0) - gastosPlin).toFixed(2)}`, COLORS.lightBlue);
     row = addTotalRow(ws, row, '💰 TOTAL VENTAS', `S/ ${data.metricas.totalIngresos.toFixed(2)}`, COLORS.red);
 
     row++; // spacer
@@ -201,7 +206,7 @@ export async function generarReporteExcel(data: ReportData) {
 
     const baseInicial = data.stock?.dinero_inicial || 0;
     const ventasEfectivo = data.ventasPorMetodo['efectivo'] || 0;
-    const totalEfectivoEsperado = ventasEfectivo + baseInicial - data.totalGastos;
+    const totalEfectivoEsperado = ventasEfectivo + baseInicial - gastosEfectivo;
 
     row = addDataRow(ws, row, 'Base Inicial (Caja Chica)', `S/ ${baseInicial.toFixed(2)}`, COLORS.cream);
     row = addDataRow(ws, row, 'Ventas en Efectivo', `S/ ${ventasEfectivo.toFixed(2)}`, COLORS.white);

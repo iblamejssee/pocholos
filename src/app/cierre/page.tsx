@@ -33,6 +33,8 @@ function CierreCajaContent() {
     const [gastosDelDia, setGastosDelDia] = useState<{ descripcion: string; monto: number; metodo_pago?: string }[]>([]);
     const totalGastos = gastosDelDia.reduce((sum, g) => sum + g.monto, 0);
     const gastosEfectivo = gastosDelDia.filter(g => !g.metodo_pago || g.metodo_pago === 'efectivo').reduce((sum, g) => sum + g.monto, 0);
+    const gastosYape = gastosDelDia.filter(g => g.metodo_pago === 'yape').reduce((sum, g) => sum + g.monto, 0);
+    const gastosPlin = gastosDelDia.filter(g => g.metodo_pago === 'plin').reduce((sum, g) => sum + g.monto, 0);
 
     // Estados para inputs manuales
     const [pollosAderezados, setPollosAderezados] = useState('');
@@ -227,8 +229,8 @@ function CierreCajaContent() {
 --------------------------------
 💵 Efectivo en Caja: S/ ${(ventasPorMetodo['efectivo'] || 0).toFixed(2)}
 💳 Tarjeta: S/ ${(ventasPorMetodo['tarjeta'] || 0).toFixed(2)}
-📱 Yape: S/ ${(ventasPorMetodo['yape'] || 0).toFixed(2)}
-💠 Plin: S/ ${(ventasPorMetodo['plin'] || 0).toFixed(2)}
+📱 Yape: S/ ${(ventasPorMetodo['yape'] || 0).toFixed(2)}${gastosYape > 0 ? ` (Gastos: -S/${gastosYape.toFixed(2)})` : ''}
+💠 Plin: S/ ${(ventasPorMetodo['plin'] || 0).toFixed(2)}${gastosPlin > 0 ? ` (Gastos: -S/${gastosPlin.toFixed(2)})` : ''}
 
 🫰 *TOTAL EFECTIVO + BASE: S/ ${totalEfectivoEsperado.toFixed(2)}*
 
@@ -236,7 +238,9 @@ function CierreCajaContent() {
 --------------------------------
 ${gastosTexto}
 
-💵 *EFECTIVO NETO: S/ ${totalEfectivoEsperado.toFixed(2)}*
+💵 *EFECTIVO NETO (Caja): S/ ${totalEfectivoEsperado.toFixed(2)}*
+📱 *YAPE NETO: S/ ${((ventasPorMetodo['yape'] || 0) - gastosYape).toFixed(2)}*
+💠 *PLIN NETO: S/ ${((ventasPorMetodo['plin'] || 0) - gastosPlin).toFixed(2)}*
 
 🍗 *DESGLOSE DE POLLOS*
 --------------------------------
@@ -420,7 +424,7 @@ _Generado automáticamente por Pocholo's POS_`;
                                             <span className="text-purple-700 text-xs font-bold">Yape</span>
                                         </div>
                                         <span className="font-bold text-purple-900">
-                                            S/ {(ventasPorMetodo['yape'] || 0).toFixed(2)}
+                                            S/ {((ventasPorMetodo['yape'] || 0) - gastosYape).toFixed(2)}
                                         </span>
                                     </div>
 
@@ -437,7 +441,7 @@ _Generado automáticamente por Pocholo's POS_`;
                                             <span className="text-cyan-700 text-xs font-bold">Plin</span>
                                         </div>
                                         <span className="font-bold text-cyan-900">
-                                            S/ {(ventasPorMetodo['plin'] || 0).toFixed(2)}
+                                            S/ {((ventasPorMetodo['plin'] || 0) - gastosPlin).toFixed(2)}
                                         </span>
                                     </div>
                                 </div>
