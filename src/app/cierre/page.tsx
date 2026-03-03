@@ -256,7 +256,7 @@ ${gastosTexto}
    - 📦 En Caja: ${pollosEnCaja || '0'}
 🍽️ Cena del Personal: ${cenaPersonal || '0'}
 💥 Pollos Golpeados: ${pollosGolpeados || '0'}
-📊 Pollos Finales Netos: ${(parseFloat(stockPollosReal || '0') - parseFloat(cenaPersonal || '0') - parseFloat(pollosGolpeados || '0')).toFixed(2)}
+📊 Pollos Finales Netos: ${formatearFraccionPollo(parseFloat(stockPollosReal || '0') - parseFloat(cenaPersonal || '0') - parseFloat(pollosGolpeados || '0'))}
 
 🥔 *INVENTARIO PAPAS*
 --------------------------------
@@ -589,7 +589,7 @@ _Generado automáticamente por Pocholo's POS_`;
                                     <div className="flex justify-between items-center p-3 bg-gray-100 rounded-xl">
                                         <span className="font-medium text-pocholo-brown">Total Sobrantes:</span>
                                         <div className="flex items-center gap-2">
-                                            <span className="font-bold text-lg text-pocholo-red">{stockPollosReal}</span>
+                                            <span className="font-bold text-lg text-pocholo-red">{formatearFraccionPollo(parseFloat(stockPollosReal || '0'))}</span>
                                             {stockPollosReal && diffPollos !== 0 && (
                                                 <span className={`px-2 py-1 rounded-full text-xs font-bold ${diffPollos > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                                     {diffPollos > 0 ? '+' : ''}{formatearFraccionPollo(Math.abs(diffPollos))}
@@ -603,7 +603,7 @@ _Generado automáticamente por Pocholo's POS_`;
                                         <div className="flex justify-between items-center p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
                                             <span className="font-medium text-emerald-800">Pollos Finales Netos:</span>
                                             <span className="font-bold text-lg text-emerald-700">
-                                                {(parseFloat(stockPollosReal || '0') - parseFloat(cenaPersonal || '0') - parseFloat(pollosGolpeados || '0')).toFixed(2)}
+                                                {formatearFraccionPollo(parseFloat(stockPollosReal || '0') - parseFloat(cenaPersonal || '0') - parseFloat(pollosGolpeados || '0'))}
                                             </span>
                                         </div>
                                     )}

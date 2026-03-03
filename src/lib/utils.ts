@@ -100,37 +100,46 @@ export function redondearAOctavo(valor: number): number {
 
 // Función para convertir fracción decimal a texto de fracción
 export function formatearFraccionPollo(fraccion: number): string {
+    // Manejar números negativos
+    const esNegativo = fraccion < 0;
+    const valorAbsoluto = Math.abs(fraccion);
+
     // Primero redondear al octavo más cercano para corregir imprecisiones de BD
-    const redondeado = redondearAOctavo(fraccion);
+    const redondeado = redondearAOctavo(valorAbsoluto);
 
     if (redondeado === 0) return '0';
-    if (redondeado === 1) return '1';
 
-    // Para números mayores a 1, separar entero y fracción
-    const entero = Math.floor(redondeado);
-    const decimal = +(redondeado - entero).toFixed(3); // evitar errores de punto flotante
+    let resultado = '';
+    if (redondeado === 1) {
+        resultado = '1';
+    } else {
+        // Para números mayores a 1, separar entero y fracción
+        const entero = Math.floor(redondeado);
+        const decimal = +(redondeado - entero).toFixed(3); // evitar errores de punto flotante
 
-    // Mapa de fracciones conocidas
-    const FRACCIONES: Record<number, string> = {
-        0.125: '1/8',
-        0.25: '1/4',
-        0.375: '3/8',
-        0.5: '1/2',
-        0.625: '5/8',
-        0.75: '3/4',
-        0.875: '7/8',
-    };
+        // Mapa de fracciones conocidas
+        const FRACCIONES: Record<number, string> = {
+            0.125: '1/8',
+            0.25: '1/4',
+            0.375: '3/8',
+            0.5: '1/2',
+            0.625: '5/8',
+            0.75: '3/4',
+            0.875: '7/8',
+        };
 
-    const fraccionTexto = FRACCIONES[decimal];
+        const fraccionTexto = FRACCIONES[decimal];
 
-    if (entero > 0 && fraccionTexto) {
-        return `${entero} ${fraccionTexto}`;
-    } else if (entero > 0 && decimal === 0) {
-        return `${entero}`;
-    } else if (fraccionTexto) {
-        return fraccionTexto;
+        if (entero > 0 && fraccionTexto) {
+            resultado = `${entero} ${fraccionTexto}`;
+        } else if (entero > 0 && decimal === 0) {
+            resultado = `${entero}`;
+        } else if (fraccionTexto) {
+            resultado = fraccionTexto;
+        } else {
+            resultado = redondeado.toFixed(2);
+        }
     }
 
-    // Fallback (no debería llegar aquí después de redondear)
-    return redondeado.toFixed(2);
+    return esNegativo ? `-${resultado}` : resultado;
 }
