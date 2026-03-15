@@ -51,10 +51,17 @@ export default function AIChatAssistant() {
         setIsLoading(true);
 
         try {
+            // Get user session to pass token for RLS
+            const { data: { session } } = await supabase.auth.getSession();
+            const token = session?.access_token;
+
             // Llamada a la API Route de Next.js (Serverless Function local)
             const response = await fetch('/api/chat', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
                 body: JSON.stringify({ query: userMessage.content })
             });
 

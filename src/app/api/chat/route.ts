@@ -7,8 +7,18 @@ import { createClient } from '@supabase/supabase-js';
 // ============================================================
 
 function getToday() {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const formatter = new Intl.DateTimeFormat('es-PE', {
+        timeZone: 'America/Lima',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+    // The formatter output for es-PE is DD/MM/YYYY. We need YYYY-MM-DD.
+    const parts = formatter.formatToParts(new Date());
+    const day = parts.find(p => p.type === 'day')?.value;
+    const month = parts.find(p => p.type === 'month')?.value;
+    const year = parts.find(p => p.type === 'year')?.value;
+    return `${year}-${month}-${day}`;
 }
 
 // ==================== SYSTEM KNOWLEDGE BASE ====================
@@ -409,14 +419,20 @@ async function callGemini(query: string, apiKey: string, today: string, dbContex
 export async function POST(req: Request) {
     try {
         const { query } = await req.json();
+        const authHeader = req.headers.get('authorization');
         const GROQ_API_KEY = process.env.GROQ_API_KEY;
         const GEMINI_API_KEY = process.env.GEMINIAI_API_KEY;
         const today = getToday();
 
-        // Initialize Supabase
+        // Initialize Supabase with Auth Header to bypass RLS
+        const supabaseOptions = authHeader ? {
+            global: { headers: { Authorization: authHeader } }
+        } : {};
+
         const supabase = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            supabaseOptions
         );
 
         // Fetch real-time database context
