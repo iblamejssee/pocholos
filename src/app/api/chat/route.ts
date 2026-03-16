@@ -458,11 +458,16 @@ export async function POST(req: Request) {
         });
 
         // 1) Try Groq first (free, fast, reliable)
+        let aiError = '';
         if (GROQ_API_KEY) {
             const groqResponse = await callGroq(query, GROQ_API_KEY, today, dbContext);
             if (groqResponse) {
                 return NextResponse.json({ reply: groqResponse });
+            } else {
+                aiError = 'Groq API retornó error o Timeout. ';
             }
+        } else {
+            aiError = 'La variable GROQ_API_KEY no está configurada en Vercel. ';
         }
 
         // 2) Try Gemini as backup
@@ -470,12 +475,17 @@ export async function POST(req: Request) {
             const geminiResponse = await callGemini(query, GEMINI_API_KEY, today, dbContext);
             if (geminiResponse) {
                 return NextResponse.json({ reply: geminiResponse });
+            } else {
+                aiError += '| Gemini retornó error (Posible cuota excedida 429).';
             }
+        } else {
+            aiError += '| La variable GEMINIAI_API_KEY no está configurada en Vercel.';
         }
 
-        // 3) Smart fallback (no AI, but handles known queries)
-        const reply = getSmartResponse(query, dbData);
-        return NextResponse.json({ reply });
+        // 3) Fallback: Si llegamos aquí, ambas IAs fallaron
+        const fallbackMessage = `⚠️ **Falla en la Inteligencia Artificial**\n\nNo pude generar una respuesta inteligente porque los motores de IA no están disponibles o faltan sus credenciales de acceso.\n\n**Motivo:**\n\`${aiError}\`\n\n👉 *Si estás en Vercel, asegúrate de colocar GROQ_API_KEY y GEMINIAI_API_KEY en: Settings -> Environment Variables, y luego haz un nuevo Deploy.*`;
+
+        return NextResponse.json({ reply: fallbackMessage });
 
     } catch (error: any) {
         console.error('API Chat Error:', error);
