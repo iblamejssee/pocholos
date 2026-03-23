@@ -87,13 +87,13 @@ function CierreCajaContent() {
             const nombre = item.nombre.toLowerCase();
             if (nombre.includes('mostrito')) {
                 acc.mostritos = (acc.mostritos || 0) + item.cantidad;
-            } else if (item.fraccion_pollo === 1) {
+            } else if (item.fraccion_plato === 1) {
                 acc.enteros = (acc.enteros || 0) + item.cantidad;
-            } else if (item.fraccion_pollo === 0.5) {
+            } else if (item.fraccion_plato === 0.5) {
                 acc.medios = (acc.medios || 0) + item.cantidad;
-            } else if (item.fraccion_pollo === 0.25) {
+            } else if (item.fraccion_plato === 0.25) {
                 acc.cuartos = (acc.cuartos || 0) + item.cantidad;
-            } else if (item.fraccion_pollo === 0.125) {
+            } else if (item.fraccion_plato === 0.125) {
                 acc.octavos = (acc.octavos || 0) + item.cantidad;
             }
         });
