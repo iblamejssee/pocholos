@@ -1,10 +1,13 @@
-import { useRef, useState, useEffect } from 'react';
+﻿import { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Printer, X, CheckCircle, Receipt, Search, User, RefreshCw, Trash2 } from 'lucide-react';
+import Image from 'next/image';
+import { Printer, X, CheckCircle, Receipt, Search, User, RefreshCw, Trash2, CreditCard, Banknote, Smartphone, Loader2 } from 'lucide-react';
 import type { ItemCarrito, ItemVenta } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
 import { consultarDNI } from '@/services/dniService';
+import { finalizarPagoVenta } from '@/lib/ventas';
+import toast from 'react-hot-toast';
 
 interface ReceiptModalProps {
 
@@ -14,8 +17,10 @@ interface ReceiptModalProps {
     total: number;
     orderId?: string;
     mesaNumero?: number;
+    mesaId?: number; // Added to correctly release the table using its ID
     title?: string;
     isNewSale?: boolean; // Prop to control counter increment
+    onPaymentSuccess?: () => void; // Callback after successful payment
 }
 
 interface ConfigNegocio {
@@ -31,10 +36,10 @@ interface ConfigNegocio {
     numero_ticket?: number;
 }
 
-export default function ReceiptModal({ isOpen, onClose, items, total, orderId, mesaNumero, title = 'BOLETA DE VENTA', isNewSale = false }: ReceiptModalProps) {
+export default function ReceiptModal({ isOpen, onClose, items, total, orderId, mesaNumero, mesaId, title = 'BOLETA DE VENTA', isNewSale = false, onPaymentSuccess }: ReceiptModalProps) {
     const [config, setConfig] = useState<ConfigNegocio>({
         ruc: '',
-        razon_social: "POCHOLO'S CHICKEN",
+        razon_social: "THE BEAR",
         direccion: '',
         telefono: '',
         mensaje_boleta: '¡Gracias por su preferencia!',
@@ -52,6 +57,11 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
     const [clienteNombre, setClienteNombre] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const [errorDni, setErrorDni] = useState<string | null>(null);
+
+    // Payment states
+    const [metodoPago, setMetodoPago] = useState<'efectivo' | 'yape' | 'plin' | 'tarjeta'>('efectivo');
+    const [isFinalizing, setIsFinalizing] = useState(false);
+    const isPreCuenta = title === 'ESTADO DE CUENTA';
 
     useEffect(() => {
         if (isOpen) {
@@ -263,7 +273,7 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
             <div className="ticket-footer">
                 <p className="footer-mensaje">"{config.mensaje_boleta}"</p>
                 <div className="footer-slogan">LA PASIÓN HECHA SAZÓN</div>
-                <p className="footer-sistema">SISTEMA POCHOLO'S V1.0</p>
+                <p className="footer-sistema">SISTEMA THE BEAR V1.0</p>
             </div>
         </div>
     );
@@ -288,9 +298,24 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                         className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[96vh]"
                     >
                         {/* Header Visual */}
-                        <div className="bg-pocholo-red text-white p-4 text-center">
-                            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-1 p-1.5 shadow-lg">
-                                <img src="/images/logo-pocholos-icon.png" alt="Logo" className="w-full h-full object-contain" />
+                        <div className="bg-thebear-blue text-white p-4 text-center">
+                            <div className="flex flex-col items-center gap-1 mb-2">
+                                <div className="relative w-20 h-16 mx-auto">
+                                    <Image
+                                        src="/images/logo-the-bear-icon.png"
+                                        alt="THE BEAR"
+                                        fill
+                                        className="object-contain"
+                                    />
+                                </div>
+                                <div className="text-center">
+                                    <span className="text-white font-black text-lg tracking-tighter block leading-none">
+                                        THE BEAR
+                                    </span>
+                                    <span className="text-thebear-light-blue text-[8px] font-bold tracking-widest uppercase">
+                                        Cevichería POS
+                                    </span>
+                                </div>
                             </div>
 
                             <h2 className="text-lg font-bold">{tipoComprobante === 'boleta' ? 'BOLETA DE VENTA' : 'TICKET DE VENTA'}</h2>
@@ -303,8 +328,8 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                                 <button
                                     onClick={() => handleTipoChange('boleta')}
                                     className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${tipoComprobante === 'boleta'
-                                        ? 'bg-white text-pocholo-red shadow-lg'
-                                        : 'bg-red-700/50 text-white hover:bg-red-700'
+                                        ? 'bg-white text-thebear-blue shadow-lg'
+                                        : 'bg-thebear-blue-dark/50 text-white hover:bg-thebear-blue-dark'
                                         }`}
                                 >
                                     BOLETA
@@ -312,8 +337,8 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                                 <button
                                     onClick={() => handleTipoChange('ticket')}
                                     className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${tipoComprobante === 'ticket'
-                                        ? 'bg-white text-pocholo-red shadow-lg'
-                                        : 'bg-red-700/50 text-white hover:bg-red-700'
+                                        ? 'bg-white text-thebear-blue shadow-lg'
+                                        : 'bg-thebear-blue-dark/50 text-white hover:bg-thebear-blue-dark'
                                         }`}
                                 >
                                     TICKET
@@ -332,14 +357,14 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                                             value={dni}
                                             onChange={(e) => setDni(e.target.value.replace(/\D/g, '').slice(0, 8))}
                                             placeholder="DNI (8 dígitos)"
-                                            className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-pocholo-red/20 focus:border-pocholo-red transition-all"
+                                            className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-thebear-blue/20 focus:border-thebear-blue transition-all"
                                         />
                                         <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
                                     </div>
                                     <button
                                         onClick={handleDNISearch}
                                         disabled={isSearching || dni.length !== 8}
-                                        className="bg-pocholo-yellow hover:bg-yellow-500 disabled:bg-gray-200 text-pocholo-red font-bold px-3 py-2 rounded-xl text-xs transition-colors flex items-center gap-1 min-w-[90px] justify-center"
+                                        className="bg-thebear-light-blue hover:bg-yellow-500 disabled:bg-gray-200 text-thebear-blue font-bold px-3 py-2 rounded-xl text-xs transition-colors flex items-center gap-1 min-w-[90px] justify-center"
                                     >
                                         {isSearching ? <RefreshCw className="animate-spin" size={14} /> : 'Consultar'}
                                     </button>
@@ -384,12 +409,12 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                                         {config.telefono && <p>TEL: {config.telefono}</p>}
                                     </div>
                                     <div className="mt-3 pt-2 border-t border-gray-100">
-                                        <p className="font-black text-base text-pocholo-red tracking-widest">
+                                        <p className="font-black text-base text-thebear-blue tracking-widest">
                                             {tipoComprobante === 'boleta' ? numeroBoleta : numeroTicket}
                                         </p>
                                         <p className="text-[11px] text-gray-400 mt-1">{fechaFormateada} - {horaFormateada}</p>
                                         {mesaNumero && tipoComprobante === 'ticket' && (
-                                            <p className="text-[11px] bg-pocholo-red text-white font-bold rounded-full px-3 py-0.5 inline-block mt-2">MESA: {mesaNumero}</p>
+                                            <p className="text-[11px] bg-thebear-blue text-white font-bold rounded-full px-3 py-0.5 inline-block mt-2">MESA: {mesaNumero}</p>
                                         )}
                                     </div>
                                 </div>
@@ -445,13 +470,86 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                             </div>
                         </div>
 
-                        <div className="p-4 border-t border-gray-100 grid grid-cols-2 gap-3 bg-white">
-                            <button onClick={onClose} className="py-3 px-4 rounded-xl font-semibold text-gray-500 hover:bg-gray-100 transition-colors flex items-center justify-center gap-2">
-                                <X size={20} /> Cerrar
-                            </button>
-                            <button onClick={handlePrint} className="py-3 px-4 rounded-xl font-bold text-white bg-pocholo-red hover:bg-red-700 shadow-lg transition-all flex items-center justify-center gap-2">
-                                <Printer size={20} /> Imprimir
-                            </button>
+                        <div className="p-4 border-t border-gray-100 bg-white flex flex-col gap-4">
+                            {!isPreCuenta && (
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Método de Pago</label>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {[
+                                            { id: 'efectivo', icon: Banknote, color: 'emerald' },
+                                            { id: 'yape', icon: Smartphone, color: 'indigo' },
+                                            { id: 'plin', icon: Smartphone, color: 'blue' },
+                                            { id: 'tarjeta', icon: CreditCard, color: 'amber' }
+                                        ].map((m) => (
+                                            <button
+                                                key={m.id}
+                                                onClick={() => setMetodoPago(m.id as any)}
+                                                className={`
+                                                    p-3 rounded-2xl flex flex-col items-center gap-1.5 transition-all border-2
+                                                    ${metodoPago === m.id
+                                                        ? `bg-${m.color}-50 border-${m.color}-500 text-${m.color}-700 shadow-sm`
+                                                        : 'bg-gray-50 border-transparent text-gray-400 grayscale'
+                                                    }
+                                                `}
+                                            >
+                                                <m.icon size={20} />
+                                                <span className="text-[9px] font-black uppercase tracking-tighter">{m.id}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    onClick={onClose}
+                                    className="py-4 px-4 rounded-2xl font-black text-[10px] uppercase tracking-widest text-gray-400 hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <X size={18} /> Cancelar
+                                </button>
+
+                                {isPreCuenta ? (
+                                    <button
+                                        onClick={handlePrint}
+                                        className="py-4 px-4 rounded-2xl font-black text-[10px] uppercase tracking-widest text-white bg-thebear-blue hover:bg-thebear-blue/90 shadow-lg shadow-thebear-blue/20 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <Printer size={18} /> Imprimir Pre
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={async () => {
+                                            if (!orderId) {
+                                                // Una venta nueva, no registrada aún (flujo para llevar directo)
+                                                // Pero el POS ya la registra antes de abrir el modal.
+                                                // Si no hay orderId, no podemos finalizar.
+                                                toast.error('Error: ID de orden no encontrado');
+                                                return;
+                                            }
+                                            setIsFinalizing(true);
+                                            try {
+                                                const res = await finalizarPagoVenta(orderId, metodoPago, mesaId ? mesaId : undefined);
+                                                if (res.success) {
+                                                    await handlePrint(); // Imprimir el ticket real
+                                                    toast.success('¡Cobro registrado exitosamente!');
+                                                    if (onPaymentSuccess) onPaymentSuccess();
+                                                    onClose();
+                                                } else {
+                                                    toast.error(res.message);
+                                                }
+                                            } catch (e) {
+                                                toast.error('Fallo al procesar el pago');
+                                            } finally {
+                                                setIsFinalizing(false);
+                                            }
+                                        }}
+                                        disabled={isFinalizing}
+                                        className="py-4 px-4 rounded-2xl font-black text-[10px] uppercase tracking-widest text-white bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        {isFinalizing ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />}
+                                        <span>COBRAR S/ {total.toFixed(2)}</span>
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </motion.div>
 

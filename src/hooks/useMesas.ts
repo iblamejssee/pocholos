@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Mesa } from '@/lib/database.types';
 
