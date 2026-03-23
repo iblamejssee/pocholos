@@ -1,15 +1,15 @@
-﻿'use client';
+'use client';
 
 import Image from "next/image";
 import Link from 'next/link';
-import { ChefHat, ClipboardList, ShoppingCart, TrendingUp, TrendingDown, AlertCircle, Package, RotateCcw, DollarSign, Users, BarChart3, Clock, Wallet, ArrowRight, Activity, Zap, Receipt, Trash2, Lock as LockIcon } from 'lucide-react';
+import { ChefHat, ClipboardList, ShoppingCart, TrendingUp, TrendingDown, AlertCircle, Package, RotateCcw, DollarSign, Users, BarChart3, Clock, Wallet, ArrowRight, Activity, Zap, Receipt, Trash2 } from 'lucide-react';
 import { useInventario } from '@/hooks/useInventario';
 import { useVentas } from '@/hooks/useVentas';
 import { useMetricas } from '@/hooks/useMetricas';
 import GastosModal from '@/components/GastosModal';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { motion, AnimatePresence } from 'framer-motion';
-import { formatearFraccionProducto } from '@/lib/utils';
+import { motion } from 'framer-motion';
+import { formatearFraccionPollo } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { resetearSistema } from '@/lib/reset';
 import { supabase, obtenerFechaHoy } from '@/lib/supabase';
@@ -27,7 +27,7 @@ function DashboardContent() {
     totalIngresos: 0,
     cantidadPedidos: 0,
     promedioPorPedido: 0,
-    platosVendidos: 0,
+    pollosVendidos: 0,
     gaseosasVendidas: 0,
     loading: false
   };
@@ -82,602 +82,603 @@ function DashboardContent() {
     hour: '2-digit',
     minute: '2-digit'
   });
+
   return (
-    <div className="min-h-screen pb-20 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen p-3 sm:p-6 lg:p-8">
       {/* Header Profesional */}
-      <div className="py-6 sm:py-8">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-
-          <div className="flex items-center gap-5">
-
-            {/* LOGO SIN CUADRO */}
-            <div className="relative w-16 h-16 group">
-              <img
-                src="/images/contro-logo.png"
-                alt="Logo"
-                className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110"
-              />
+      <div className="mb-4 sm:mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-center gap-4">
+            <div className="relative w-12 h-12 hidden sm:block">
+              <img src="/images/logo-pocholos-icon.png" alt="Logo" className="w-full h-full object-contain" />
             </div>
-
             <div>
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-thebear-dark-blue flex items-center gap-2 tracking-tighter">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800 flex items-center gap-2">
                 Panel de Control
               </h1>
-
-              <div className="flex items-center gap-2 mt-1">
-                <p className="text-sm sm:text-base text-thebear-blue/70 font-bold capitalize">
-                  {fechaHoy}
-                </p>
-
-                <span className="w-1 h-1 rounded-full bg-thebear-light-blue"></span>
-
-                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-thebear-cream/50 rounded-lg border border-thebear-light-blue/30">
-                  <Clock size={12} className="text-thebear-blue" />
-                  <span className="text-[11px] font-black text-thebear-blue">
-                    {horaActual}
-                  </span>
-                </div>
-              </div>
+              <p className="text-sm sm:text-base text-slate-500 capitalize">{fechaHoy}</p>
             </div>
-
           </div>
-
-          {/* ESTADO */}
           <div className="flex items-center gap-3">
-            <div className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl shadow-sm border-2 ${stock
-              ? 'bg-white border-emerald-100 text-emerald-700'
-              : 'bg-white border-amber-100 text-amber-700'
-              }`}>
-              <div className={`w-2.5 h-2.5 rounded-full animate-pulse ${stock ? 'bg-emerald-500' : 'bg-amber-500'
-                }`}></div>
-
-              <span className="font-black text-xs uppercase tracking-widest">
-                {stock ? 'Bahía Abierta' : 'Sin Apertura'}
+            <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl">
+              <Clock size={16} className="text-slate-400" />
+              <span className="text-slate-600 font-medium">{horaActual}</span>
+            </div>
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl ${stock ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'}`}>
+              <Activity size={16} className={stock ? 'text-emerald-500' : 'text-amber-500'} />
+              <span className={`font-medium ${stock ? 'text-emerald-700' : 'text-amber-700'}`}>
+                {stock ? 'Sistema operativo' : 'Sin apertura'}
               </span>
             </div>
           </div>
-
         </div>
       </div>
-      {/* Alerta si no hay apertura */}
-      {
-        (!stock && !loading) && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="mb-8 p-1 bg-gradient-to-r from-amber-400 to-orange-500 rounded-3xl shadow-lg overflow-hidden"
-          >
-            <div className="bg-white/95 backdrop-blur-sm p-6 rounded-[22px] flex flex-col md:flex-row items-center gap-6">
-              <div className="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center shrink-0">
-                <AlertCircle className="text-amber-600" size={28} />
-              </div>
-              <div className="flex-1 text-center md:text-left">
-                <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">FALTA APERTURAR</h3>
-                <p className="text-slate-600 font-medium">Inicia la jornada para registrar el stock de pescado y caja inicial.</p>
-              </div>
-              <Link
-                href="/apertura"
-                className="w-full md:w-auto overflow-hidden relative group ocean-button-primary bg-amber-500 hover:bg-amber-600"
-              >
-                <span className="relative z-10 flex items-center gap-2">
-                  Ir a Apertura
-                  <ArrowRight size={18} />
-                </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-              </Link>
-            </div>
-          </motion.div>
-        )
-      }
 
-      {/* Métricas Principales */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {/* Alerta si no hay apertura */}
+      {(!stock && !loading) && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-4"
+        >
+          <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
+            <AlertCircle className="text-amber-600" size={20} />
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-amber-800">Apertura pendiente</p>
+            <p className="text-sm text-amber-600">Realiza la apertura del día para comenzar operaciones</p>
+          </div>
+          <Link
+            href="/apertura"
+            className="flex items-center gap-2 bg-amber-500 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-amber-600 transition-colors"
+          >
+            Apertura
+            <ArrowRight size={16} />
+          </Link>
+        </motion.div>
+      )}
+
+      {/* Métricas Principales - Diseño Profesional */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
         {/* Ingresos */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="ocean-card border-l-4 border-l-thebear-blue p-4 sm:p-6"
+          transition={{ delay: 0.1 }}
+          className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow"
         >
-          <div className="flex items-center justify-between mb-2 sm:mb-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-thebear-cream rounded-xl sm:rounded-2xl flex items-center justify-center shadow-inner">
-              <DollarSign size={20} className="sm:text-2xl text-thebear-blue" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+              <span className="text-[18px] font-bold leading-none">S/</span>
             </div>
-            <span className="ocean-badge bg-emerald-100 text-emerald-600 hidden sm:inline-block">Ventas</span>
+            <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+              +Hoy
+            </span>
           </div>
-          <p className="text-xl sm:text-3xl font-black text-thebear-dark-blue tracking-tighter">S/ {metricas.totalIngresos.toFixed(2)}</p>
-          <p className="text-[10px] sm:text-xs font-bold text-thebear-blue/50 uppercase tracking-widest mt-1">Ingresos de Hoy</p>
+          <p className="text-2xl font-bold text-slate-800">S/ {metricas.totalIngresos.toFixed(2)}</p>
+          <p className="text-sm text-slate-500 mt-1">Ingresos del día</p>
         </motion.div>
 
         {/* Pedidos */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="ocean-card border-l-4 border-l-thebear-light-blue p-4 sm:p-6"
+          transition={{ delay: 0.15 }}
+          className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow"
         >
-          <div className="flex items-center justify-between mb-2 sm:mb-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-thebear-cream rounded-xl sm:rounded-2xl flex items-center justify-center shadow-inner">
-              <ShoppingCart size={20} className="sm:text-2xl text-thebear-blue" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+              <ShoppingCart size={20} className="text-slate-600" />
             </div>
-            <span className="ocean-badge bg-blue-100 text-blue-600 hidden sm:inline-block">Ordenes</span>
           </div>
-          <p className="text-xl sm:text-3xl font-black text-thebear-dark-blue tracking-tighter">{metricas.cantidadPedidos}</p>
-          <p className="text-[10px] sm:text-xs font-bold text-thebear-blue/50 uppercase tracking-widest mt-1">Pedidos Servidos</p>
+          <p className="text-2xl font-bold text-slate-800">{metricas.cantidadPedidos}</p>
+          <p className="text-sm text-slate-500 mt-1">Pedidos procesados</p>
         </motion.div>
 
-        {/* Platos */}
+        {/* Pollos */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="ocean-card border-l-4 border-l-thebear-blue p-4 sm:p-6"
+          className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow"
         >
-          <div className="flex items-center justify-between mb-2 sm:mb-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-thebear-cream rounded-xl sm:rounded-2xl flex items-center justify-center shadow-inner">
-              <ChefHat size={20} className="sm:text-2xl text-thebear-blue" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+              <Package size={20} className="text-slate-600" />
             </div>
-            <span className="ocean-badge bg-cyan-100 text-cyan-600 hidden sm:inline-block">Cocina</span>
           </div>
-          <p className="text-xl sm:text-3xl font-black text-thebear-dark-blue tracking-tighter">{formatearFraccionProducto(metricas.platosVendidos)}</p>
-          <p className="text-[10px] sm:text-xs font-bold text-thebear-blue/50 uppercase tracking-widest mt-1">Platos Vendidos</p>
+          <p className="text-2xl font-bold text-slate-800">{formatearFraccionPollo(metricas.pollosVendidos)}</p>
+          <p className="text-sm text-slate-500 mt-1">Pollos vendidos</p>
         </motion.div>
 
         {/* Ticket Promedio */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="ocean-card border-l-4 border-l-thebear-light-blue p-4 sm:p-6"
+          transition={{ delay: 0.25 }}
+          className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow"
         >
-          <div className="flex items-center justify-between mb-2 sm:mb-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-thebear-cream rounded-xl sm:rounded-2xl flex items-center justify-center shadow-inner">
-              <Activity size={20} className="sm:text-2xl text-thebear-blue" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+              <BarChart3 size={20} className="text-slate-600" />
             </div>
-            <span className="ocean-badge bg-indigo-100 text-indigo-600 hidden sm:inline-block">Ticket</span>
           </div>
-          <p className="text-xl sm:text-3xl font-black text-thebear-dark-blue tracking-tighter">S/ {metricas.promedioPorPedido.toFixed(2)}</p>
-          <p className="text-[10px] sm:text-xs font-bold text-thebear-blue/50 uppercase tracking-widest mt-1">Promedio por Mesa</p>
+          <p className="text-2xl font-bold text-slate-800">S/ {metricas.promedioPorPedido.toFixed(2)}</p>
+          <p className="text-sm text-slate-500 mt-1">Ticket promedio</p>
         </motion.div>
       </div>
 
       {/* Bóvedas - Montos por Método de Pago */}
-      {
-        stock && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {(() => {
-              const montosPorMetodo = ventas.reduce((acc, v) => {
-                if (v.estado_pago !== 'pagado') return acc;
-                if (v.pago_dividido && v.metodo_pago === 'mixto') {
-                  for (const [metodo, monto] of Object.entries(v.pago_dividido)) {
-                    if (monto && monto > 0) acc[metodo] = (acc[metodo] || 0) + monto;
+      {stock && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          {(() => {
+            // Calcular montos por método (con soporte pago dividido)
+            const montosPorMetodo = ventas.reduce((acc, v) => {
+              if (v.estado_pago !== 'pagado') return acc;
+              if (v.pago_dividido && v.metodo_pago === 'mixto') {
+                for (const [metodo, monto] of Object.entries(v.pago_dividido)) {
+                  if (monto && monto > 0) {
+                    acc[metodo] = (acc[metodo] || 0) + monto;
                   }
-                } else {
-                  const metodo = v.metodo_pago || 'efectivo';
-                  acc[metodo] = (acc[metodo] || 0) + v.total;
                 }
-                return acc;
-              }, {} as Record<string, number>);
+              } else {
+                const metodo = v.metodo_pago || 'efectivo';
+                acc[metodo] = (acc[metodo] || 0) + v.total;
+              }
+              return acc;
+            }, {} as Record<string, number>);
 
-              const gastosEfectivo = gastosDelDia.filter(g => !g.metodo_pago || g.metodo_pago === 'efectivo').reduce((sum, g) => sum + g.monto, 0);
-              const gastosYape = gastosDelDia.filter(g => g.metodo_pago === 'yape').reduce((sum, g) => sum + g.monto, 0);
-              const gastosPlin = gastosDelDia.filter(g => g.metodo_pago === 'plin').reduce((sum, g) => sum + g.monto, 0);
-              const cajaChica = (stock.dinero_inicial || 0) + (montosPorMetodo['efectivo'] || 0) - gastosEfectivo;
+            // Gastos por método
+            const gastosEfectivo = gastosDelDia
+              .filter(g => !g.metodo_pago || g.metodo_pago === 'efectivo')
+              .reduce((sum, g) => sum + g.monto, 0);
 
-              const bovedas = [
-                { label: 'Caja Chica', monto: cajaChica, icon: '/images/cash-icon.png', color: 'bg-emerald-500', desc: 'Soles físicos' },
-                { label: 'Yape', monto: (montosPorMetodo['yape'] || 0) - gastosYape, icon: '/images/yape-logo.png', color: 'bg-purple-600', desc: 'Digital' },
-                { label: 'Plin', monto: (montosPorMetodo['plin'] || 0) - gastosPlin, icon: '/images/plin-logo.png', color: 'bg-cyan-500', desc: 'Digital' },
-                { label: 'Tarjeta', monto: montosPorMetodo['tarjeta'] || 0, icon: '/images/card-icon.png', color: 'bg-blue-600', desc: 'Pos' },
-              ];
+            const gastosYape = gastosDelDia
+              .filter(g => g.metodo_pago === 'yape')
+              .reduce((sum, g) => sum + g.monto, 0);
 
-              return bovedas.map((b, i) => (
+            const gastosPlin = gastosDelDia
+              .filter(g => g.metodo_pago === 'plin')
+              .reduce((sum, g) => sum + g.monto, 0);
+
+            const cajaChica = (stock.dinero_inicial || 0) + (montosPorMetodo['efectivo'] || 0) - gastosEfectivo;
+
+            const bovedas = [
+              {
+                label: 'Caja Chica',
+                monto: cajaChica,
+                icon: '/images/cash-icon.png',
+                color: 'emerald',
+                desc: `Base S/${stock.dinero_inicial?.toFixed(0) || 0} + Ventas - Gastos`
+              },
+              {
+                label: 'Yape',
+                monto: (montosPorMetodo['yape'] || 0) - gastosYape,
+                icon: '/images/yape-logo.png',
+                color: 'purple',
+                desc: gastosYape > 0 ? `Ventas - Gastos (S/${gastosYape.toFixed(0)})` : 'Cobros por Yape'
+              },
+              {
+                label: 'Plin',
+                monto: (montosPorMetodo['plin'] || 0) - gastosPlin,
+                icon: '/images/plin-logo.png',
+                color: 'cyan',
+                desc: gastosPlin > 0 ? `Ventas - Gastos (S/${gastosPlin.toFixed(0)})` : 'Cobros por Plin'
+              },
+              {
+                label: 'Tarjeta',
+                monto: montosPorMetodo['tarjeta'] || 0,
+                icon: '/images/card-icon.png',
+                color: 'blue',
+                desc: 'Cobros por Tarjeta'
+              },
+            ];
+
+            const colorMap: Record<string, { bg: string; border: string; text: string; badge: string }> = {
+              emerald: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-600' },
+              purple: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', badge: 'bg-purple-100 text-purple-600' },
+              cyan: { bg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-700', badge: 'bg-cyan-100 text-cyan-600' },
+              blue: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', badge: 'bg-blue-100 text-blue-600' },
+            };
+
+            return bovedas.map((b, i) => {
+              const c = colorMap[b.color];
+              return (
                 <motion.div
                   key={b.label}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.4 + i * 0.05 }}
-                  className="ocean-card group hover:scale-[1.02] p-3 sm:p-5"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 + i * 0.05 }}
+                  className={`${c.bg} ${c.border} border rounded-xl p-4 hover:shadow-md transition-shadow`}
                 >
-                  <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 relative flex items-center justify-center shrink-0">
-                      <Image src={b.icon} alt={b.label} fill className="object-contain" />
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-9 h-9 flex items-center justify-center">
+                      <Image
+                        src={b.icon}
+                        alt={b.label}
+                        width={28}
+                        height={28}
+                        className="object-contain"
+                      />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-thebear-blue/50 truncate">{b.label}</p>
-                      <div className={`h-0.5 sm:h-1 w-full bg-slate-100 rounded-full mt-1 overflow-hidden`}>
-                        <div className={`h-full ${b.color}`} style={{ width: '40%' }}></div>
-                      </div>
-                    </div>
+                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${c.badge}`}>
+                      {b.label}
+                    </span>
                   </div>
-                  <p className="text-lg sm:text-2xl font-black text-thebear-dark-blue tracking-tighter">S/ {b.monto.toFixed(2)}</p>
-                  <p className="text-[8px] sm:text-[10px] text-slate-400 font-bold mt-0.5 sm:mt-1 uppercase tracking-tighter truncate">{b.desc}</p>
+                  <p className={`text-xl sm:text-2xl font-black ${c.text}`}>S/ {b.monto.toFixed(2)}</p>
+                  <p className="text-[11px] text-slate-400 mt-1">{b.desc}</p>
                 </motion.div>
-              ));
-            })()}
-          </div>
-        )
-      }
+              );
+            });
+          })()}
+        </div>
+      )}
 
       {/* Grid Principal */}
-      <div className="grid lg:grid-cols-3 gap-8">
-        {/* Inventario */}
+      <div className="grid lg:grid-cols-3 gap-6 mb-8">
+        {/* Stock del Día */}
         <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="lg:col-span-2 ocean-card"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-6"
         >
-          <div className="flex items-center justify-between mb-8 pb-4 border-b border-thebear-cream/30">
-            <h2 className="text-xl font-black text-thebear-dark-blue uppercase tracking-tight flex items-center gap-2">
-              <Package size={20} className="text-thebear-blue" />
-              Inventario del día
-            </h2>
-            <div className="flex items-center gap-2 bg-thebear-blue/5 px-4 py-2 rounded-xl border border-thebear-blue/10">
-              <span className="text-[10px] font-black text-thebear-blue uppercase">Estado</span>
-              <span className="w-2 h-2 rounded-full bg-thebear-light-blue animate-pulse"></span>
-            </div>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-slate-800">Inventario del Día</h2>
           </div>
 
-          {!stock ? (
-            <div className="text-center py-20">
-              <div className="w-20 h-20 bg-thebear-cream rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-dashed border-thebear-blue/20">
-                <Package size={32} className="text-thebear-blue/30" />
-              </div>
-              <p className="font-black text-thebear-dark-blue/30 uppercase tracking-widest">Esperando Apertura</p>
+          {loading ? (
+            <div className="flex items-center justify-center h-40">
+              <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
+            </div>
+          ) : !stock ? (
+            <div className="text-center py-12 text-slate-400">
+              <Package size={40} className="mx-auto mb-3 opacity-50" />
+              <p>Sin datos de inventario</p>
+              <p className="text-sm">Realiza la apertura del día</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Platos Card */}
-              <div className="p-6 bg-gradient-to-br from-white to-thebear-cream/20 rounded-3xl border border-thebear-cream shadow-sm">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <p className="text-xs font-black text-thebear-blue/60 uppercase tracking-widest mb-1">Ceviches / Platos</p>
-                    <p className="text-3xl font-black text-thebear-dark-blue tracking-tighter">
-                      {formatearFraccionProducto(stock.platos_disponibles)}
-                    </p>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-4 bg-slate-50 rounded-xl">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-slate-500">Pollos</span>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${(stock.pollos_disponibles / stock.pollos_iniciales) > 0.3
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-red-100 text-red-700'
+                      }`}>
+                      {Math.round((stock.pollos_disponibles / stock.pollos_iniciales) * 100)}%
+                    </span>
                   </div>
-                  <div className={`p-2 rounded-xl ${(stock.platos_disponibles / (stock.platos_iniciales || 1)) > 0.3 ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
-                    <ChefHat size={20} />
-                  </div>
-                </div>
-                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(stock.platos_disponibles / stock.platos_iniciales) * 100}%` }}
-                    className={`h-full rounded-full ${(stock.platos_disponibles / stock.platos_iniciales) > 0.3 ? 'bg-emerald-500' : 'bg-red-500'}`}
-                  />
-                </div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
-                  Quedan {formatearFraccionProducto(stock.platos_disponibles)} de {stock.platos_iniciales} {stock.platos_dia > 0 ? 'preparados' : 'estimados (según pescado)'}
-                </p>
-              </div>
-
-              {/* Chicha Card */}
-              <div className="p-6 bg-gradient-to-br from-white to-thebear-cream/20 rounded-3xl border border-thebear-cream shadow-sm">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <p className="text-xs font-black text-thebear-blue/60 uppercase tracking-widest mb-1">Bebida de la Casa</p>
-                    <p className="text-3xl font-black text-thebear-dark-blue tracking-tighter">
-                      {(stock.chicha_disponible || 0).toFixed(1)}L
-                    </p>
-                  </div>
-                  <div className="p-2 rounded-xl bg-purple-100 text-purple-600 uppercase font-black text-[10px]">Chicha</div>
-                </div>
-                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${((stock.chicha_disponible || 0) / (stock.chicha_inicial || 1)) * 100}%` }}
-                    className="bg-purple-500 h-full rounded-full"
-                  />
-                </div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Stock fresco: {(stock.chicha_disponible || 0).toFixed(1)} Litros</p>
-              </div>
-
-              {/* Insumos Card */}
-              <div className="md:col-span-2 lg:col-span-2 p-6 bg-gradient-to-br from-white to-amber-50 rounded-3xl border border-amber-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center shadow-inner">
-                    <span className="text-2xl">🐟</span>
-                  </div>
-                  <div>
-                    <p className="text-xs font-black text-amber-600/60 uppercase tracking-widest mb-1">Insumo Base</p>
-                    <p className="text-3xl font-black text-amber-900 tracking-tighter">
-                      {(stock.insumos_detalle_disponible?.pescado || 0).toFixed(2)} <span className="text-base text-amber-700/50">Kg</span>
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-2 min-w-[200px]">
-                  <div className="flex justify-between text-[10px] font-black uppercase text-amber-700/70">
-                    <span>Pescado Neto</span>
-                    <span>{(stock.insumos_detalle_inicial?.pescado || 0).toFixed(2)} Kg</span>
-                  </div>
-                  <div className="w-full h-2 bg-amber-200/50 rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${((stock.insumos_detalle_disponible?.pescado || 0) / (stock.insumos_detalle_inicial?.pescado || 1)) * 100}%` }}
-                      className={`h-full rounded-full ${((stock.insumos_detalle_disponible?.pescado || 0) / (stock.insumos_detalle_inicial?.pescado || 1)) > 0.2 ? 'bg-amber-500' : 'bg-red-500'}`}
-                    />
-                  </div>
-                  <p className="text-[9px] text-amber-600/60 font-bold uppercase tracking-tight text-right">
-                    Quedan {(stock.insumos_detalle_disponible?.pescado || 0).toFixed(2)} Kg
+                  <p className="text-xl font-bold text-slate-800">
+                    {formatearFraccionPollo(stock.pollos_disponibles)}
                   </p>
+                  <p className="text-xs text-slate-400">de {stock.pollos_iniciales} iniciales</p>
+                </div>
+
+                <div className="p-4 bg-slate-50 rounded-xl cursor-pointer hover:bg-blue-50 transition-colors" onClick={() => setShowBebidasDetalle(!showBebidasDetalle)}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-slate-500">Bebidas</span>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${(stock.gaseosas_disponibles / stock.gaseosas_iniciales) > 0.3
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-red-100 text-red-700'
+                      }`}>
+                      {Math.round((stock.gaseosas_disponibles / stock.gaseosas_iniciales) * 100)}%
+                    </span>
+                  </div>
+                  <p className="text-xl font-bold text-slate-800">{stock.gaseosas_disponibles}</p>
+                  <p className="text-xs text-blue-500 underline mt-1">{showBebidasDetalle ? 'Ocultar ▲' : 'Ver detalle ▼'}</p>
+                </div>
+
+                <div className="p-4 bg-slate-50 rounded-xl">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-slate-500">Chicha</span>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${((stock.chicha_disponible || 0) / (stock.chicha_inicial || 1)) > 0.3
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-red-100 text-red-700'
+                      }`}>
+                      {Math.round(((stock.chicha_disponible || 0) / (stock.chicha_inicial || 1)) * 100)}%
+                    </span>
+                  </div>
+                  <p className="text-xl font-bold text-slate-800">
+                    {(stock.chicha_disponible || 0).toFixed(2)}L
+                  </p>
+                  <p className="text-xs text-slate-400">de {stock.chicha_inicial || 0}L iniciales</p>
+                </div>
+
+                <div className="p-4 bg-slate-50 rounded-xl">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-slate-500">Base Caja</span>
+                  </div>
+                  <p className="text-xl font-bold text-slate-800">S/ {stock.dinero_inicial.toFixed(0)}</p>
+                  <p className="text-xs text-slate-400">Dinero inicial</p>
                 </div>
               </div>
 
-              {/* Bebidas Detalle */}
-              <div className="md:col-span-2">
-                <button
-                  onClick={() => setShowBebidasDetalle(!showBebidasDetalle)}
-                  className="w-full flex items-center justify-between p-4 bg-thebear-dark-blue text-white rounded-2xl hover:bg-thebear-blue transition-all"
+              {/* Panel de Bebidas Inline — profesional */}
+              {showBebidasDetalle && stock.bebidas_detalle && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="bg-slate-50 rounded-lg p-3 border border-slate-200"
                 >
-                  <div className="flex items-center gap-3">
-                    <Package size={20} className="text-thebear-light-blue" />
-                    <span className="font-black text-sm uppercase tracking-widest">Inventario de Bebidas</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-white/60">{stock.gaseosas_disponibles} Unidades</span>
-                    <ArrowRight size={18} className={`transition-transform duration-300 ${showBebidasDetalle ? 'rotate-90' : ''}`} />
-                  </div>
-                </button>
-
-                <AnimatePresence>
-                  {showBebidasDetalle && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10, height: 0 }}
-                      animate={{ opacity: 1, y: 0, height: 'auto' }}
-                      exit={{ opacity: 0, y: -10, height: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4">
-                        {Object.entries(stock.bebidas_detalle || {}).map(([marca, tipos]) => {
-                          const MARCA_LABEL: any = { inca_kola: 'Inca Kola', coca_cola: 'Coca Cola', sprite: 'Sprite', fanta: 'Fanta', agua_mineral: 'Agua Mineral' };
-                          const tiposRecord = tipos as Record<string, number>;
-                          const total = Object.values(tiposRecord).reduce((s, n) => s + n, 0);
-                          return (
-                            <div key={marca} className="ocean-card p-4">
-                              <p className="text-[10px] font-black uppercase text-thebear-blue mb-1">{MARCA_LABEL[marca] || marca}</p>
-                              <p className="text-xl font-black text-thebear-dark-blue mb-3">{total}</p>
-                              <div className="space-y-1">
-                                {Object.entries(tiposRecord || {}).map(([tipo, qty]) => (
-                                  <div key={tipo} className="flex justify-between text-[9px] border-b border-thebear-cream/30 pb-0.5 last:border-0">
-                                    <span className="text-slate-500 font-bold uppercase">{tipo.split('_')[0]}</span>
-                                    <span className="font-black text-thebear-blue">{qty}</span>
-                                  </div>
-                                ))}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {Object.entries(stock.bebidas_detalle).map(([marca, tipos]) => {
+                      const MARCA_LABEL: Record<string, string> = { inca_kola: 'Inca Kola', coca_cola: 'Coca Cola', sprite: 'Sprite', fanta: 'Fanta', agua_mineral: 'Agua Mineral' };
+                      const MARCA_DOT: Record<string, string> = { inca_kola: 'bg-yellow-500', coca_cola: 'bg-red-600', sprite: 'bg-green-600', fanta: 'bg-orange-500', agua_mineral: 'bg-sky-400' };
+                      const TIPO_LABEL: Record<string, string> = { personal_retornable: 'Pers.', descartable: 'Desc.', gordita: 'Gordita', litro: '1L', litro_medio: '1.5L', tres_litros: '3L', mediana: '2.25L', personal: '600ml', grande: '2.5L' };
+                      const total = Object.values(tipos as Record<string, number>).reduce((s, n) => s + n, 0);
+                      return (
+                        <div key={marca} className="bg-white rounded-md p-2.5 border border-slate-150">
+                          <div className="flex items-center gap-1.5 mb-1.5 pb-1.5 border-b border-slate-100">
+                            <span className={`w-2 h-2 rounded-full ${MARCA_DOT[marca] || 'bg-gray-400'}`}></span>
+                            <span className="text-[11px] font-semibold text-slate-600">{MARCA_LABEL[marca] || marca}</span>
+                            <span className={`ml-auto text-xs font-bold ${total > 0 ? 'text-slate-800' : 'text-red-500'}`}>{total}</span>
+                          </div>
+                          <div className="space-y-0.5">
+                            {Object.entries(tipos as Record<string, number>).map(([tipo, qty]) => (
+                              <div key={tipo} className="flex justify-between text-[11px]">
+                                <span className={qty === 0 ? 'text-red-400 line-through' : 'text-slate-500'}>{TIPO_LABEL[tipo] || tipo}</span>
+                                <span className={`font-semibold ${qty === 0 ? 'text-red-400' : 'text-slate-700'}`}>{qty}</span>
                               </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Barra de Progreso */}
+              <div>
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-slate-600">Stock de pollos</span>
+                  <span className="text-slate-500">{formatearFraccionPollo(stock.pollos_disponibles)} / {stock.pollos_iniciales}</span>
+                </div>
+                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${(stock.pollos_disponibles / stock.pollos_iniciales) > 0.5
+                      ? 'bg-emerald-500'
+                      : (stock.pollos_disponibles / stock.pollos_iniciales) > 0.2
+                        ? 'bg-amber-500'
+                        : 'bg-red-500'
+                      }`}
+                    style={{ width: `${(stock.pollos_disponibles / stock.pollos_iniciales) * 100}%` }}
+                  ></div>
+                </div>
               </div>
             </div>
           )}
         </motion.div>
 
         {/* Acciones Rápidas */}
-        <div className="space-y-6">
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="ocean-card bg-gradient-to-br from-thebear-blue to-thebear-dark-blue border-0 h-full"
-          >
-            <h2 className="text-xl font-black text-white uppercase tracking-tight mb-6 flex items-center gap-2">
-              <Zap size={20} className="text-thebear-light-blue" />
-              Acciones de Mando
-            </h2>
-            <div className="space-y-4">
-              <Link href="/pos" className="group ocean-button-primary bg-white/10 hover:bg-white/20 border-2 border-white/20 px-4 py-5 rounded-2xl flex justify-between items-center transition-all">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-thebear-blue shadow-lg group-hover:scale-110 transition-transform">
-                    <ShoppingCart size={24} />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-black text-white uppercase tracking-widest text-sm">Nuevo Pedido</p>
-                    <p className="text-xs text-white/50 font-bold">Ir al Punto de Venta</p>
-                  </div>
-                </div>
-                <div className="bg-thebear-light-blue/20 p-2 rounded-xl group-hover:bg-thebear-light-blue transition-colors group-hover:text-thebear-dark-blue">
-                  <ArrowRight size={20} />
-                </div>
-              </Link>
-
-              <Link href="/apertura" className="group ocean-button-primary bg-white/5 hover:bg-white/10 border-2 border-white/10 px-4 py-5 rounded-2xl flex justify-between items-center transition-all">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-linear-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
-                    <Package size={20} />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-black text-white uppercase tracking-widest text-sm">Apertura</p>
-                    <p className="text-xs text-white/40 font-bold">Configurar el día</p>
-                  </div>
-                </div>
-                <div className="bg-white/5 p-2 rounded-xl group-hover:bg-white/20">
-                  <ArrowRight size={20} />
-                </div>
-              </Link>
-
-              <Link href="/cocina" className="group ocean-button-primary bg-white/5 hover:bg-white/10 border-2 border-white/10 px-4 py-5 rounded-2xl flex justify-between items-center transition-all">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-white shadow-sm border border-thebear-cream/30 rounded-xl flex items-center justify-center text-thebear-blue group-hover:scale-110 transition-transform">
-                    <LockIcon size={20} />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-black text-white uppercase tracking-widest text-sm">Cocina</p>
-                    <p className="text-xs text-white/40 font-bold">Ver órdenes activas</p>
-                  </div>
-                </div>
-                <div className="bg-white/5 p-2 rounded-xl group-hover:bg-white/20">
-                  <ArrowRight size={20} />
-                </div>
-              </Link>
-            </div>
-
-            <div className="mt-8 pt-6 border-t border-white/10">
-              <p className="text-[10px] font-black text-thebear-light-blue uppercase tracking-[0.2em] text-center">The Bear POS • Freshness Control</p>
-            </div>
-          </motion.div>
-        </div>
-      </div>
-
-      {/* Resumen de Caja y Administración */}
-      <div className="grid lg:grid-cols-2 gap-8 mt-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="ocean-card"
+          transition={{ delay: 0.35 }}
+          className="bg-white border border-slate-200 rounded-xl p-6"
         >
-          <div className="flex items-center justify-between mb-8 pb-4 border-b border-thebear-cream/30">
-            <h2 className="text-xl font-black text-thebear-dark-blue uppercase tracking-tight flex items-center gap-2">
-              <Wallet size={20} className="text-thebear-blue" />
-              Consolidado de Caja
-            </h2>
-            <span className="ocean-badge bg-emerald-100 text-emerald-600 font-black">En Línea</span>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex justify-between items-center p-4 bg-thebear-cream/20 rounded-2xl border border-thebear-cream/50">
-              <span className="text-sm font-bold text-thebear-blue/70">Ingresos Totales (Hoy)</span>
-              <span className="text-xl font-black text-thebear-dark-blue tracking-tighter">S/ {metricas.totalIngresos.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between items-center p-4 bg-white rounded-2xl border border-slate-100 italic">
-              <span className="text-sm font-bold text-slate-400">Base Inicial de Caja</span>
-              <span className="text-lg font-black text-slate-400 tracking-tighter">S/ {stock?.dinero_inicial?.toFixed(2) || '0.00'}</span>
-            </div>
-            <div className="flex justify-center py-4 relative">
-              <div className="absolute inset-x-0 top-1/2 h-0.5 bg-gradient-to-r from-transparent via-thebear-cream to-transparent"></div>
-              <div className="relative z-10 bg-white px-8 py-4 rounded-3xl border-4 border-thebear-blue shadow-xl">
-                <p className="text-[10px] font-black text-thebear-blue uppercase tracking-widest text-center mb-1">Total Consolidado</p>
-                <p className="text-4xl font-black ocean-gradient-text tracking-tighter">S/ {((stock?.dinero_inicial || 0) + metricas.totalIngresos).toFixed(2)}</p>
+          <h2 className="text-lg font-semibold text-slate-800 mb-4">Acciones</h2>
+          <div className="space-y-3">
+            <Link
+              href="/pos"
+              className="flex items-center gap-3 p-3 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition-colors"
+            >
+              <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+                <ShoppingCart size={20} />
               </div>
-            </div>
-          </div>
-        </motion.div>
+              <div className="flex-1">
+                <p className="font-medium">Pedidos</p>
+                <p className="text-xs text-white/60">Nueva venta</p>
+              </div>
+              <ArrowRight size={18} className="opacity-50" />
+            </Link>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="ocean-card flex flex-col"
-        >
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-black text-thebear-dark-blue uppercase tracking-tight">Administración</h2>
-            <div className="flex gap-2">
+            <Link
+              href="/apertura"
+              className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors"
+            >
+              <div className="w-10 h-10 bg-white rounded-lg border border-slate-200 flex items-center justify-center">
+                <ClipboardList size={20} className="text-slate-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-slate-800">Apertura</p>
+                <p className="text-xs text-slate-500">Configurar día</p>
+              </div>
+              <ArrowRight size={18} className="text-slate-400" />
+            </Link>
+
+            <Link
+              href="/cocina"
+              className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors"
+            >
+              <div className="w-10 h-10 bg-white rounded-lg border border-slate-200 flex items-center justify-center">
+                <ChefHat size={20} className="text-slate-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-slate-800">Cocina</p>
+                <p className="text-xs text-slate-500">Ver pedidos</p>
+              </div>
+              <ArrowRight size={18} className="text-slate-400" />
+            </Link>
+
+            {/* Ajuste Administrativo (Solo Admin) */}
+            {user?.rol === 'administrador' && (
               <button
-                onClick={() => setShowGastosModal(true)}
-                className="bg-thebear-dark-blue text-white p-3 rounded-2xl shadow-lg hover:bg-thebear-blue transition-all"
+                onClick={() => setShowAdminAjusteModal(true)}
+                className="w-full flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl hover:bg-amber-100 transition-colors"
               >
-                <span className="text-lg font-black leading-none">+ S/</span>
+                <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                  <Zap size={20} className="text-amber-600" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="font-medium text-amber-900">Ajuste Admin</p>
+                  <p className="text-xs text-amber-700">Stock / Caja +</p>
+                </div>
+                <ArrowRight size={18} className="text-amber-400" />
               </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <Link href="/reportes" className="ocean-card group p-4 flex flex-col items-center justify-center hover:bg-thebear-blue text-thebear-blue hover:text-white border border-thebear-cream shadow-sm">
-              <BarChart3 size={24} className="mb-2 group-hover:scale-110 transition-transform" />
-              <span className="text-[10px] font-black uppercase tracking-tight">Reportes</span>
-            </Link>
-            <Link href="/ventas" className="ocean-card group p-4 flex flex-col items-center justify-center hover:bg-thebear-blue text-thebear-blue hover:text-white border border-thebear-cream shadow-sm">
-              <Receipt size={24} className="mb-2 group-hover:scale-110 transition-transform" />
-              <span className="text-[10px] font-black uppercase tracking-tight">Ventas</span>
-            </Link>
-            <Link href="/cierre" className="ocean-card group p-4 flex flex-col items-center justify-center hover:bg-thebear-blue text-thebear-blue hover:text-white border border-thebear-cream shadow-sm">
-              <LockIcon size={24} className="mb-2 group-hover:scale-110 transition-transform" />
-              <span className="text-[10px] font-black uppercase tracking-tight">Cierre</span>
-            </Link>
-          </div>
-
-          <div className="flex-1">
-            {gastosDelDia.length > 0 ? (
-              <div className="bg-red-50/50 rounded-3xl p-6 border-2 border-red-100 flex-1">
-                <div className="flex justify-between items-center mb-4 pb-2 border-b border-red-200">
-                  <span className="text-sm font-black text-red-700 uppercase tracking-widest flex items-center gap-2">
-                    <TrendingDown size={16} />
-                    Gastos Salientes
-                  </span>
-                  <span className="text-xl font-black text-red-600 tracking-tighter">S/ {totalGastos.toFixed(2)}</span>
-                </div>
-                <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
-                  {gastosDelDia.map(g => (
-                    <div key={g.id} className="flex justify-between items-center bg-white/80 p-3 rounded-xl border border-red-100 group">
-                      <div>
-                        <p className="text-xs font-bold text-slate-700 group-hover:text-red-700 transition-colors uppercase">{g.descripcion}</p>
-                        <p className="text-[9px] font-bold text-slate-400 tracking-widest uppercase">{g.metodo_pago || 'efectivo'}</p>
-                      </div>
-                      <p className="text-sm font-black text-red-600 tracking-tighter">S/ {g.monto.toFixed(2)}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 p-8">
-                <Receipt size={32} className="text-slate-200 mb-2" />
-                <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Sin Gastos Registrados</p>
-              </div>
             )}
           </div>
         </motion.div>
       </div>
 
+      {/* Sección Inferior */}
+      <div className="grid lg:grid-cols-2 gap-6 mb-8">
+        {/* Resumen Financiero */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-white border border-slate-200 rounded-xl p-6"
+        >
+          <h2 className="text-lg font-semibold text-slate-800 mb-4">Resumen Financiero</h2>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between py-3 border-b border-slate-100">
+              <span className="text-slate-600">Ingresos del día</span>
+              <span className="font-semibold text-slate-800">S/ {metricas.totalIngresos.toFixed(2)}</span>
+            </div>
+            <div className="flex items-center justify-between py-3 border-b border-slate-100">
+              <span className="text-slate-600">Base de caja</span>
+              <span className="font-semibold text-slate-800">S/ {stock?.dinero_inicial?.toFixed(2) || '0.00'}</span>
+            </div>
+            <div className="flex items-center justify-between py-3 border-b border-slate-100">
+              <span className="text-slate-600">Ticket promedio</span>
+              <span className="font-semibold text-slate-800">S/ {metricas.promedioPorPedido.toFixed(2)}</span>
+            </div>
+            <div className="flex items-center justify-between py-3">
+              <span className="text-slate-600 font-medium">Total en caja</span>
+              <span className="font-bold text-lg text-emerald-600">
+                S/ {((stock?.dinero_inicial || 0) + metricas.totalIngresos).toFixed(2)}
+              </span>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Accesos Administrativos */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+          className="bg-white border border-slate-200 rounded-xl p-6"
+        >
+          <h2 className="text-lg font-semibold text-slate-800 mb-4">Administración</h2>
+          <div className="grid grid-cols-2 gap-3">
+            <Link
+              href="/reportes"
+              className="flex flex-col items-center justify-center p-4 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors text-center"
+            >
+              <BarChart3 size={24} className="text-slate-600 mb-2" />
+              <span className="font-medium text-slate-800 text-sm">Reportes</span>
+            </Link>
+
+            <Link
+              href="/ventas"
+              className="flex flex-col items-center justify-center p-4 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors text-center"
+            >
+              <Package size={24} className="text-slate-600 mb-2" />
+              <span className="font-medium text-slate-800 text-sm">Ventas</span>
+            </Link>
+
+            <Link
+              href="/cierre"
+              className="flex flex-col items-center justify-center p-4 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors text-center"
+            >
+              <Wallet size={24} className="text-slate-600 mb-2" />
+              <span className="font-medium text-slate-800 text-sm">Cierre</span>
+            </Link>
+          </div>
+
+          {/* Botón de Gastos */}
+          <button
+            onClick={() => setShowGastosModal(true)}
+            className="w-full mt-4 flex items-center justify-center gap-2 p-3 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition-colors font-medium"
+          >
+            <span className="text-[18px] font-bold leading-none">S/</span>
+            Registrar Gasto
+          </button>
+
+          {/* Lista de Gastos del Día */}
+          {gastosDelDia.length > 0 && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-100 rounded-xl">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Receipt size={16} className="text-red-600" />
+                  <span className="font-medium text-red-700 text-sm">Gastos del Día</span>
+                </div>
+                <span className="font-bold text-red-600">S/ {totalGastos.toFixed(2)}</span>
+              </div>
+              <div className="space-y-2 max-h-32 overflow-y-auto">
+                {gastosDelDia.map((gasto) => (
+                  <div key={gasto.id} className="flex justify-between items-center text-sm bg-white px-3 py-2 rounded-lg">
+                    <div>
+                      <span className="text-slate-700">{gasto.descripcion}</span>
+                      {gasto.metodo_pago && (
+                        <span className="ml-2 text-xs text-slate-400">({gasto.metodo_pago})</span>
+                      )}
+                    </div>
+                    <span className="font-medium text-red-600">S/ {gasto.monto.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </motion.div>
+      </div>
+
       {/* Modal de Gastos */}
-      {
-        showGastosModal && (
-          <GastosModal
-            isOpen={showGastosModal}
-            onClose={() => setShowGastosModal(false)}
-            onGastoRegistrado={cargarGastos}
-          />
-        )
-      }
+      {showGastosModal && (
+        <GastosModal
+          isOpen={showGastosModal}
+          onClose={() => setShowGastosModal(false)}
+          onGastoRegistrado={cargarGastos}
+        />
+      )}
 
       {/* Modal de Ajuste Administrativo */}
-      {
-        showAdminAjusteModal && (
-          <AdminAjusteModal
-            isOpen={showAdminAjusteModal}
-            onClose={() => setShowAdminAjusteModal(false)}
-            onSuccess={() => {
-              refetch();
-              refetchVentas();
-            }}
-          />
-        )
-      }
+      {showAdminAjusteModal && (
+        <AdminAjusteModal
+          isOpen={showAdminAjusteModal}
+          onClose={() => setShowAdminAjusteModal(false)}
+          onSuccess={() => {
+            refetch();
+            refetchVentas();
+          }}
+        />
+      )}
 
       {/* Modal de Reset */}
-      {
-        showResetConfirm && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="bg-white rounded-xl p-6 max-w-md w-full"
-            >
-              <h3 className="text-xl font-bold text-slate-800 mb-2">¿Reiniciar sistema?</h3>
-              <p className="text-slate-600 mb-6">
-                Esto eliminará todas las ventas del día y reiniciará el inventario. Esta acción no se puede deshacer.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowResetConfirm(false)}
-                  className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleReset}
-                  disabled={resetting}
-                  className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
-                >
-                  {resetting ? 'Procesando...' : 'Confirmar Reset'}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )
-      }
-    </div >
+      {showResetConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-xl p-6 max-w-md w-full"
+          >
+            <h3 className="text-xl font-bold text-slate-800 mb-2">¿Reiniciar sistema?</h3>
+            <p className="text-slate-600 mb-6">
+              Esto eliminará todas las ventas del día y reiniciará el inventario. Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleReset}
+                disabled={resetting}
+                className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                {resetting ? 'Procesando...' : 'Confirmar Reset'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </div>
   );
 }
 

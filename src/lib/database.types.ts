@@ -1,20 +1,19 @@
-﻿// Tipos TypeScript para las tablas de Supabase
+// Tipos TypeScript para las tablas de Supabase
 
 export interface InventarioDiario {
     id: string;
     fecha: string; // ISO date string
-    platos_dia: number; // Stock inicial de platos preparados
+    pollos_enteros: number;
     gaseosas: number;
     dinero_inicial?: number; // Caja chica / Base
     bebidas_detalle?: BebidasDetalle; // Detailed beverage inventory
     estado: 'abierto' | 'cerrado';
-    stock_platos_real?: number;
+    stock_pollos_real?: number;
     stock_gaseosas_real?: number;
-    insumos_principales_inicial?: number; // Para pescado/insumo base
-    insumos_principales_final?: number;
-    insumos_detalle?: Record<string, number>; // Detailed fish/raw materials
-    consumo_personal?: number;
-    merma_platos?: number;
+    papas_iniciales?: number;
+    papas_finales?: number;
+    cena_personal?: number;
+    pollos_golpeados?: number;
     dinero_cierre_real?: number;
     chicha_inicial?: number; // Litros de chicha
     observaciones_cierre?: string;
@@ -25,25 +24,15 @@ export interface InventarioDiario {
 export interface Producto {
     id: string;
     nombre: string;
-    tipo: 'plato' | 'bebida' | 'complemento' | 'promocion';
+    tipo: 'pollo' | 'bebida' | 'complemento' | 'promocion';
     precio: number;
-    activo: boolean;
+    fraccion_pollo: number; // 1.0, 0.25, 0.125, 0
+    // Campos para trackeo de bebidas
     marca_gaseosa?: 'inca_kola' | 'coca_cola' | 'sprite' | 'fanta' | 'chicha' | null;
     tipo_gaseosa?: 'personal_retornable' | 'descartable' | 'gordita' | 'litro' | 'litro_medio' | 'tres_litros' | 'medio_litro' | 'vaso' | null;
+    activo: boolean;
     imagen_url?: string; // URL de la imagen del producto
     descripcion?: string; // Descripción detallada del producto
-    fraccion_plato?: number; // Equivalencia en porciones
-    receta_detalle?: Record<string, number>; // Ingredientes consumidos (ej. { pescado: 0.150 })
-    created_at: string;
-}
-
-export interface Merma {
-    id: string;
-    fecha: string;
-    insumo: string;
-    cantidad: number;
-    motivo?: string;
-    usuario_id?: string;
     created_at: string;
 }
 
@@ -61,17 +50,13 @@ export interface ItemVenta {
     nombre: string;
     cantidad: number;
     precio: number;
-    detalles?: {
-        picante?: string;
-        termino?: string;
-        notas?: string;
-    };
+    fraccion_pollo: number;
+    // Detalle de bebida para este item
     detalle_bebida?: {
-        marca: string;
-        tipo: string;
+        marca: 'inca_kola' | 'coca_cola' | 'sprite' | 'fanta' | 'chicha';
+        tipo: 'personal_retornable' | 'descartable' | 'gordita' | 'litro' | 'litro_medio' | 'tres_litros' | 'medio_litro' | 'vaso';
     };
-    tipo?: 'plato' | 'bebida' | 'complemento' | 'promocion';
-    fraccion_plato?: number;
+    tipo?: 'pollo' | 'bebida' | 'complemento' | 'promocion';
     printed?: boolean;
 }
 
@@ -80,7 +65,7 @@ export interface Venta {
     fecha: string; // ISO date string
     items: ItemVenta[];
     total: number;
-    insumos_restados?: number;
+    pollos_restados: number;
     gaseosas_restadas: number;
     chicha_restada?: number; // Litros restados en esta venta
     bebidas_detalle?: BebidasDetalle; // Consolidado de bebidas restadas en esta venta
@@ -93,6 +78,7 @@ export interface Venta {
     };
     estado_pedido: 'pendiente' | 'listo' | 'entregado';
     estado_pago?: 'pendiente' | 'pagado';
+    mesa?: string; // Deprecated: usar mesa_id
     mesa_id?: number; // ID de la mesa asignada
     notas?: string; // Comentarios del pedido
     created_at: string;
@@ -110,21 +96,18 @@ export interface Mesa {
 
 export interface StockActual {
     fecha: string;
+    pollos_enteros: number;
     gaseosas: number;
+    pollos_disponibles: number;
     gaseosas_disponibles: number;
+    pollos_iniciales: number;
     gaseosas_iniciales: number;
+    pollos_vendidos: number;
     gaseosas_vendidas: number;
-    platos_dia: number;
-    platos_disponibles: number;
-    platos_iniciales: number;
-    platos_vendidos: number;
     chicha_inicial?: number;
     chicha_vendida?: number;
     chicha_disponible?: number;
-    insumos_principales_inicial?: number;
-    insumos_detalle_inicial?: Record<string, number>;
-    insumos_detalle_disponible?: Record<string, number>;
-    insumos_detalle_vendido?: Record<string, number>;
+    papas_iniciales?: number;
     dinero_inicial: number;
     estado: 'abierto' | 'cerrado';
     bebidas_detalle?: BebidasDetalle; // Initial stock
@@ -166,42 +149,16 @@ export interface BebidasDetalle {
         litro?: number;
         medio_litro?: number;
     };
-    maracuya?: {
-        vaso?: number;
-        litro?: number;
-        medio_litro?: number;
-    };
-    maracumango?: {
-        vaso?: number;
-        litro?: number;
-        medio_litro?: number;
-    };
-    limonada?: {
-        vaso?: number;
-        litro?: number;
-        medio_litro?: number;
-    };
-}
-
-export interface ConfiguracionNegocio {
-    id: number;
-    ruc?: string;
-    razon_social?: string;
-    direccion?: string;
-    telefono?: string;
-    mensaje_boleta?: string;
-    serie_boleta?: string;
-    numero_correlativo?: number;
-    serie_ticket?: string;
-    numero_ticket?: number;
-    printer_ip?: string;
-    printer_port?: number;
-    updated_at: string;
 }
 
 // Tipos para el carrito de compras
 export interface ItemCarrito extends ItemVenta {
     subtotal: number;
+    detalles?: {
+        parte?: string; // pecho, pierna, ala, encuentro, entrepierna, rabadilla
+        trozado?: string; // entero, 1/4, 1/8
+        notas?: string;
+    };
 }
 
 // Tipo para la respuesta de inserción

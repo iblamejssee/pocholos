@@ -1,7 +1,7 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
-import { ShoppingCart, Plus, Minus, Trash2, Check, Loader2, Search, Star, TrendingUp, RefreshCw, X, Printer, ArrowLeft, ArrowRight, LayoutGrid, Coffee, Waves, ChefHat, CheckCircle } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, Check, Loader2, Search, Star, TrendingUp, RefreshCw, X, Printer } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { registrarVenta, actualizarVenta } from '@/lib/ventas';
 import { useInventario } from '@/hooks/useInventario';
@@ -13,13 +13,12 @@ import AnimatedCard from '@/components/AnimatedCard';
 import ProductOptionsModal from '@/components/ProductOptionsModal';
 import ReceiptModal from '@/components/ReceiptModal';
 import TableSelector from '@/components/TableSelector';
-import { motion, AnimatePresence } from 'framer-motion';
-import Image from 'next/image';
+import { motion } from 'framer-motion';
 import { playKitchenBell } from '@/lib/sounds';
-import { formatearFraccionProducto } from '@/lib/utils';
+import { formatearFraccionPollo } from '@/lib/utils';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
-type Categoria = 'platos' | 'especiales' | 'extras' | 'bebidas' | 'todos' | 'populares' | 'promociones';
+type Categoria = 'pollos' | 'especiales' | 'extras' | 'bebidas' | 'todos' | 'populares' | 'promociones';
 
 export default function POSPage() {
     return (
@@ -65,12 +64,6 @@ function POSContent() {
     const [customItemName, setCustomItemName] = useState('');
     const [customItemPrice, setCustomItemPrice] = useState('');
 
-    // Mobile specific
-    const [isCartOpen, setIsCartOpen] = useState(false);
-
-    // Charging state
-    const [isCobrando, setIsCobrando] = useState(false);
-
     useEffect(() => {
         cargarProductos();
 
@@ -102,16 +95,16 @@ function POSContent() {
                     // Mostrar notificación persistente para recargar
                     toast((t) => (
                         <div className="flex flex-col gap-2">
-                            <span className="font-bold text-sm">âš ï¸ La orden ha sido modificada</span>
+                            <span className="font-bold text-sm">⚠️ La orden ha sido modificada</span>
                             <span className="text-xs">Alguien más actualizó este pedido.</span>
                             <button
                                 onClick={() => {
                                     if (selectedTable) handleTableClick(selectedTable);
                                     toast.dismiss(t.id);
                                 }}
-                                className="bg-thebear-blue text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-600 transition-colors"
+                                className="bg-pocholo-red text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-600 transition-colors"
                             >
-                                ðŸ”„ Recargar Datos
+                                🔄 Recargar Datos
                             </button>
                         </div>
                     ), { duration: Infinity, position: 'top-right', id: 'update-conflict' });
@@ -141,12 +134,13 @@ function POSContent() {
     };
 
     const categorias: { id: Categoria; nombre: string; emoji: string }[] = [
-        { id: 'todos', nombre: 'Todos', emoji: '🌊' },
+        { id: 'todos', nombre: 'Todos', emoji: '🍽️' },
         { id: 'populares', nombre: 'Populares', emoji: '🔥' },
         { id: 'promociones', nombre: 'Promos', emoji: '🎉' },
-        { id: 'platos', nombre: 'Platos', emoji: '🐟' },
-        { id: 'extras', nombre: 'Extras', emoji: '🥗' },
-        { id: 'bebidas', nombre: 'Bebidas', emoji: '🍹' },
+        { id: 'pollos', nombre: 'Pollos', emoji: '🍗' },
+        { id: 'especiales', nombre: 'Especiales', emoji: '⭐' },
+        { id: 'extras', nombre: 'Extras', emoji: '🍟' },
+        { id: 'bebidas', nombre: 'Bebidas', emoji: '🥤' },
     ];
 
     const productosFiltrados = productos.filter(producto => {
@@ -162,12 +156,12 @@ function POSContent() {
             return productosPopularesIds.includes(producto.id);
         }
 
-        if (categoriaActiva === 'platos') {
-            return producto.tipo === 'plato' && (producto.fraccion_plato ?? 0) > 0;
+        if (categoriaActiva === 'pollos') {
+            return producto.tipo === 'pollo' && producto.fraccion_pollo > 0;
         }
 
         if (categoriaActiva === 'especiales') {
-            const nombresEspeciales = ['ceviche', 'tiradito', 'causa', 'parihuela', 'arroz chapa', 'mariscos', 'jalea', 'leche de tigre', 'duo', 'trio'];
+            const nombresEspeciales = ['mostrito', 'mostrazo', 'chori', 'salchi', 'chaufa', 'anticucho', 'trilogía', 'cuarto'];
             return nombresEspeciales.some(nombre => producto.nombre.toLowerCase().includes(nombre));
         }
 
@@ -208,7 +202,7 @@ function POSContent() {
                 if (data && !error) {
                     setCurrentVentaId(data.id);
                     // Cargar los items actuales pero marcarlos como "ya en cocina"
-                    // Para simplificar esta v1, solo cargamos el carrito vacío y permitimos AÃ‘ADIR.
+                    // Para simplificar esta v1, solo cargamos el carrito vacío y permitimos AÑADIR.
                     // O mejor, mostramos qué tiene la mesa pero solo el carrito nuevo se guarda.
                     // El usuario pidió: "ver lo q esta ordenado, y la opcion de añadir otro producto"
 
@@ -248,55 +242,58 @@ function POSContent() {
         setIsModalOpen(true);
     };
 
-    const agregarAlCarrito = (producto: Producto, opciones: {
-        picante?: string,
-        termino?: string,
-        notas: string,
-        detalle_bebida?: { marca: string, tipo: string },
-        cantidad?: number
-    }) => {
-        const cantidad = opciones.cantidad || 1;
-        const itemKey = `${producto.id}-${opciones.picante || ''}-${opciones.notas || ''}`;
+    const agregarAlCarrito = (producto: Producto, opciones: { parte?: string, trozado?: string, notas: string, detalle_bebida?: { marca: string, tipo: string }, cantidad?: number }) => {
+        const itemKey = `${producto.id}-${opciones.parte || ''}-${opciones.notas || ''}`;
 
         const itemExistenteIndex = carrito.findIndex((item) => {
-            const currentItemKey = `${item.producto_id}-${item.detalles?.picante || ''}-${item.detalles?.notas || ''}`;
+            const currentItemKey = `${item.producto_id}-${item.detalles?.parte || ''}-${item.detalles?.notas || ''}`;
             return currentItemKey === itemKey;
         });
 
         if (itemExistenteIndex >= 0 && !carrito[itemExistenteIndex].printed) {
+            // Item nuevo en el carrito (no impreso aún) — solo incrementar cantidad
             const nuevoCarrito = [...carrito];
-            nuevoCarrito[itemExistenteIndex].cantidad += cantidad;
+            nuevoCarrito[itemExistenteIndex].cantidad += (opciones.cantidad || 1);
             nuevoCarrito[itemExistenteIndex].subtotal = nuevoCarrito[itemExistenteIndex].cantidad * nuevoCarrito[itemExistenteIndex].precio;
             setCarrito(nuevoCarrito);
         } else {
+            // Item no existe O ya fue impreso (printed:true) → crear nuevo entry
+            // Así el filtro !item.printed lo detecta como nuevo y se imprime ticket de cocina
+            // Determinar detalle_bebida: priorizar la selección del modal (promos), luego la del producto
             let detalleBebida = opciones.detalle_bebida
-                ? { marca: opciones.detalle_bebida.marca, tipo: opciones.detalle_bebida.tipo }
+                ? { marca: opciones.detalle_bebida.marca as any, tipo: opciones.detalle_bebida.tipo as any }
                 : (producto.marca_gaseosa && producto.tipo_gaseosa)
                     ? { marca: producto.marca_gaseosa, tipo: producto.tipo_gaseosa }
                     : undefined;
 
+            // AUTO-DETECCIÓN DE CHICHA: Si no tiene detalle pero el nombre sugiere chicha, mapearlo
             if (!detalleBebida && (producto.nombre.toLowerCase().includes('chicha') || producto.tipo === 'bebida')) {
                 const nombreLower = producto.nombre.toLowerCase();
-                let tipo: string = 'vaso';
-                if (nombreLower.includes('medio') || nombreLower.includes('1/2')) tipo = 'medio_litro';
-                else if (nombreLower.includes('litro') || nombreLower.includes('jarra')) tipo = 'litro';
-                detalleBebida = { marca: 'chicha', tipo };
+                if (nombreLower.includes('chicha')) {
+                    let tipo: any = 'vaso';
+                    if (nombreLower.includes('medio') || nombreLower.includes('0.5') || nombreLower.includes('0,5') || nombreLower.includes('1/2')) {
+                        tipo = 'medio_litro';
+                    } else if (nombreLower.includes('litro') || nombreLower.includes('1l') || nombreLower.includes('jarra')) {
+                        tipo = 'litro';
+                    }
+                    detalleBebida = { marca: 'chicha', tipo };
+                }
             }
 
             const nuevoItem: ItemCarrito = {
                 producto_id: producto.id,
                 nombre: producto.nombre,
-                cantidad: cantidad,
+                cantidad: opciones.cantidad || 1,
                 precio: producto.precio,
-                fraccion_plato: producto.fraccion_plato || 0,
-                subtotal: producto.precio * cantidad,
+                fraccion_pollo: producto.fraccion_pollo,
+                subtotal: producto.precio * (opciones.cantidad || 1),
                 detalles: {
-                    picante: opciones.picante,
-                    termino: opciones.termino,
+                    parte: opciones.parte,
+                    trozado: opciones.trozado,
                     notas: opciones.notas
                 },
                 detalle_bebida: detalleBebida,
-                tipo: producto.tipo
+                tipo: producto.tipo // Guardamos el tipo para filtrar en impresión
             };
             setCarrito([...carrito, nuevoItem]);
         }
@@ -418,28 +415,21 @@ function POSContent() {
                             try {
                                 errorData = await printRes.json();
                             } catch (e) {
-                                errorData = { message: `HTTP ${printRes.status}: ${printRes.statusText}` };
+                                errorData = { message: 'Error de conexión o respuesta inválida del servidor' };
                             }
-                            console.error('Error de respuesta de impresora:', errorData);
-                            toast.error(`Error de impresora: ${errorData.message || 'Sin mensaje de error'}`);
+                            console.error('Error impresión:', errorData);
+                            toast.error(`Error imp. cocina: ${errorData.message}`);
                         } else {
                             toast.success('Enviado a cocina (Solo nuevos items) 🖨️');
                         }
                     } catch (err: any) {
-                        console.error('Excepción al intentar imprimir:', err);
+                        console.error('Error impresión (CLIENTE CATCH):', err);
 
-                        let msg = 'Error de conexión con el servidor de impresión';
+                        let msg = 'Error de conexión con la impresora';
                         if (err instanceof Error) msg = err.message;
                         else if (typeof err === 'string') msg = err;
-                        else {
-                            try {
-                                msg = JSON.stringify(err);
-                            } catch (e) {
-                                msg = 'Error desconocido (no serializable)';
-                            }
-                        }
 
-                        toast.error(`Fallo de impresión: ${msg}`);
+                        toast.error(`Error impresión: ${msg}`);
                         // No bloqueamos el flujo, seguimos a éxito
                     }
                 } else {
@@ -476,566 +466,415 @@ function POSContent() {
     };
 
     if (view === 'mesas') {
-        const mesasLibres = mesas.filter(m => m.estado === 'libre').length;
-        const mesasOcupadas = mesas.length - mesasLibres;
-
         return (
-            <div className="p-4 lg:p-8 max-w-7xl mx-auto pb-32">
-                {/* Header Section */}
-                <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="p-4 lg:p-8 max-w-6xl mx-auto">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-6">
                     <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="flex items-center gap-3">
-                                <div className="relative w-20 h-16">
-                                    <Image
-                                        src="/images/logo-the-bear-icon.png"
-                                        alt="THE BEAR"
-                                        fill
-                                        className="object-contain"
-                                    />
-                                </div>
-
-                                <div>
-                                    <span className="text-thebear-dark-blue font-black text-lg md:text-xl tracking-tighter block leading-none">
-                                        THE BEAR
-                                    </span>
-                                    <span className="text-thebear-blue text-[7px] md:text-[8px] font-bold tracking-widest uppercase">
-                                        Cevichería POS
-                                    </span>
-                                </div>
-                            </div>
-                            <h1 className="text-2xl md:text-3xl font-black text-thebear-dark-blue tracking-tighter uppercase italic ml-2 md:ml-4">Control de Bahía</h1>
-                        </div>
-                        <p className="text-[10px] md:text-sm font-bold text-thebear-blue/60 uppercase tracking-widest pl-1">Asignación de Mesas y Comandas</p>
+                        <h1 className="text-2xl sm:text-3xl font-extrabold text-pocholo-brown">Seleccionar Mesa</h1>
+                        <p className="text-sm text-pocholo-brown/50 mt-1">Toca una mesa para comenzar un pedido</p>
                     </div>
-
-                    <div className="flex items-center gap-4">
-                        <div className="flex bg-white/50 backdrop-blur-md p-1 rounded-2xl border border-thebear-cream shadow-sm">
-                            <div className="px-4 py-2 text-center border-r border-thebear-cream">
-                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-tight">Libres</p>
-                                <p className="text-lg font-black text-thebear-dark-blue leading-none">{mesasLibres}</p>
-                            </div>
-                            <div className="px-4 py-2 text-center">
-                                <p className="text-[10px] font-black text-red-500 uppercase tracking-tight">Ocupadas</p>
-                                <p className="text-lg font-black text-thebear-dark-blue leading-none">{mesasOcupadas}</p>
-                            </div>
-                        </div>
-
-                        <button
-                            onClick={refetchMesas}
-                            className="p-4 bg-white border border-thebear-cream rounded-2xl hover:bg-thebear-cream transition-all shadow-sm hover:shadow-md active:scale-95 text-thebear-blue"
-                        >
-                            <RefreshCw size={22} className={loadingMesas ? 'animate-spin' : ''} />
-                        </button>
-
+                    <div className="flex items-center gap-3">
                         <motion.button
                             onClick={() => handleTableClick(null)}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            className="px-8 py-4 bg-gradient-to-r from-thebear-blue to-thebear-light-blue text-white font-black rounded-2xl shadow-xl flex items-center gap-3 uppercase tracking-widest text-sm"
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.97 }}
+                            className="px-6 sm:px-8 py-4 bg-gradient-to-r from-pocholo-red to-red-600 text-white text-lg sm:text-xl font-extrabold rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center gap-3"
                         >
-                            <ShoppingCart size={20} />
+                            <ShoppingCart size={24} />
                             <span>Para Llevar</span>
                         </motion.button>
+                        <button
+                            onClick={refetchMesas}
+                            className="p-3.5 bg-white border-2 border-pocholo-brown/10 rounded-2xl hover:bg-pocholo-cream transition-colors"
+                        >
+                            <RefreshCw size={22} className={loadingMesas ? 'animate-spin text-pocholo-red' : 'text-pocholo-brown/40'} />
+                        </button>
                     </div>
                 </div>
 
                 {loadingMesas ? (
-                    <div className="flex flex-col items-center justify-center py-32 opacity-30">
-                        <Waves className="animate-bounce mb-4 text-thebear-blue" size={48} />
-                        <p className="font-black uppercase tracking-[0.3em] text-xs">Escaneando Muelle...</p>
+                    <div className="flex justify-center py-20">
+                        <Loader2 className="animate-spin text-pocholo-red" size={48} />
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 lg:gap-6">
-                        {mesas.map((mesa, index) => (
-                            <motion.button
-                                key={mesa.id}
-                                initial={{ opacity: 0, scale: 0.8 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ delay: index * 0.02 }}
-                                onClick={() => handleTableClick(mesa)}
-                                className={`
-                                    relative aspect-[4/5] rounded-[2rem] flex flex-col items-center justify-between p-6
-                                    transition-all duration-300 shadow-lg border-2
-                                    ${mesa.estado === 'libre'
-                                        ? 'bg-white border-thebear-cream hover:border-thebear-blue/30 group'
-                                        : 'bg-gradient-to-br from-thebear-dark-blue to-thebear-blue border-transparent'
-                                    }
-                                    hover:scale-105 active:scale-95
-                                `}
-                            >
-                                <div className={`text-[10px] font-black uppercase tracking-widest ${mesa.estado === 'libre' ? 'text-thebear-blue/40' : 'text-white/40'}`}>
-                                    Mesa
-                                </div>
-
-                                <div className={`text-5xl font-black italic tracking-tighter ${mesa.estado === 'libre' ? 'text-thebear-dark-blue group-hover:text-thebear-blue transition-colors' : 'text-white'}`}>
-                                    {mesa.numero}
-                                </div>
-
-                                <div className={`
-                                    px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest
-                                    ${mesa.estado === 'libre'
-                                        ? 'bg-emerald-50 text-emerald-600'
-                                        : 'bg-white/20 text-white backdrop-blur-sm'
-                                    }
-                                `}>
-                                    {mesa.estado === 'libre' ? 'Libre' : 'Ocupada'}
-                                </div>
-
-                                {mesa.estado === 'ocupada' && (
-                                    <div className="absolute top-2 right-2 animate-pulse">
-                                        <div className="w-2 h-2 bg-red-400 rounded-full shadow-[0_0_8px_rgba(248,113,113,0.8)]"></div>
-                                    </div>
-                                )}
-                            </motion.button>
-                        ))}
-                    </div>
+                    <>
+                        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-3">
+                            {mesas.map((mesa, index) => (
+                                <motion.button
+                                    key={mesa.id}
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: index * 0.012 }}
+                                    onClick={() => handleTableClick(mesa)}
+                                    className={`
+                                        aspect-square rounded-2xl flex flex-col items-center justify-center
+                                        transition-all duration-200 shadow-md hover:shadow-xl
+                                        ${mesa.estado === 'libre'
+                                            ? 'bg-white border-2 border-green-400/50 hover:border-green-500 hover:bg-green-50/30'
+                                            : 'bg-gradient-to-br from-pocholo-red to-red-700 border-2 border-red-600'
+                                        }
+                                        hover:scale-105 active:scale-95
+                                    `}
+                                >
+                                    <span className={`text-3xl sm:text-4xl font-black leading-none ${mesa.estado === 'libre' ? 'text-pocholo-brown' : 'text-white'}`}>
+                                        {mesa.numero}
+                                    </span>
+                                    <span className={`text-xs sm:text-sm font-bold uppercase mt-1.5 flex items-center gap-1 ${mesa.estado === 'libre' ? 'text-green-600' : 'text-white/80'}`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${mesa.estado === 'libre' ? 'bg-green-500' : 'bg-white/60'}`}></span>
+                                        {mesa.estado === 'libre' ? 'Libre' : 'Ocupada'}
+                                    </span>
+                                </motion.button>
+                            ))}
+                        </div>
+                    </>
                 )}
             </div>
         );
     }
 
     return (
-        <div className="p-3 lg:p-6 max-w-7xl mx-auto print:hidden pb-20">
-            {/* POS Header */}
-            <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={() => setView('mesas')}
-                        className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-thebear-blue border border-thebear-cream shadow-sm hover:shadow-md transition-all active:scale-90"
-                    >
-                        <ArrowLeft size={24} />
-                    </button>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-2xl font-black text-thebear-dark-blue italic uppercase tracking-tighter">
-                                {isParaLlevar ? 'Para Llevar' : `Comanda Mesa ${selectedTable?.numero}`}
-                            </h1>
-                            {!isParaLlevar && selectedTable && (
-                                <div className="px-2 py-0.5 bg-thebear-blue/10 text-thebear-blue rounded text-[10px] font-black uppercase tracking-widest">
-                                    En Muelle
-                                </div>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-4 mt-1">
+        <div className="p-3 lg:p-6 max-w-7xl mx-auto print:hidden">
+            {/* Header POS */}
+            <div className="mb-4 lg:mb-6 flex items-center justify-between">
+                <div>
+                    <h1 className="text-xl lg:text-3xl font-bold text-pocholo-brown mb-1">
+                        {isParaLlevar ? 'Pedido para Llevar' : `Mesa ${selectedTable?.numero}`}
+                    </h1>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setView('mesas')}
+                            className="text-pocholo-red text-sm font-bold flex items-center gap-1 hover:underline"
+                        >
+                            ← Volver a Mesas
+                        </button>
+                        {/* Botón Cambiar Mesa (solo para mesas ocupadas) */}
+                        {selectedTable && !isParaLlevar && (
                             <button
-                                onClick={() => setView('mesas')}
-                                className="text-[10px] font-black uppercase text-thebear-blue/60 hover:text-thebear-blue transition-colors flex items-center gap-1"
+                                onClick={() => setShowCambiarMesaModal(true)}
+                                className="text-blue-600 text-sm font-bold flex items-center gap-1 hover:underline"
                             >
-                                <LayoutGrid size={12} /> Cambiar Estación
+                                🔄 Cambiar Mesa
                             </button>
-                            {selectedTable && !isParaLlevar && (
-                                <button
-                                    onClick={() => setShowCambiarMesaModal(true)}
-                                    className="text-[10px] font-black uppercase text-amber-600/60 hover:text-amber-600 transition-colors flex items-center gap-1"
-                                >
-                                    <RefreshCw size={12} /> Reubicar Mesa
-                                </button>
-                            )}
-                        </div>
+                        )}
                     </div>
                 </div>
-
-                {/* Live Stock Status */}
+                {/* Stock Actual */}
                 {stock && (
-                    <div className="ocean-card px-6 py-3 flex items-center gap-6 divide-x divide-thebear-cream/30">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-thebear-blue">
-                                <Waves size={16} />
-                            </div>
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase leading-none">Platos</p>
-                                <p className="text-sm font-black text-thebear-dark-blue">{formatearFraccionProducto(stock.platos_disponibles || 0)}</p>
-                            </div>
-                        </div>
-                        <div className="pl-6 flex items-center gap-3">
-                            <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center text-amber-600">
-                                <Coffee size={16} />
-                            </div>
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase leading-none">Bebidas</p>
-                                <p className="text-sm font-black text-thebear-dark-blue">{stock.gaseosas_disponibles || 0} u.</p>
-                            </div>
-                        </div>
+                    <div className="hidden md:block p-2 glass-card rounded-lg border-l-4 border-pocholo-yellow">
+                        <p className="text-xs text-pocholo-brown font-bold">
+                            📦 {formatearFraccionPollo(stock.pollos_disponibles)} Pollos | {stock.gaseosas_disponibles} Bebidas | {(stock.chicha_disponible || 0).toFixed(2)}L Chicha
+                        </p>
                     </div>
                 )}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                <div className="lg:col-span-8 flex flex-col gap-6">
-                    {/* Search and Filters */}
-                    <div className="flex flex-col md:flex-row gap-4">
-                        <div className="relative w-full md:w-72 lg:w-96 group shrink-0">
-                            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-thebear-blue/40 group-focus-within:text-thebear-blue transition-colors" size={20} />
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+                {/* Productos */}
+                <div className="lg:col-span-2">
+                    {/* Barra de búsqueda */}
+                    <div className="mb-4">
+                        <div className="relative">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-pocholo-brown/40" size={20} />
                             <input
                                 type="text"
-                                placeholder="BUSCAR PRODUCTO..."
+                                placeholder="Buscar producto..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-14 pr-6 py-4 bg-white border-2 border-thebear-cream rounded-3xl focus:border-thebear-blue focus:ring-4 focus:ring-thebear-blue/5 transition-all outline-none font-bold text-thebear-dark-blue placeholder:text-slate-300 shadow-sm"
+                                className="w-full pl-12 pr-4 py-3 glass-card rounded-xl border-2 border-transparent focus:border-pocholo-yellow focus:ring-2 focus:ring-pocholo-yellow/20 transition-all text-pocholo-brown placeholder-pocholo-brown/40"
                             />
-                        </div>
-
-                        <div className="flex-1 flex gap-2 overflow-x-auto pb-2 px-1 no-scrollbar scroll-smooth snap-x">
-                            {categorias.map((cat) => (
-                                <button
-                                    key={cat.id}
-                                    onClick={() => setCategoriaActiva(cat.id)}
-                                    className={`px-5 py-3 md:px-6 md:py-4 rounded-2xl md:rounded-3xl font-black text-[9px] md:text-[10px] uppercase tracking-widest whitespace-nowrap transition-all border-2 flex items-center gap-2 snap-start ${categoriaActiva === cat.id
-                                        ? 'bg-thebear-blue border-thebear-blue text-white shadow-lg shadow-thebear-blue/20'
-                                        : 'bg-white border-thebear-cream text-thebear-blue hover:border-thebear-blue/30'
-                                        }`}
-                                >
-                                    <span>{cat.emoji}</span>
-                                    {cat.nombre}
-                                </button>
-                            ))}
                         </div>
                     </div>
 
-                    {/* Products Grid */}
-                    <div className="bg-white/50 backdrop-blur-sm rounded-[2.5rem] border-2 border-white p-2 shadow-inner min-h-[500px]">
-                        <div className="max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+                    {/* Tabs de Categorías */}
+                    <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                        {categorias.map((cat) => (
+                            <button
+                                key={cat.id}
+                                onClick={() => setCategoriaActiva(cat.id)}
+                                className={`px-3 py-1.5 rounded-lg font-semibold text-xs whitespace-nowrap transition-all ${categoriaActiva === cat.id
+                                    ? 'bg-pocholo-red text-white'
+                                    : 'glass-card text-pocholo-brown hover:bg-pocholo-cream'
+                                    }`}
+                            >
+                                {cat.emoji} {cat.nombre}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Lista de Productos */}
+                    <div className="glass-card rounded-2xl shadow-3d overflow-hidden">
+                        <div className="max-h-[50vh] lg:max-h-[600px] overflow-y-auto">
                             {loading ? (
-                                <div className="p-20 flex flex-col items-center opacity-20">
-                                    <div className="w-12 h-12 border-4 border-thebear-blue border-t-transparent rounded-full animate-spin mb-4" />
-                                    <p className="font-black uppercase tracking-widest text-[10px]">Cargando Red...</p>
-                                </div>
+                                <div className="p-8 text-center text-pocholo-brown/50">Cargando...</div>
                             ) : productosFiltrados.length === 0 ? (
-                                <div className="p-20 text-center">
-                                    <p className="text-xl font-black text-slate-300 uppercase italic">No se avistan productos</p>
+                                <div className="p-8 text-center text-pocholo-brown/50">
+                                    No se encontraron productos
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 p-1 md:p-2">
-                                    <AnimatePresence mode="popLayout">
-                                        {productosFiltrados.map((producto) => (
-                                            <motion.button
-                                                layout
-                                                key={producto.id}
-                                                initial={{ opacity: 0, scale: 0.95 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                exit={{ opacity: 0, scale: 0.95 }}
-                                                whileHover={{ y: -5 }}
-                                                whileTap={{ scale: 0.98 }}
-                                                onClick={() => handleProductClick(producto)}
-                                                className="ocean-card group p-3 md:p-5 text-left relative overflow-hidden flex flex-col justify-between h-36 md:h-40"
-                                            >
-                                                <div className="relative z-10">
-                                                    <div className="flex justify-between items-start mb-1.5 md:mb-2">
-                                                        <div className={`p-1 md:p-1.5 rounded-lg ${producto.tipo === 'plato' ? 'bg-blue-50 text-thebear-blue' : 'bg-amber-50 text-amber-600'
-                                                            }`}>
-                                                            {producto.tipo === 'plato' ? <Waves size={12} /> : <Coffee size={12} />}
-                                                        </div>
-                                                        <Plus size={14} className="text-thebear-blue opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0 hidden md:block" />
-                                                    </div>
-                                                    <h3 className="font-black text-thebear-dark-blue leading-tight mb-0.5 md:mb-1 uppercase text-[10px] md:text-xs line-clamp-2">
-                                                        {producto.nombre}
-                                                    </h3>
-                                                    {producto.descripcion && (
-                                                        <p className="text-[8px] md:text-[9px] text-slate-400 font-bold uppercase line-clamp-1">{producto.descripcion}</p>
-                                                    )}
-                                                </div>
-
-                                                <div className="relative z-10 mt-auto pt-4 border-t border-thebear-cream/30 flex items-center justify-between">
-                                                    <span className="text-sm font-black text-thebear-blue">S/ {producto.precio.toFixed(2)}</span>
-                                                    {producto.tipo === 'plato' && (
-                                                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">Cevichería</span>
-                                                    )}
-                                                </div>
-
-                                                <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-thebear-blue/5 rounded-full group-hover:scale-150 transition-transform duration-700" />
-                                            </motion.button>
-                                        ))}
-                                    </AnimatePresence>
+                                <div className="divide-y divide-pocholo-brown/10">
+                                    {productosFiltrados.map((producto) => (
+                                        <motion.button
+                                            key={producto.id}
+                                            onClick={() => handleProductClick(producto)}
+                                            whileHover={{ backgroundColor: 'rgba(242, 201, 76, 0.1)' }}
+                                            className="w-full p-3 flex items-center justify-between hover:bg-pocholo-yellow/5 transition-colors text-left group"
+                                        >
+                                            <div className="flex-1 min-w-0 mr-4">
+                                                <p className="font-semibold text-pocholo-brown group-hover:text-pocholo-red transition-colors">
+                                                    {producto.nombre}
+                                                </p>
+                                                {producto.descripcion && (
+                                                    <p className="text-xs text-pocholo-brown/60 truncate mt-0.5">
+                                                        {producto.descripcion}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-lg font-bold text-pocholo-red whitespace-nowrap">
+                                                    S/ {producto.precio.toFixed(2)}
+                                                </span>
+                                                <Plus className="text-pocholo-red opacity-0 group-hover:opacity-100 transition-opacity" size={20} />
+                                            </div>
+                                        </motion.button>
+                                    ))}
                                 </div>
                             )}
                         </div>
                     </div>
                 </div>
 
-                {/* Sidebar - Cart */}
-                <div className={`
-                    lg:col-span-4 lg:sticky lg:top-6 fixed inset-0 z-50 lg:inset-auto lg:z-0 transition-transform duration-300 transform
-                    ${isCartOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
-                    ${(view as string) === 'mesas' ? 'pointer-events-none opacity-0' : 'pointer-events-auto opacity-100'}
-                `}>
-                    {/* Backdrop for mobile */}
-                    <div
-                        className="absolute inset-0 bg-thebear-dark-blue/40 backdrop-blur-sm lg:hidden"
-                        onClick={() => setIsCartOpen(false)}
-                    />
+                {/* Carrito */}
+                <div className="lg:col-span-1">
+                    <div className="glass-card rounded-2xl shadow-3d-deep p-3 lg:p-4 sticky top-4 lg:top-6">
+                        <div className="flex items-center gap-2 mb-4">
+                            <ShoppingCart className="text-pocholo-red" size={24} />
+                            <h2 className="text-xl font-bold text-pocholo-brown">
+                                {currentVentaId ? 'Añadir al Pedido' : 'Nuevo Pedido'}
+                            </h2>
+                        </div>
 
-                    <div className="bg-thebear-dark-blue h-full lg:h-auto lg:rounded-[2.5rem] shadow-2xl p-6 text-white min-h-[600px] flex flex-col border-0 lg:border-4 border-white relative z-10">
-                        <div className="flex items-center justify-between mb-8">
-                            <div className="flex items-center gap-3">
-                                <button
-                                    onClick={() => setIsCartOpen(false)}
-                                    className="lg:hidden w-8 h-8 flex items-center justify-center bg-white/10 rounded-lg"
-                                >
-                                    <ArrowRight size={18} />
-                                </button>
-                                <h2 className="text-xl font-black italic uppercase tracking-tighter">Mi Pedido</h2>
+                        {carrito.length === 0 ? (
+                            <div className="text-center py-12">
+                                <p className="text-pocholo-brown/50 text-sm italic">
+                                    {currentVentaId ? 'Selecciona productos para añadir a la mesa' : 'El carrito está vacío'}
+                                </p>
                             </div>
-                            {carrito.length > 0 && (
-                                <button onClick={vaciarCarrito} className="text-[10px] font-black uppercase text-white/40 hover:text-red-400 transition-colors">Limpiar</button>
-                            )}
-                        </div>
-
-                        <div className="flex-1 space-y-3 mb-6 overflow-y-auto pr-2 custom-scrollbar-light">
-                            {carrito.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-20 opacity-30">
-                                    <ShoppingCart size={48} className="mb-4 text-white" />
-                                    <p className="font-black uppercase tracking-widest text-[10px]">Ancla vacía</p>
-                                </div>
-                            ) : (
-                                carrito.map((item, index) => (
-                                    <motion.div
-                                        initial={{ opacity: 0, x: 20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        key={index}
-                                        className="bg-white/5 hover:bg-white/10 p-4 rounded-3xl border border-white/5 transition-all group"
-                                    >
-                                        <div className="flex justify-between items-start mb-3">
-                                            <div className="flex-1">
-                                                <p className="font-black text-[12px] uppercase leading-tight text-white group-hover:text-thebear-light-blue transition-colors">
-                                                    {item.nombre}
-                                                </p>
-                                                <div className="mt-1.5 flex flex-wrap gap-1">
-                                                    {item.detalles?.picante && <span className="text-[8px] bg-white/10 px-1.5 py-0.5 rounded font-black uppercase">{item.detalles.picante}</span>}
-                                                    {item.detalles?.termino && <span className="text-[8px] bg-white/10 px-1.5 py-0.5 rounded font-black uppercase">{item.detalles.termino}</span>}
-                                                    {item.detalles?.notas && <p className="text-[9px] text-white/50 italic w-full">"{item.detalles.notas}"</p>}
+                        ) : (
+                            <>
+                                <div className="space-y-2 mb-4 max-h-[400px] overflow-y-auto">
+                                    {carrito.map((item, index) => (
+                                        <div key={index} className="gradient-cream p-2.5 rounded-lg">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-semibold text-pocholo-brown text-sm">
+                                                        {item.nombre}
+                                                    </p>
+                                                    <div className="text-xs text-pocholo-brown/70 space-y-0.5 mt-1">
+                                                        {item.detalles?.parte && <p>• Parte: {item.detalles.parte}</p>}
+                                                        {item.detalles?.trozado && <p>• Trozado: {item.detalles.trozado}</p>}
+                                                        {item.detalles?.notas && <p className="italic">"{item.detalles.notas}"</p>}
+                                                        {item.detalle_bebida && (
+                                                            <p>• Bebida: <span className="capitalize">{item.detalle_bebida.marca?.replace('_', ' ')}</span></p>
+                                                        )}
+                                                    </div>
                                                 </div>
+                                                <button onClick={() => eliminarDelCarrito(index)} className="text-pocholo-red p-1"><Trash2 size={14} /></button>
                                             </div>
-                                            <button
-                                                onClick={() => eliminarDelCarrito(index)}
-                                                className="p-2 hover:bg-red-500/20 hover:text-red-400 text-white/20 rounded-xl transition-all"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
-                                        </div>
-
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center bg-black/20 rounded-xl p-1 gap-3">
-                                                <button onClick={() => modificarCantidad(index, -1)} className="w-6 h-6 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"><Minus size={12} /></button>
-                                                <span className="font-black text-sm w-4 text-center">{item.cantidad}</span>
-                                                <button onClick={() => modificarCantidad(index, 1)} className="w-6 h-6 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"><Plus size={12} /></button>
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-1.5">
+                                                    <button onClick={() => modificarCantidad(index, -1)} className="w-6 h-6 bg-pocholo-brown rounded flex items-center justify-center text-white"><Minus size={12} /></button>
+                                                    <span className="font-bold text-pocholo-brown w-6 text-center text-sm">{item.cantidad}</span>
+                                                    <button onClick={() => modificarCantidad(index, 1)} className="w-6 h-6 bg-pocholo-brown rounded flex items-center justify-center text-white"><Plus size={12} /></button>
+                                                </div>
+                                                <p className="font-bold text-pocholo-red text-sm">S/ {item.subtotal.toFixed(2)}</p>
                                             </div>
-                                            <p className="font-black text-thebear-light-blue">S/ {item.subtotal.toFixed(2)}</p>
                                         </div>
-                                    </motion.div>
-                                ))
-                            )}
-                        </div>
+                                    ))}
+                                </div>
 
-                        {/* Order Actions */}
-                        <div className="mt-auto space-y-4 pt-6 border-t border-white/10">
-                            {/* Manual Entry Toggle */}
-                            {!showCustomItem ? (
-                                <button
-                                    onClick={() => setShowCustomItem(true)}
-                                    className="w-full py-2 flex items-center justify-center gap-2 text-[10px] font-black uppercase text-white/40 hover:text-white transition-colors"
-                                >
-                                    <Plus size={14} /> Producto Libre
-                                </button>
-                            ) : (
-                                <div className="p-4 bg-white/5 rounded-3xl border border-white/10 space-y-3">
-                                    <input
-                                        type="text"
-                                        placeholder="NOMBRE DEL ADICIONAL..."
-                                        value={customItemName}
-                                        onChange={(e) => setCustomItemName(e.target.value)}
-                                        className="w-full bg-black/20 border-0 focus:ring-0 rounded-xl text-[10px] font-black uppercase px-4 py-2"
-                                    />
-                                    <div className="flex gap-2">
-                                        <div className="relative flex-1">
-                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/30">S/</span>
-                                            <input
-                                                type="number"
-                                                placeholder="0.00"
-                                                value={customItemPrice}
-                                                onChange={(e) => setCustomItemPrice(e.target.value)}
-                                                className="w-full bg-black/20 border-0 focus:ring-0 rounded-xl text-sm font-black pl-10 pr-4 py-2"
-                                            />
-                                        </div>
-                                        <button
-                                            onClick={() => {
-                                                const p = parseFloat(customItemPrice);
-                                                if (customItemName && p > 0) {
-                                                    setCarrito([...carrito, {
-                                                        producto_id: `custom-${Date.now()}`,
-                                                        nombre: customItemName.toUpperCase(),
-                                                        cantidad: 1,
-                                                        precio: p,
-                                                        subtotal: p,
-                                                        tipo: 'complemento'
-                                                    }]);
-                                                    setCustomItemName(''); setCustomItemPrice(''); setShowCustomItem(false);
-                                                }
-                                            }}
-                                            className="px-4 bg-thebear-light-blue text-thebear-dark-blue rounded-xl flex items-center justify-center"
-                                        >
-                                            <Check size={18} />
-                                        </button>
-                                        <button onClick={() => { setShowCustomItem(false); setCustomItemName(''); setCustomItemPrice(''); }} className="px-4 bg-white/10 rounded-xl"><X size={18} /></button>
+                                <div className="p-4 border-t-2 border-pocholo-yellow/30">
+                                    <div className="mb-4">
+                                        <label className="block text-sm font-semibold text-pocholo-brown mb-2">📝 Notas</label>
+                                        <textarea
+                                            value={orderNotes}
+                                            onChange={(e) => setOrderNotes(e.target.value)}
+                                            className="w-full px-3 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pocholo-yellow resize-none text-sm"
+                                            rows={2}
+                                        />
+                                    </div>
+                                    <div className="flex justify-between items-center mb-4">
+                                        <span className="text-lg font-bold text-pocholo-brown">A añadir:</span>
+                                        <span className="text-2xl font-black text-pocholo-red">S/ {calcularTotal().toFixed(2)}</span>
                                     </div>
                                 </div>
-                            )}
 
-                            {/* Notes Area */}
-                            <div className="relative">
-                                <textarea
-                                    placeholder="OBSERVACIONES DE LA COMANDA..."
-                                    value={orderNotes}
-                                    onChange={(e) => setOrderNotes(e.target.value)}
-                                    className="w-full bg-white/5 border border-white/5 focus:border-white/20 rounded-3xl p-4 text-[10px] font-black uppercase outline-none min-h-[80px] transition-all resize-none placeholder:text-white/20"
-                                />
-                            </div>
+                                {/* Producto Libre */}
+                                <div className="border-t border-pocholo-brown/10 pt-3 px-4 pb-2">
+                                    {!showCustomItem ? (
+                                        <button
+                                            onClick={() => setShowCustomItem(true)}
+                                            className="w-full py-2 text-xs font-bold text-pocholo-brown/50 hover:text-pocholo-red transition-colors flex items-center justify-center gap-1"
+                                        >
+                                            <Plus size={14} /> Agregar producto libre
+                                        </button>
+                                    ) : (
+                                        <div className="space-y-2 bg-slate-50 rounded-lg p-3">
+                                            <input
+                                                type="text"
+                                                placeholder="Nombre (ej: Media Palta)"
+                                                value={customItemName}
+                                                onChange={(e) => setCustomItemName(e.target.value)}
+                                                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-pocholo-red"
+                                                autoFocus
+                                            />
+                                            <div className="flex gap-2">
+                                                <div className="relative flex-1">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">S/</span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.50"
+                                                        min="0"
+                                                        placeholder="0.00"
+                                                        value={customItemPrice}
+                                                        onChange={(e) => setCustomItemPrice(e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter' && customItemName && customItemPrice) {
+                                                                const precio = parseFloat(customItemPrice);
+                                                                if (precio > 0) {
+                                                                    const customItem: ItemCarrito = {
+                                                                        producto_id: `custom-${Date.now()}`,
+                                                                        nombre: customItemName.trim(),
+                                                                        cantidad: 1,
+                                                                        precio,
+                                                                        fraccion_pollo: 0,
+                                                                        subtotal: precio,
+                                                                    };
+                                                                    setCarrito([...carrito, customItem]);
+                                                                    setCustomItemName('');
+                                                                    setCustomItemPrice('');
+                                                                    setShowCustomItem(false);
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-pocholo-red"
+                                                    />
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        const precio = parseFloat(customItemPrice);
+                                                        if (customItemName && precio > 0) {
+                                                            const customItem: ItemCarrito = {
+                                                                producto_id: `custom-${Date.now()}`,
+                                                                nombre: customItemName.trim(),
+                                                                cantidad: 1,
+                                                                precio,
+                                                                fraccion_pollo: 0,
+                                                                subtotal: precio,
+                                                            };
+                                                            setCarrito([...carrito, customItem]);
+                                                            setCustomItemName('');
+                                                            setCustomItemPrice('');
+                                                            setShowCustomItem(false);
+                                                        } else {
+                                                            toast.error('Ingresa nombre y precio');
+                                                        }
+                                                    }}
+                                                    className="px-3 py-2 bg-pocholo-red text-white rounded-lg text-xs font-bold hover:bg-pocholo-red-dark transition-colors"
+                                                >
+                                                    <Check size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() => { setShowCustomItem(false); setCustomItemName(''); setCustomItemPrice(''); }}
+                                                    className="px-3 py-2 bg-slate-200 text-slate-600 rounded-lg text-xs hover:bg-slate-300 transition-colors"
+                                                >
+                                                    <X size={16} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
 
-                            {/* Total and Print Pre-cuenta */}
-                            <div className="flex items-center justify-between px-2">
-                                <span className="text-[10px] font-black uppercase text-white/40 tracking-widest">Insumos Requeridos</span>
-                                <span className="text-2xl font-black text-thebear-light-blue italic tracking-tighter">S/ {calcularTotal().toFixed(2)}</span>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                {currentVentaId && (
+                                <div className="space-y-2">
+                                    <button
+                                        onClick={handleConfirmarPedido}
+                                        disabled={procesando}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-4 bg-pocholo-red hover:bg-pocholo-red-dark text-white font-black rounded-xl shadow-lg transition-all disabled:opacity-50"
+                                    >
+                                        {procesando ? <Loader2 size={18} className="animate-spin" /> : <><Check size={20} />{currentVentaId ? 'ACTUALIZAR PEDIDO' : 'ENVIAR A COCINA'}</>}
+                                    </button>
+                                    <button onClick={vaciarCarrito} className="w-full py-2 text-xs font-bold text-pocholo-brown/50 hover:text-pocholo-red uppercase tracking-widest">
+                                        Cancelar
+                                    </button>
                                     <button
                                         onClick={handlePrintPreCuenta}
-                                        className="py-4 bg-white/10 hover:bg-white/20 rounded-3xl flex items-center justify-center gap-2 transition-all group"
+                                        className="w-full py-2 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors uppercase tracking-widest flex items-center justify-center gap-1"
                                     >
-                                        <Printer size={18} className="text-white/40 group-hover:text-white" />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">Pre-Cuenta</span>
+                                        <Printer size={14} /> Imprimir Pre-Cuenta
                                     </button>
-                                )}
-                                <button
-                                    onClick={handleConfirmarPedido}
-                                    disabled={procesando || carrito.length === 0}
-                                    className={`
-                                        py-4 rounded-3xl flex items-center justify-center gap-3 transition-all shadow-xl font-black uppercase tracking-[0.2em] text-[10px]
-                                        ${procesando || carrito.length === 0
-                                            ? 'bg-white/5 text-white/20 cursor-not-allowed'
-                                            : 'bg-gradient-to-r from-thebear-blue to-thebear-light-blue text-white shadow-thebear-blue/20 hover:scale-105 active:scale-95'
-                                        }
-                                        ${!currentVentaId ? 'col-span-2' : ''}
-                                    `}
-                                >
-                                    {procesando ? <Loader2 size={18} className="animate-spin" /> : <ChefHat size={18} />}
-                                    <span>{currentVentaId ? 'Añadir a Mesa' : 'Añadir Comanda'}</span>
-                                </button>
-                            </div>
-
-                            {/* Payment/Close Button */}
-                            {currentVentaId && (
-                                <button
-                                    onClick={() => {
-                                        setLastSaleItems(carrito);
-                                        setLastSaleTotal(calcularTotal());
-                                        setReceiptTitle('BOLETA DE VENTA');
-                                        setIsCobrando(true);
-                                        setShowReceipt(true);
-                                    }}
-                                    className="w-full py-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-4xl shadow-xl shadow-emerald-900/40 flex items-center justify-center gap-3 transition-all active:scale-95 group overflow-hidden relative"
-                                >
-                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                                    <CheckCircle size={20} className="relative z-10" />
-                                    <span className="text-sm font-black uppercase tracking-[0.3em] relative z-10">Cobrar S/ {calcularTotal().toFixed(2)}</span>
-                                </button>
-                            )}
-                        </div>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
 
-            {/* Mobile Bottom Summary Bar */}
-            {view === 'pedido' && (
-                <div className="fixed bottom-0 left-0 right-0 p-4 lg:hidden z-40 bg-linear-to-t from-white via-white to-transparent pointer-events-none">
-                    <AnimatePresence>
-                        {carrito.length > 0 && (
-                            <motion.div
-                                initial={{ y: 100, opacity: 0 }}
-                                animate={{ y: 0, opacity: 1 }}
-                                exit={{ y: 100, opacity: 0 }}
-                                className="pointer-events-auto max-w-lg mx-auto bg-thebear-dark-blue rounded-3xl p-4 shadow-2xl flex items-center justify-between border border-white/10"
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-thebear-light-blue relative">
-                                        <ShoppingCart size={20} />
-                                        <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-thebear-dark-blue">
-                                            {carrito.length}
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-black text-white/40 uppercase tracking-widest leading-none mb-1">Tu Pedido</p>
-                                        <p className="text-lg font-black text-white italic tracking-tighter leading-none">S/ {calcularTotal().toFixed(2)}</p>
-                                    </div>
-                                </div>
+            <ProductOptionsModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onConfirm={agregarAlCarrito} producto={selectedProduct} />
+            <ReceiptModal isOpen={showReceipt} onClose={() => setShowReceipt(false)} items={lastSaleItems} total={lastSaleTotal} title={receiptTitle} />
 
-                                <button
-                                    onClick={() => setIsCartOpen(true)}
-                                    className="px-6 py-3 bg-thebear-blue text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-thebear-blue/20 active:scale-95 transition-all"
-                                >
-                                    Ver Pedido
-                                </button>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+            {/* Modal Cambiar Mesa */}
+            {showCambiarMesaModal && selectedTable && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden"
+                    >
+                        <div className="p-4 border-b border-gray-100 bg-pocholo-cream flex justify-between items-center">
+                            <div>
+                                <h2 className="text-xl font-bold text-pocholo-brown">Cambiar Mesa</h2>
+                                <p className="text-sm text-pocholo-brown/60">Mesa actual: <strong>{selectedTable.numero}</strong></p>
+                            </div>
+                            <button
+                                onClick={() => setShowCambiarMesaModal(false)}
+                                className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-xl transition-colors"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div className="p-4">
+                            <p className="text-sm font-medium text-pocholo-brown/70 mb-3">Selecciona la nueva mesa:</p>
+                            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[50vh] overflow-y-auto">
+                                {mesas.filter(m => m.estado === 'libre').map((mesa) => (
+                                    <button
+                                        key={mesa.id}
+                                        onClick={async () => {
+                                            const success = await cambiarMesa(selectedTable.id, mesa.id);
+                                            if (success) {
+                                                toast.success(`Pedido movido a Mesa ${mesa.numero}`);
+                                                setSelectedTable(mesa);
+                                                setShowCambiarMesaModal(false);
+                                            } else {
+                                                toast.error('Error al cambiar mesa');
+                                            }
+                                        }}
+                                        className="aspect-square rounded-xl bg-green-50 border-2 border-green-400/50 hover:border-green-500 hover:bg-green-100 flex flex-col items-center justify-center transition-all"
+                                    >
+                                        <span className="text-xl font-bold text-pocholo-brown">{mesa.numero}</span>
+                                        <span className="text-[9px] text-green-600 font-bold">● Libre</span>
+                                    </button>
+                                ))}
+                            </div>
+                            {mesas.filter(m => m.estado === 'libre').length === 0 && (
+                                <p className="text-center py-8 text-pocholo-brown/50 italic">
+                                    No hay mesas libres disponibles
+                                </p>
+                            )}
+                        </div>
+                    </motion.div>
                 </div>
             )}
-
-            {/* Modals & Receipts */}
-            <AnimatePresence>
-                {isModalOpen && selectedProduct && (
-                    <ProductOptionsModal
-                        key="options-modal"
-                        isOpen={isModalOpen}
-                        onClose={() => { setIsModalOpen(false); setSelectedProduct(null); }}
-                        producto={selectedProduct}
-                        onConfirm={agregarAlCarrito}
-                    />
-                )}
-                {showReceipt && (
-                    <ReceiptModal
-                        key="receipt-modal"
-                        isOpen={showReceipt}
-                        onClose={() => { setShowReceipt(false); setIsCobrando(false); }}
-                        title={receiptTitle}
-                        items={lastSaleItems}
-                        total={lastSaleTotal}
-                        orderId={currentVentaId || undefined}
-                        mesaNumero={selectedTable ? selectedTable.numero : undefined}
-                        mesaId={selectedTable ? (selectedTable as any).id || (selectedTable as any).mesa_id : undefined}
-                        isNewSale={isCobrando}
-                        onPaymentSuccess={() => {
-                            toast.success('Venta finalizada con éxito');
-                            setView('mesas');
-                            setCarrito([]);
-                            setOrderNotes('');
-                            setCurrentVentaId(null);
-                            setSelectedTable(null);
-                            refetchMesas();
-                        }}
-                    />
-                )}
-                {showCambiarMesaModal && (
-                    <TableSelector
-                        isOpen={showCambiarMesaModal}
-                        onClose={() => setShowCambiarMesaModal(false)}
-                        onSelectTable={async (newMesa) => {
-                            if (selectedTable && newMesa && newMesa.id !== selectedTable.id) {
-                                const success = await cambiarMesa(selectedTable.id, newMesa.id);
-                                if (success) {
-                                    setShowCambiarMesaModal(false);
-                                    toast.success('Comanda reubicada exitosamente');
-                                    setView('mesas');
-                                    refetchMesas();
-                                } else {
-                                    toast.error('No se pudo trasladar la comanda');
-                                }
-                            }
-                        }}
-                    />
-                )}
-            </AnimatePresence>
         </div>
     );
 }
