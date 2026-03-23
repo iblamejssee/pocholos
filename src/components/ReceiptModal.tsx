@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Printer, X, CheckCircle, Receipt, Search, User, RefreshCw, Trash2 } from 'lucide-react';
 import type { ItemCarrito, ItemVenta } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
-import { consultarDNI } from '@/services/apiPeruService';
+import { consultarDNI, consultarRUC } from '@/services/apiPeruService';
 
 interface ReceiptModalProps {
 
@@ -48,16 +48,16 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
     const [tipoComprobante, setTipoComprobante] = useState<'boleta' | 'ticket'>('boleta'); // Nuevo estado
     const [serieTicket, setSerieTicket] = useState('T001'); // Serie interna para tickets
     const [numeroTicket, setNumeroTicket] = useState(''); // Correlativo para tickets
-    const [dni, setDni] = useState('');
+    const [documento, setDocumento] = useState('');
     const [clienteNombre, setClienteNombre] = useState('');
     const [isSearching, setIsSearching] = useState(false);
-    const [errorDni, setErrorDni] = useState<string | null>(null);
+    const [errorDocumento, setErrorDocumento] = useState<string | null>(null);
 
     useEffect(() => {
         if (isOpen) {
             // Reset client data when opening modal
             setClienteNombre('');
-            setErrorDni(null);
+            setErrorDocumento(null);
 
             // Si viene título forzado, respetar, sino default a Boleta
             if (title && title !== 'BOLETA DE VENTA') {
@@ -102,25 +102,27 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
             console.error('Error al cargar configuración:', error);
         }
     };
-    const handleDNISearch = async () => {
-        if (dni.length !== 8) {
-            setErrorDni('El DNI debe tener 8 dígitos');
+    const handleDocumentSearch = async () => {
+        if (documento.length !== 8 && documento.length !== 11) {
+            setErrorDocumento('El documento debe tener 8 (DNI) u 11 (RUC) dígitos');
             return;
         }
 
         setIsSearching(true);
-        setErrorDni(null);
+        setErrorDocumento(null);
 
         try {
-            const response = await consultarDNI(dni);
+            const isRUC = documento.length === 11;
+            const response = isRUC ? await consultarRUC(documento) : await consultarDNI(documento);
+
             if (response.success && response.data) {
-                setClienteNombre(response.data.nombre_completo);
+                setClienteNombre(response.data.nombre_completo || response.data.razon_social || '');
             } else {
-                setErrorDni(response.message || 'No se encontró el DNI');
+                setErrorDocumento(response.message || `No se encontró el ${isRUC ? 'RUC' : 'DNI'}`);
                 setClienteNombre('');
             }
         } catch (error) {
-            setErrorDni('Error al consultar DNI');
+            setErrorDocumento('Error al consultar el documento');
             setClienteNombre('');
         } finally {
             setIsSearching(false);
@@ -128,9 +130,9 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
     };
 
     const clearClientData = () => {
-        setDni('');
+        setDocumento('');
         setClienteNombre('');
-        setErrorDni(null);
+        setErrorDocumento(null);
     };
 
     const handlePrint = async () => {
@@ -221,10 +223,10 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
             )}
 
             {/* Datos del cliente */}
-            {(dni && clienteNombre) && (
+            {(documento && clienteNombre) && (
                 <div className="ticket-cliente">
                     <p style={{ fontSize: '9pt', textDecoration: 'underline', textTransform: 'uppercase' }}>Datos del Cliente:</p>
-                    <p>DNI: {dni}</p>
+                    <p>{documento.length === 11 ? 'RUC' : 'DNI'}: {documento}</p>
                     <p>SR(A): {clienteNombre.toUpperCase()}</p>
                 </div>
             )}
@@ -329,21 +331,21 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                                     <div className="relative flex-1">
                                         <input
                                             type="text"
-                                            value={dni}
-                                            onChange={(e) => setDni(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                                            placeholder="DNI (8 dígitos)"
+                                            value={documento}
+                                            onChange={(e) => setDocumento(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                                            placeholder="DNI (8) o RUC (11)"
                                             className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-pocholo-red/20 focus:border-pocholo-red transition-all"
                                         />
                                         <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
                                     </div>
                                     <button
-                                        onClick={handleDNISearch}
-                                        disabled={isSearching || dni.length !== 8}
+                                        onClick={handleDocumentSearch}
+                                        disabled={isSearching || (documento.length !== 8 && documento.length !== 11)}
                                         className="bg-pocholo-yellow hover:bg-yellow-500 disabled:bg-gray-200 text-pocholo-red font-bold px-3 py-2 rounded-xl text-xs transition-colors flex items-center gap-1 min-w-[90px] justify-center"
                                     >
                                         {isSearching ? <RefreshCw className="animate-spin" size={14} /> : 'Consultar'}
                                     </button>
-                                    {(dni || clienteNombre) && (
+                                    {(documento || clienteNombre) && (
                                         <button
                                             onClick={clearClientData}
                                             className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors rounded-xl"
@@ -353,7 +355,7 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                                     )}
                                 </div>
 
-                                {errorDni && <p className="text-[10px] text-red-500 ml-1 font-medium">{errorDni}</p>}
+                                {errorDocumento && <p className="text-[10px] text-red-500 ml-1 font-medium">{errorDocumento}</p>}
 
                                 {clienteNombre && (
                                     <motion.div
@@ -395,12 +397,12 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                                 </div>
 
                                 {/* Información del Cliente en Ticket On-Screen */}
-                                {(dni && clienteNombre) && (
+                                {(documento && clienteNombre) && (
                                     <div className="mb-4 pb-3 border-b-2 border-black text-[11px] space-y-1">
                                         <p className="text-[9px] font-bold text-gray-400 uppercase mb-1">Datos del Cliente</p>
                                         <div className="flex gap-2">
-                                            <span className="font-black text-black w-12 italic">DNI:</span>
-                                            <span className="text-black">{dni}</span>
+                                            <span className="font-black text-black w-12 italic">{documento.length === 11 ? 'RUC:' : 'DNI:'}</span>
+                                            <span className="text-black">{documento}</span>
                                         </div>
                                         <div className="flex gap-2 items-start">
                                             <span className="font-black text-black w-12 italic">SR(A):</span>
