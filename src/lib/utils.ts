@@ -143,3 +143,6 @@ export function formatearFraccionPollo(fraccion: number): string {
 
     return esNegativo ? `-${resultado}` : resultado;
 }
+
+// Alias para compatibilidad con importaciones existentes en page.tsx y pos/page.tsx
+export const formatearFraccionProducto = formatearFraccionPollo;
