@@ -50,6 +50,7 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
     const [numeroTicket, setNumeroTicket] = useState(''); // Correlativo para tickets
     const [documento, setDocumento] = useState('');
     const [clienteNombre, setClienteNombre] = useState('');
+    const [clienteDireccion, setClienteDireccion] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const [errorDocumento, setErrorDocumento] = useState<string | null>(null);
 
@@ -57,6 +58,7 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
         if (isOpen) {
             // Reset client data when opening modal
             setClienteNombre('');
+            setClienteDireccion('');
             setErrorDocumento(null);
 
             // Si viene título forzado, respetar, sino default a Boleta
@@ -117,9 +119,16 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
 
             if (response.success && response.data) {
                 setClienteNombre(response.data.nombre_completo || response.data.razon_social || '');
+                const d = response.data as any;
+                let dir = d.direccion_completa || d.direccion || '';
+                if (d.distrito && d.provincia && d.departamento && dir) {
+                    dir += ` - ${d.distrito} - ${d.provincia} - ${d.departamento}`;
+                }
+                setClienteDireccion(dir);
             } else {
                 setErrorDocumento(response.message || `No se encontró el ${isRUC ? 'RUC' : 'DNI'}`);
                 setClienteNombre('');
+                setClienteDireccion('');
             }
         } catch (error) {
             setErrorDocumento('Error al consultar el documento');
@@ -132,6 +141,7 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
     const clearClientData = () => {
         setDocumento('');
         setClienteNombre('');
+        setClienteDireccion('');
         setErrorDocumento(null);
     };
 
@@ -192,11 +202,14 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
     const printTicketContent = (
         <div className="hidden print:block print-ticket">
             {/* Encabezado del negocio */}
-            <div className="ticket-header">
-                <p className="negocio-nombre">{config.razon_social}</p>
-                <div className="negocio-info">
-                    {config.ruc && <p>RUC: {config.ruc}</p>}
-                    {config.direccion && <p>{config.direccion}</p>}
+            <div className="ticket-header" style={{ textAlign: 'center' }}>
+                <p className="negocio-nombre" style={{ marginBottom: '2px' }}>{config.razon_social}</p>
+                <div className="negocio-info" style={{ marginTop: 0 }}>
+                    <p style={{ fontWeight: 'bold', fontSize: '12px' }}>ROJAS PALOMINO LADY LAURA</p>
+                    <p>AV. INDEPENDENCIA MZA. A LOTE. 06 URB. LUIS CARRANZA AYARZA</p>
+                    <p>FRENTE DE LA DIRECCION REGIONAL DE AGRIC</p>
+                    <p>AYACUCHO - HUAMANGA - AYACUCHO</p>
+                    {config.ruc && <p style={{ marginTop: '4px', fontWeight: 'bold' }}>RUC: {config.ruc}</p>}
                     {config.telefono && <p>TEL: {config.telefono}</p>}
                 </div>
             </div>
@@ -228,6 +241,7 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                     <p style={{ fontSize: '9pt', textDecoration: 'underline', textTransform: 'uppercase' }}>Datos del Cliente:</p>
                     <p>{documento.length === 11 ? 'RUC' : 'DNI'}: {documento}</p>
                     <p>SR(A): {clienteNombre.toUpperCase()}</p>
+                    {clienteDireccion && <p>DIR: {clienteDireccion.toUpperCase()}</p>}
                 </div>
             )}
 
@@ -358,19 +372,36 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                                 {errorDocumento && <p className="text-[10px] text-red-500 ml-1 font-medium">{errorDocumento}</p>}
 
                                 {clienteNombre && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: -5 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        className="bg-white p-2 rounded-xl border border-green-100 flex items-center gap-2"
-                                    >
-                                        <div className="bg-green-100 text-green-600 p-1.5 rounded-lg">
-                                            <User size={14} />
-                                        </div>
-                                        <div className="flex-1 overflow-hidden">
-                                            <p className="text-[10px] text-gray-500 leading-none mb-0.5">Nombre Registrado:</p>
-                                            <p className="text-[11px] font-bold text-gray-800 truncate uppercase">{clienteNombre}</p>
-                                        </div>
-                                    </motion.div>
+                                    <>
+                                        <motion.div
+                                            initial={{ opacity: 0, y: -5 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className="bg-white p-2 rounded-xl border border-green-100 flex items-center gap-2"
+                                        >
+                                            <div className="bg-green-100 text-green-600 p-1.5 rounded-lg">
+                                                <User size={14} />
+                                            </div>
+                                            <div className="flex-1 overflow-hidden">
+                                                <p className="text-[10px] text-gray-500 leading-none mb-0.5">Nombre Registrado:</p>
+                                                <p className="text-[11px] font-bold text-gray-800 truncate uppercase">{clienteNombre}</p>
+                                            </div>
+                                        </motion.div>
+
+                                        <motion.div
+                                            initial={{ opacity: 0, y: -5 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className="mt-1"
+                                        >
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1 mb-1 block">Dirección (Opcional)</label>
+                                            <input
+                                                type="text"
+                                                value={clienteDireccion}
+                                                onChange={(e) => setClienteDireccion(e.target.value)}
+                                                placeholder="Ej. Av. Principal 123"
+                                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-pocholo-red/20 focus:border-pocholo-red transition-all"
+                                            />
+                                        </motion.div>
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -381,8 +412,11 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                                 <div className="text-center pb-3 mb-3 border-b-2 border-black">
                                     <p className="font-black text-xl text-black leading-tight mb-1 uppercase tracking-tighter">{config.razon_social}</p>
                                     <div className="space-y-0.5 text-[10px] text-gray-500 font-bold uppercase">
-                                        {config.ruc && <p>RUC: {config.ruc}</p>}
-                                        {config.direccion && <p className="leading-tight">{config.direccion}</p>}
+                                        <p className="text-black text-[11px]">ROJAS PALOMINO LADY LAURA</p>
+                                        <p className="leading-tight">AV. INDEPENDENCIA MZA. A LOTE. 06 URB. LUIS CARRANZA AYARZA</p>
+                                        <p className="leading-tight">FRENTE DE LA DIRECCION REGIONAL DE AGRIC</p>
+                                        <p className="leading-tight">AYACUCHO - HUAMANGA - AYACUCHO</p>
+                                        {config.ruc && <p className="text-black pt-1">RUC: {config.ruc}</p>}
                                         {config.telefono && <p>TEL: {config.telefono}</p>}
                                     </div>
                                     <div className="mt-3 pt-2 border-t border-gray-100">
@@ -408,6 +442,12 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                                             <span className="font-black text-black w-12 italic">SR(A):</span>
                                             <p className="uppercase text-black flex-1 leading-tight">{clienteNombre}</p>
                                         </div>
+                                        {clienteDireccion && (
+                                            <div className="flex gap-2 items-start">
+                                                <span className="font-black text-black w-12 italic">DIR:</span>
+                                                <p className="uppercase text-black flex-1 leading-tight">{clienteDireccion}</p>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
