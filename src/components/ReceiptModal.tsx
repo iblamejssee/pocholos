@@ -205,7 +205,7 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                     <p>AV. INDEPENDENCIA MZA. A LOTE. 06 URB. LUIS CARRANZA AYARZA</p>
                     <p>FRENTE DE LA DIRECCION REGIONAL DE AGRIC</p>
                     <p>AYACUCHO - HUAMANGA - AYACUCHO</p>
-                    {config.ruc && <p style={{ marginTop: '4px', fontWeight: 'bold' }}>RUC: {config.ruc}</p>}
+                    <p style={{ marginTop: '4px', fontWeight: 'bold' }}>RUC: 10700899948</p>
                     {config.telefono && <p>TEL: {config.telefono}</p>}
                 </div>
             </div>
@@ -412,7 +412,7 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                                         <p className="leading-tight">AV. INDEPENDENCIA MZA. A LOTE. 06 URB. LUIS CARRANZA AYARZA</p>
                                         <p className="leading-tight">FRENTE DE LA DIRECCION REGIONAL DE AGRIC</p>
                                         <p className="leading-tight">AYACUCHO - HUAMANGA - AYACUCHO</p>
-                                        {config.ruc && <p className="text-black pt-1">RUC: {config.ruc}</p>}
+                                        <p className="text-black pt-1">RUC: 10700899948</p>
                                         {config.telefono && <p>TEL: {config.telefono}</p>}
                                     </div>
                                     <div className="mt-3 pt-2 border-t border-gray-100">
