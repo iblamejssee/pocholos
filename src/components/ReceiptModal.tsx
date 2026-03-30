@@ -53,6 +53,7 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
     const [clienteDireccion, setClienteDireccion] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const [errorDocumento, setErrorDocumento] = useState<string | null>(null);
+    const [yaImpreso, setYaImpreso] = useState(false); // Evita sumar múltiple si le dan 2 veces a imprimir
 
     useEffect(() => {
         if (isOpen) {
@@ -60,6 +61,7 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
             setClienteNombre('');
             setClienteDireccion('');
             setErrorDocumento(null);
+            setYaImpreso(false);
 
             // Si viene título forzado, respetar, sino default a Boleta
             if (title && title !== 'BOLETA DE VENTA') {
@@ -149,8 +151,9 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
         // 1. Validar si debe incrementar correlativo
         // NO incrementar si es "Estado de Cuenta" (Pre-cuenta)
         // NO incrementar si es una re-impresión (ID de venta ya existe y el título sugiere reporte/historial)
+        // SÓLO incrementar si es boleta y si NO ha sido impresa ya en esta sesión
         const esPreCuenta = title === 'ESTADO DE CUENTA';
-        const debeIncrementar = isNewSale && !esPreCuenta;
+        const debeIncrementar = isNewSale && !esPreCuenta && tipoComprobante === 'boleta' && !yaImpreso;
 
         if (debeIncrementar) {
             try {
@@ -161,21 +164,14 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                     .single();
 
                 if (!fetchError && freshConfig) {
-                    if (tipoComprobante === 'boleta') {
-                        const nuevoCorrelativo = (freshConfig.numero_correlativo || 0) + 1;
-                        await supabase
-                            .from('configuracion_negocio')
-                            .update({ numero_correlativo: nuevoCorrelativo })
-                            .eq('id', freshConfig.id);
-                        console.log('Boleta incrementada');
-                    } else {
-                        const nuevoTicket = (freshConfig.numero_ticket || 0) + 1;
-                        await supabase
-                            .from('configuracion_negocio')
-                            .update({ numero_ticket: nuevoTicket })
-                            .eq('id', freshConfig.id);
-                        console.log('Ticket incrementado');
-                    }
+                    const nuevoCorrelativo = (freshConfig.numero_correlativo || 0) + 1;
+                    await supabase
+                        .from('configuracion_negocio')
+                        .update({ numero_correlativo: nuevoCorrelativo })
+                        .eq('id', freshConfig.id);
+                    console.log('Boleta incrementada');
+                    setYaImpreso(true);
+
                     // Refrescar localmente para que si imprimen de nuevo aparezca el siguiente
                     await cargarConfiguracion();
                 }
