@@ -149,14 +149,14 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
 
     const handlePrint = async () => {
         // 1. Validar si debe incrementar correlativo
-        // NO incrementar si es "Estado de Cuenta" (Pre-cuenta)
-        // NO incrementar si es una re-impresión (ID de venta ya existe y el título sugiere reporte/historial)
-        // SÓLO incrementar si es boleta y si NO ha sido impresa ya en esta sesión
+        // NO incrementar si es "Estado de Cuenta" (Pre-cuenta) o similar
+        // SÓLO incrementar si es una venta nueva (isNewSale) y NO ha sido impresa ya en esta sesión
         const esPreCuenta = title === 'ESTADO DE CUENTA';
-        const debeIncrementar = isNewSale && !esPreCuenta && tipoComprobante === 'boleta' && !yaImpreso;
+        const debeIncrementar = isNewSale && !esPreCuenta && !yaImpreso;
 
         if (debeIncrementar) {
             try {
+                // Fetch fresh config logic to avoid race conditions
                 const { data: freshConfig, error: fetchError } = await supabase
                     .from('configuracion_negocio')
                     .select('*')
@@ -164,19 +164,31 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                     .single();
 
                 if (!fetchError && freshConfig) {
-                    const nuevoCorrelativo = (freshConfig.numero_correlativo || 0) + 1;
-                    await supabase
-                        .from('configuracion_negocio')
-                        .update({ numero_correlativo: nuevoCorrelativo })
-                        .eq('id', freshConfig.id);
-                    console.log('Boleta incrementada');
-                    setYaImpreso(true);
+                    const updateData: any = {};
 
-                    // Refrescar localmente para que si imprimen de nuevo aparezca el siguiente
-                    await cargarConfiguracion();
+                    if (tipoComprobante === 'boleta') {
+                        updateData.numero_correlativo = (freshConfig.numero_correlativo || 0) + 1;
+                        console.log('Incrementando correlativo boleta a:', updateData.numero_correlativo);
+
+                        const { error: updateError } = await supabase
+                            .from('configuracion_negocio')
+                            .update(updateData)
+                            .eq('id', freshConfig.id);
+
+                        if (!updateError) {
+                            setYaImpreso(true);
+                            // Refrescar localmente para que si imprimen de nuevo aparezca el siguiente
+                            await cargarConfiguracion();
+                        } else {
+                            console.error("Error al actualizar numeración:", updateError);
+                        }
+                    } else {
+                        // Ticket no avanza correlativo en BD por petición del usuario
+                        setYaImpreso(true);
+                    }
                 }
             } catch (err) {
-                console.error("Error al actualizar correlativo:", err);
+                console.error("Error inesperado al actualizar correlativo:", err);
             }
         }
 
