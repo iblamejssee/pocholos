@@ -5,6 +5,10 @@
     "nixpacksPlan": {
       "phases": {
         "setup": {
+          "nixPkgs": [
+            "nodejs",
+            "npm"
+          ],
           "aptPkgs": [
             "chromium",
             "fonts-liberation"
