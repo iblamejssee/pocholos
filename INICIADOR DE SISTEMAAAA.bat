@@ -48,7 +48,7 @@ echo --- DIRECCIONES IP DISPONIBLES ---
 ipconfig | findstr /i "IPv4"
 echo ----------------------------------
 echo.
-echo Iniciando servidor... No cierres esta ventana.
+echo Iniciando servidor POS... No cierres esta ventana.
 echo.
 call npm start
 pause

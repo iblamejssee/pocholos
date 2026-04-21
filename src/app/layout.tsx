@@ -10,6 +10,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { usePathname } from "next/navigation";
 import OfflineIndicator from '@/components/OfflineIndicator';
 import AIChatAssistant from '@/components/AIChatAssistant';
+import WhatsAppOrdersNotifications from '@/components/WhatsAppOrdersNotifications';
 import { Menu } from 'lucide-react';
 import Image from 'next/image';
 
@@ -129,6 +130,7 @@ export default function RootLayout({
             </div>
           )}
           <AIChatAssistant />
+          <WhatsAppOrdersNotifications />
         </AuthProvider>
       </body>
     </html >
