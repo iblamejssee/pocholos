@@ -1004,7 +1004,7 @@ export default function ReportesPage() {
                                             {ventas.slice(0, limit).map((v, i) => (
                                                 <tr key={v.id} className="hover:bg-slate-50 transition-colors">
                                                     <td className="px-6 py-4 text-sm text-slate-600">
-                                                        {format(new Date(v.updated_at || v.created_at), "HH:mm")}
+                                                        {format(new Date(v.created_at), "HH:mm")}
                                                     </td>
                                                     <td className="px-6 py-4 text-sm font-bold text-slate-700">
                                                         {v.mesas?.numero ? `Mesa ${v.mesas.numero}` : 'Para Llevar'}
