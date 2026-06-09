@@ -42,6 +42,8 @@ function MesasActivasContent() {
         mesaNumero?: number;
         title?: string;
         isNewSale?: boolean;
+        tipoComprobanteBd?: 'ticket' | 'boleta';
+        numeroComprobanteBd?: string;
     } | null>(null);
 
     // Estado para cancelar pedido
@@ -456,7 +458,7 @@ function MesasActivasContent() {
                     mesaNumero={receiptData.mesaNumero}
                     title={receiptData.title}
                     isNewSale={receiptData.isNewSale}
-                    tipoComprobanteBd={receiptData.tipoComprobanteBd as any}
+                    tipoComprobanteBd={receiptData.tipoComprobanteBd}
                     numeroComprobanteBd={receiptData.numeroComprobanteBd}
                 />
             )}
