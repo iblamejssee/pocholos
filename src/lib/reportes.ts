@@ -29,7 +29,7 @@ export const obtenerVentasDelDia = async (): Promise<Venta[]> => {
             .select('*, mesas(numero)')
             .eq('fecha', fechaHoy)
             .eq('estado_pago', 'pagado')
-            .order('updated_at', { ascending: false });
+            .order('created_at', { ascending: false });
 
         if (error) throw error;
         return data || [];
@@ -55,7 +55,7 @@ export const obtenerVentasPorRango = async (
             .eq('estado_pago', 'pagado')
             .gte('fecha', fechaInicio)
             .lte('fecha', fechaFin)
-            .order('updated_at', { ascending: false });
+            .order('created_at', { ascending: false });
 
         console.log('[obtenerVentasPorRango] Resultado:', { error, dataLength: data?.length, data });
 
