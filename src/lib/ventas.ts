@@ -146,6 +146,29 @@ export const registrarVenta = async (
         // Preparar items para guardar (sin el campo subtotal)
         const itemsParaGuardar: ItemVenta[] = items.map(({ subtotal, ...item }) => item);
 
+        // Obtener config actual para sacar el número de ticket
+        const { data: configData } = await supabase
+            .from('configuracion_negocio')
+            .select('id, serie_ticket, numero_ticket')
+            .limit(1)
+            .single();
+
+        let numeroComprobante = null;
+        const tipoComprobante = 'ticket';
+
+        if (configData) {
+            const nuevoNumeroTicket = (configData.numero_ticket || 0) + 1;
+            const serieT = configData.serie_ticket || 'T001';
+            const numStr = String(nuevoNumeroTicket).padStart(6, '0');
+            numeroComprobante = `${serieT}-${numStr}`;
+
+            // Actualizar el ticket en config
+            await supabase
+                .from('configuracion_negocio')
+                .update({ numero_ticket: nuevoNumeroTicket })
+                .eq('id', configData.id);
+        }
+
         // Insertar venta
         const { data, error } = await supabase
             .from('ventas')
@@ -161,6 +184,8 @@ export const registrarVenta = async (
                 estado_pedido: 'pendiente',
                 estado_pago: 'pendiente',
                 notas: notas || null,
+                tipo_comprobante: tipoComprobante,
+                numero_comprobante: numeroComprobante,
             })
             .select()
             .single();

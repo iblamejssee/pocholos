@@ -56,10 +56,12 @@ function MesasActivasContent() {
         mesaNumero?: number;
         items: ItemVenta[];
         total: number;
+        tipoComprobanteBd?: 'ticket' | 'boleta';
+        numeroComprobanteBd?: string;
     } | null>(null);
 
-    const abrirModalCobro = (ventaId: string, mesaId: number | null, mesaNumero: number | undefined, items: ItemVenta[], total: number) => {
-        setPayModalData({ ventaId, mesaId, mesaNumero, items, total });
+    const abrirModalCobro = (ventaId: string, mesaId: number | null, mesaNumero: number | undefined, items: ItemVenta[], total: number, tipoComprobanteBd?: 'ticket' | 'boleta', numeroComprobanteBd?: string) => {
+        setPayModalData({ ventaId, mesaId, mesaNumero, items, total, tipoComprobanteBd, numeroComprobanteBd });
         setShowPayModal(true);
     };
 
@@ -178,7 +180,9 @@ function MesasActivasContent() {
                 total,
                 orderId: ventaId,
                 mesaNumero: mesaNumero,
-                isNewSale: true
+                isNewSale: true,
+                tipoComprobanteBd: payModalData.tipoComprobanteBd,
+                numeroComprobanteBd: payModalData.numeroComprobanteBd
             });
 
             setShowReceipt(true);
@@ -315,7 +319,7 @@ function MesasActivasContent() {
 
                                             {/* Botón de cobro */}
                                             <button
-                                                onClick={() => abrirModalCobro(venta.id, null, undefined, venta.items, venta.total)}
+                                                onClick={() => abrirModalCobro(venta.id, null, undefined, venta.items, venta.total, venta.tipo_comprobante, venta.numero_comprobante)}
                                                 className="w-full py-4 rounded-xl font-bold text-sm text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-md flex items-center justify-center gap-2 mb-2 active:scale-[0.98]"
                                             >
                                                 Cobrar S/ {venta.total.toFixed(2)}
@@ -395,7 +399,7 @@ function MesasActivasContent() {
 
                                                     {/* Botón de cobro */}
                                                     <button
-                                                        onClick={() => abrirModalCobro(mesa.venta!.id, mesa.id, mesa.numero, mesa.venta!.items, mesa.venta!.total)}
+                                                        onClick={() => abrirModalCobro(mesa.venta!.id, mesa.id, mesa.numero, mesa.venta!.items, mesa.venta!.total, mesa.venta!.tipo_comprobante, mesa.venta!.numero_comprobante)}
                                                         className="w-full py-4 rounded-xl font-bold text-sm text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-md flex items-center justify-center gap-2 mb-2 active:scale-[0.98]"
                                                     >
                                                         Cobrar S/ {mesa.venta!.total.toFixed(2)}
@@ -452,6 +456,8 @@ function MesasActivasContent() {
                     mesaNumero={receiptData.mesaNumero}
                     title={receiptData.title}
                     isNewSale={receiptData.isNewSale}
+                    tipoComprobanteBd={receiptData.tipoComprobanteBd as any}
+                    numeroComprobanteBd={receiptData.numeroComprobanteBd}
                 />
             )}
 

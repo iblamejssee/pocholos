@@ -1116,6 +1116,8 @@ export default function ReportesPage() {
                         total={selectedVenta.total}
                         orderId={selectedVenta.id}
                         fechaVenta={selectedVenta.created_at}
+                        tipoComprobanteBd={selectedVenta.tipo_comprobante}
+                        numeroComprobanteBd={selectedVenta.numero_comprobante}
                     />
                 )
             }

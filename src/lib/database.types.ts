@@ -83,6 +83,8 @@ export interface Venta {
     notas?: string; // Comentarios del pedido
     created_at: string;
     updated_at?: string; // Add updated_at
+    tipo_comprobante?: 'ticket' | 'boleta'; // Add comprobante
+    numero_comprobante?: string; // Add comprobante
     mesas?: { numero: number } | null; // Join result
 }
 

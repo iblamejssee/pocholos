@@ -17,6 +17,8 @@ interface ReceiptModalProps {
     title?: string;
     isNewSale?: boolean; // Prop to control counter increment
     fechaVenta?: string; // Prop to show historical date
+    tipoComprobanteBd?: 'ticket' | 'boleta';
+    numeroComprobanteBd?: string;
 }
 
 interface ConfigNegocio {
@@ -32,7 +34,7 @@ interface ConfigNegocio {
     numero_ticket?: number;
 }
 
-export default function ReceiptModal({ isOpen, onClose, items, total, orderId, mesaNumero, title = 'BOLETA DE VENTA', isNewSale = false, fechaVenta }: ReceiptModalProps) {
+export default function ReceiptModal({ isOpen, onClose, items, total, orderId, mesaNumero, title = 'BOLETA DE VENTA', isNewSale = false, fechaVenta, tipoComprobanteBd, numeroComprobanteBd }: ReceiptModalProps) {
     const [config, setConfig] = useState<ConfigNegocio>({
         ruc: '',
         razon_social: "POCHOLO'S CHICKEN",
@@ -64,16 +66,21 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
             setErrorDocumento(null);
             setYaImpreso(false);
 
-            // Si viene título forzado, respetar, sino default a Boleta
-            if (title && title !== 'BOLETA DE VENTA') {
-                setTipoComprobante('ticket');
-                cargarConfiguracion('ticket');
+            if (tipoComprobanteBd) {
+                setTipoComprobante(tipoComprobanteBd);
+                cargarConfiguracion(tipoComprobanteBd);
             } else {
-                setTipoComprobante('boleta');
-                cargarConfiguracion('boleta');
+                // Si viene título forzado, respetar, sino default a Boleta
+                if (title && title !== 'BOLETA DE VENTA') {
+                    setTipoComprobante('ticket');
+                    cargarConfiguracion('ticket');
+                } else {
+                    setTipoComprobante('boleta');
+                    cargarConfiguracion('boleta');
+                }
             }
         }
-    }, [isOpen, title]);
+    }, [isOpen, title, tipoComprobanteBd, numeroComprobanteBd]);
 
     // Cuando el usuario cambia manualmente el tipo
     const handleTipoChange = (tipo: 'boleta' | 'ticket') => {
@@ -94,13 +101,21 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                 setConfig(data);
 
                 if (tipoFinal === 'boleta') {
-                    const numero = String(data.numero_correlativo + 1).padStart(8, '0');
-                    setNumeroBoleta(`${data.serie_boleta}-${numero}`);
+                    if (numeroComprobanteBd && tipoComprobanteBd === 'boleta') {
+                        setNumeroBoleta(numeroComprobanteBd);
+                    } else {
+                        const numero = String(data.numero_correlativo + 1).padStart(8, '0');
+                        setNumeroBoleta(`${data.serie_boleta}-${numero}`);
+                    }
                 } else {
-                    const serieT = data.serie_ticket || 'T001';
-                    const numT = String((data.numero_ticket || 0) + 1).padStart(6, '0');
-                    setSerieTicket(serieT);
-                    setNumeroTicket(`${serieT}-${numT}`);
+                    if (numeroComprobanteBd && tipoComprobanteBd === 'ticket') {
+                        setNumeroTicket(numeroComprobanteBd);
+                    } else {
+                        const serieT = data.serie_ticket || 'T001';
+                        const numT = String((data.numero_ticket || 0) + 1).padStart(6, '0');
+                        setSerieTicket(serieT);
+                        setNumeroTicket(`${serieT}-${numT}`);
+                    }
                 }
             }
         } catch (error) {
@@ -148,49 +163,59 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
         setErrorDocumento(null);
     };
 
-    const handlePrint = async () => {
-        // 1. Validar si debe incrementar correlativo
-        // NO incrementar si es "Estado de Cuenta" (Pre-cuenta) o similar
-        // SÓLO incrementar si es una venta nueva (isNewSale) y NO ha sido impresa ya en esta sesión
-        const esPreCuenta = title === 'ESTADO DE CUENTA';
-        const debeIncrementar = isNewSale && !esPreCuenta && !yaImpreso;
+    const handleGenerarBoleta = async () => {
+        if (!orderId) {
+            alert('No se puede generar boleta sin un ID de pedido.');
+            return;
+        }
 
-        if (debeIncrementar) {
-            try {
-                // Fetch fresh config logic to avoid race conditions
-                const { data: freshConfig, error: fetchError } = await supabase
+        try {
+            const { data: freshConfig, error: fetchError } = await supabase
+                .from('configuracion_negocio')
+                .select('*')
+                .limit(1)
+                .single();
+
+            if (!fetchError && freshConfig) {
+                const nuevoCorrelativo = (freshConfig.numero_correlativo || 0) + 1;
+                const numeroStr = String(nuevoCorrelativo).padStart(8, '0');
+                const nuevoNumeroBoleta = `${freshConfig.serie_boleta}-${numeroStr}`;
+
+                // 1. Actualizar configuración
+                const { error: updateConfigErr } = await supabase
                     .from('configuracion_negocio')
-                    .select('*')
-                    .limit(1)
-                    .single();
+                    .update({ numero_correlativo: nuevoCorrelativo })
+                    .eq('id', freshConfig.id);
 
-                if (!fetchError && freshConfig) {
-                    const updateData: any = {};
+                if (!updateConfigErr) {
+                    // 2. Actualizar Venta
+                    await supabase
+                        .from('ventas')
+                        .update({ 
+                            tipo_comprobante: 'boleta',
+                            numero_comprobante: nuevoNumeroBoleta
+                        })
+                        .eq('id', orderId);
 
-                    if (tipoComprobante === 'boleta') {
-                        updateData.numero_correlativo = (freshConfig.numero_correlativo || 0) + 1;
-                        console.log('Incrementando correlativo boleta a:', updateData.numero_correlativo);
-
-                        const { error: updateError } = await supabase
-                            .from('configuracion_negocio')
-                            .update(updateData)
-                            .eq('id', freshConfig.id);
-
-                        if (!updateError) {
-                            setYaImpreso(true);
-                            // Refrescar localmente para que si imprimen de nuevo aparezca el siguiente
-                            await cargarConfiguracion();
-                        } else {
-                            console.error("Error al actualizar numeración:", updateError);
-                        }
-                    } else {
-                        // Ticket no avanza correlativo en BD por petición del usuario
-                        setYaImpreso(true);
-                    }
+                    setNumeroBoleta(nuevoNumeroBoleta);
+                    setYaImpreso(true);
+                    alert('Boleta generada y guardada exitosamente.');
                 }
-            } catch (err) {
-                console.error("Error inesperado al actualizar correlativo:", err);
             }
+        } catch (err) {
+            console.error("Error al generar boleta:", err);
+            alert('Error al generar la boleta.');
+        }
+    };
+
+    const handlePrint = async () => {
+        const esPreCuenta = title === 'ESTADO DE CUENTA';
+        const necesitaGenerarBoleta = tipoComprobante === 'boleta' && tipoComprobanteBd !== 'boleta' && !yaImpreso && !esPreCuenta;
+
+        if (necesitaGenerarBoleta && orderId) {
+            await handleGenerarBoleta();
+        } else if (!esPreCuenta) {
+            setYaImpreso(true);
         }
 
         window.print();
@@ -496,12 +521,17 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                             </div>
                         </div>
 
-                        <div className="p-4 border-t border-gray-100 grid grid-cols-2 gap-3 bg-white">
-                            <button onClick={onClose} className="py-3 px-4 rounded-xl font-semibold text-gray-500 hover:bg-gray-100 transition-colors flex items-center justify-center gap-2">
-                                <X size={20} /> Cerrar
+                        <div className={`p-4 border-t border-gray-100 grid gap-3 bg-white ${tipoComprobante === 'boleta' && tipoComprobanteBd !== 'boleta' && !yaImpreso && title !== 'ESTADO DE CUENTA' ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                            <button onClick={onClose} className="py-3 px-2 rounded-xl font-semibold text-gray-500 hover:bg-gray-100 transition-colors flex items-center justify-center gap-1 text-xs">
+                                <X size={18} /> Cerrar
                             </button>
-                            <button onClick={handlePrint} className="py-3 px-4 rounded-xl font-bold text-white bg-pocholo-red hover:bg-red-700 shadow-lg transition-all flex items-center justify-center gap-2">
-                                <Printer size={20} /> Imprimir
+                            {tipoComprobante === 'boleta' && tipoComprobanteBd !== 'boleta' && !yaImpreso && title !== 'ESTADO DE CUENTA' && (
+                                <button onClick={handleGenerarBoleta} className="py-3 px-2 rounded-xl font-bold text-pocholo-red bg-red-50 hover:bg-red-100 border border-red-200 transition-all flex items-center justify-center gap-1 text-[10px] uppercase text-center leading-tight">
+                                    Generar<br/>Digital
+                                </button>
+                            )}
+                            <button onClick={handlePrint} className="py-3 px-2 rounded-xl font-bold text-white bg-pocholo-red hover:bg-red-700 shadow-lg transition-all flex items-center justify-center gap-1 text-xs">
+                                <Printer size={18} /> Imprimir
                             </button>
                         </div>
                     </motion.div>
