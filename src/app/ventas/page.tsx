@@ -157,6 +157,32 @@ function MesasActivasContent() {
         const { ventaId, mesaId, mesaNumero, items, total } = payModalData;
 
         try {
+            // Si la venta no tiene numero_comprobante, asignarle uno ahora
+            let tipoFinal = payModalData.tipoComprobanteBd;
+            let numeroFinal = payModalData.numeroComprobanteBd;
+
+            if (!numeroFinal) {
+                // Obtener config para asignar ticket
+                const { data: configData } = await supabase
+                    .from('configuracion_negocio')
+                    .select('id, serie_ticket, numero_ticket')
+                    .limit(1)
+                    .single();
+
+                if (configData) {
+                    const nuevoNum = (configData.numero_ticket || 0) + 1;
+                    const serieT = configData.serie_ticket || 'T001';
+                    tipoFinal = 'ticket';
+                    numeroFinal = `${serieT}-${String(nuevoNum).padStart(6, '0')}`;
+
+                    // Incrementar en config
+                    await supabase
+                        .from('configuracion_negocio')
+                        .update({ numero_ticket: nuevoNum })
+                        .eq('id', configData.id);
+                }
+            }
+
             // Actualizar estado de pago
             const updateData: any = {
                 estado_pago: 'pagado',
@@ -164,6 +190,11 @@ function MesasActivasContent() {
             };
             if (pagoDividido) {
                 updateData.pago_dividido = pagoDividido;
+            }
+            // Guardar comprobante si se acaba de generar
+            if (tipoFinal && numeroFinal) {
+                updateData.tipo_comprobante = tipoFinal;
+                updateData.numero_comprobante = numeroFinal;
             }
 
             const { error } = await supabase
@@ -183,8 +214,8 @@ function MesasActivasContent() {
                 orderId: ventaId,
                 mesaNumero: mesaNumero,
                 isNewSale: true,
-                tipoComprobanteBd: payModalData.tipoComprobanteBd,
-                numeroComprobanteBd: payModalData.numeroComprobanteBd
+                tipoComprobanteBd: tipoFinal,
+                numeroComprobanteBd: numeroFinal
             });
 
             setShowReceipt(true);
