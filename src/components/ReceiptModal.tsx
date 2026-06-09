@@ -260,6 +260,7 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
             <div className="ticket-meta">
                 <div className="ticket-meta-row">
                     <span>FECHA: {fechaFormateada}</span>
+                    <span>HORA: {horaFormateada}</span>
                 </div>
             </div>
             {mesaNumero && tipoComprobante === 'ticket' && ( // MESA solo en Ticket, no en Boleta
@@ -456,7 +457,7 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
                                         <p className="font-black text-base text-pocholo-red tracking-widest">
                                             {tipoComprobante === 'boleta' ? numeroBoleta : numeroTicket}
                                         </p>
-                                        <p className="text-[11px] text-gray-400 mt-1">{fechaFormateada}</p>
+                                        <p className="text-[11px] text-gray-400 mt-1">{fechaFormateada} - {horaFormateada}</p>
                                         {mesaNumero && tipoComprobante === 'ticket' && (
                                             <p className="text-[11px] bg-pocholo-red text-white font-bold rounded-full px-3 py-0.5 inline-block mt-2">MESA: {mesaNumero}</p>
                                         )}
