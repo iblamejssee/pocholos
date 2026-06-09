@@ -16,6 +16,7 @@ interface ReceiptModalProps {
     mesaNumero?: number;
     title?: string;
     isNewSale?: boolean; // Prop to control counter increment
+    fechaVenta?: string; // Prop to show historical date
 }
 
 interface ConfigNegocio {
@@ -31,7 +32,7 @@ interface ConfigNegocio {
     numero_ticket?: number;
 }
 
-export default function ReceiptModal({ isOpen, onClose, items, total, orderId, mesaNumero, title = 'BOLETA DE VENTA', isNewSale = false }: ReceiptModalProps) {
+export default function ReceiptModal({ isOpen, onClose, items, total, orderId, mesaNumero, title = 'BOLETA DE VENTA', isNewSale = false, fechaVenta }: ReceiptModalProps) {
     const [config, setConfig] = useState<ConfigNegocio>({
         ruc: '',
         razon_social: "POCHOLO'S CHICKEN",
@@ -195,7 +196,7 @@ export default function ReceiptModal({ isOpen, onClose, items, total, orderId, m
         window.print();
     };
 
-    const fecha = new Date();
+    const fecha = fechaVenta ? new Date(fechaVenta) : new Date();
     const fechaFormateada = fecha.toLocaleDateString('es-PE', {
         day: '2-digit',
         month: '2-digit',

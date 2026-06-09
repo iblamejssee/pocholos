@@ -1115,6 +1115,7 @@ export default function ReportesPage() {
                         items={selectedVenta.items}
                         total={selectedVenta.total}
                         orderId={selectedVenta.id}
+                        fechaVenta={selectedVenta.created_at}
                     />
                 )
             }
