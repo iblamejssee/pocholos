@@ -16,8 +16,8 @@ export interface AuthUser {
 
 // Configuración de permisos por rol
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
-    administrador: ['dashboard', 'apertura', 'pos', 'mesas', 'cocina', 'ventas', 'inventario', 'reportes', 'cierre', 'gastos', 'configuracion'],
-    cajera: ['dashboard', 'apertura', 'pos', 'mesas', 'cocina', 'ventas', 'inventario', 'reportes', 'cierre', 'gastos', 'configuracion'],
+    administrador: ['dashboard', 'apertura', 'pos', 'mesas', 'cocina', 'ventas', 'inventario', 'reportes', 'cierre', 'gastos', 'configuracion', 'boletas'],
+    cajera: ['dashboard', 'apertura', 'pos', 'mesas', 'cocina', 'ventas', 'inventario', 'reportes', 'cierre', 'gastos', 'configuracion', 'boletas'],
     mozo: ['pos', 'mesas', 'cocina'],
     cocina: ['cocina']
 };

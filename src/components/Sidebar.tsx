@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, ShoppingCart, BarChart, Lock, ClipboardList, ChefHat, Package, Users, Boxes, LucideIcon, X, Wine, Settings, TrendingUp } from 'lucide-react';
+import { Home, ShoppingCart, BarChart, Lock, ClipboardList, ChefHat, Package, Users, Boxes, LucideIcon, X, Wine, Settings, TrendingUp, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,6 +44,7 @@ const menuSections: MenuSection[] = [
         title: 'Gestión',
         items: [
             { icon: Package, label: 'Caja', href: '/ventas', permission: 'ventas' },
+            { icon: FileText, label: 'Generar Boleta', href: '/boletas', permission: 'boletas' },
         ]
     },
     {
