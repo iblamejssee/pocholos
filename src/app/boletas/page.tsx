@@ -38,6 +38,7 @@ function BoletasContent() {
     ]);
     const [tipoComprobante, setTipoComprobante] = useState<'boleta' | 'ticket'>('boleta');
     const [generando, setGenerando] = useState(false);
+    const [isTestMode, setIsTestMode] = useState(false);
 
     // Receipt modal state
     const [showReceipt, setShowReceipt] = useState(false);
@@ -96,25 +97,29 @@ function BoletasContent() {
             let numeroComprobante = '';
 
             if (tipoComprobante === 'boleta') {
-                const nuevoCorrelativo = (config.numero_correlativo || 0) + 1;
+                const nuevoCorrelativo = (config.numero_correlativo || 0) + (isTestMode ? 0 : 1);
                 const numStr = String(nuevoCorrelativo).padStart(8, '0');
-                numeroComprobante = `${config.serie_boleta || 'B001'}-${numStr}`;
+                numeroComprobante = `${config.serie_boleta || 'B001'}-${numStr}${isTestMode ? ' (PRUEBA)' : ''}`;
 
-                // Actualizar contador
-                await supabase
-                    .from('configuracion_negocio')
-                    .update({ numero_correlativo: nuevoCorrelativo })
-                    .eq('id', config.id);
+                if (!isTestMode) {
+                    // Actualizar contador
+                    await supabase
+                        .from('configuracion_negocio')
+                        .update({ numero_correlativo: nuevoCorrelativo })
+                        .eq('id', config.id);
+                }
             } else {
-                const nuevoTicket = (config.numero_ticket || 0) + 1;
+                const nuevoTicket = (config.numero_ticket || 0) + (isTestMode ? 0 : 1);
                 const numStr = String(nuevoTicket).padStart(6, '0');
-                numeroComprobante = `${config.serie_ticket || 'T001'}-${numStr}`;
+                numeroComprobante = `${config.serie_ticket || 'T001'}-${numStr}${isTestMode ? ' (PRUEBA)' : ''}`;
 
-                // Actualizar contador
-                await supabase
-                    .from('configuracion_negocio')
-                    .update({ numero_ticket: nuevoTicket })
-                    .eq('id', config.id);
+                if (!isTestMode) {
+                    // Actualizar contador
+                    await supabase
+                        .from('configuracion_negocio')
+                        .update({ numero_ticket: nuevoTicket })
+                        .eq('id', config.id);
+                }
             }
 
             // 2. Preparar items para el receipt
@@ -137,7 +142,7 @@ function BoletasContent() {
             setReceiptNumero(numeroComprobante);
             setShowReceipt(true);
 
-            toast.success(`${tipoComprobante === 'boleta' ? 'Boleta' : 'Ticket'} ${numeroComprobante} generado`);
+            toast.success(`${tipoComprobante === 'boleta' ? 'Boleta' : 'Ticket'} ${numeroComprobante} generado${isTestMode ? ' (Modo Prueba)' : ''}`);
         } catch (err) {
             console.error('Error al generar comprobante:', err);
             toast.error('Error inesperado al generar');
@@ -310,6 +315,23 @@ function BoletasContent() {
 
                 {/* Total */}
                 <div className="border-t-2 border-pocholo-yellow/30 pt-4">
+                    <div className="flex justify-between items-center mb-4">
+                        <label className="flex items-center gap-2 cursor-pointer group">
+                            <div className="relative">
+                                <input
+                                    type="checkbox"
+                                    checked={isTestMode}
+                                    onChange={(e) => setIsTestMode(e.target.checked)}
+                                    className="sr-only"
+                                />
+                                <div className={`block w-10 h-6 rounded-full transition-colors ${isTestMode ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
+                                <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${isTestMode ? 'translate-x-4' : ''}`}></div>
+                            </div>
+                            <span className="text-sm font-bold text-gray-500 group-hover:text-blue-500 transition-colors">
+                                Modo Prueba <span className="font-normal text-xs">(No avanza el número)</span>
+                            </span>
+                        </label>
+                    </div>
                     <div className="flex justify-between items-center">
                         <span className="text-lg font-bold text-pocholo-brown">Total:</span>
                         <span className="text-3xl font-black text-pocholo-red">S/ {calcularTotal().toFixed(2)}</span>
