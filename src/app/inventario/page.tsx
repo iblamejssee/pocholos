@@ -20,7 +20,9 @@ import {
     CheckCircle,
     ShoppingCart,
     Clipboard,
-    ShoppingBag
+    ShoppingBag,
+    Utensils,
+    Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInventario } from '@/hooks/useInventario';
@@ -35,7 +37,7 @@ import {
 } from '@/lib/inventario';
 import toast from 'react-hot-toast';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import type { BebidasDetalle, InventarioDiario } from '@/lib/database.types';
+import type { BebidasDetalle, InventarioDiario, Producto } from '@/lib/database.types';
 
 // Marcas y tamaños config
 const MARCAS_CONFIG = [
@@ -121,6 +123,17 @@ interface CompraInsumo {
     };
 }
 
+interface Receta {
+    id: string;
+    producto_id: string;
+    insumo_id: string;
+    cantidad: number;
+    insumos?: {
+        nombre: string;
+        unidad_medida: string;
+    };
+}
+
 export default function InventarioPage() {
     return (
         <ProtectedRoute requiredPermission="inventario">
@@ -131,10 +144,19 @@ export default function InventarioPage() {
 
 function InventarioContent() {
     const { stock, loading, error, refetch } = useInventario();
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'ajustes' | 'insumos' | 'historial'>('dashboard');
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'insumos' | 'recetas' | 'ajustes' | 'historial'>('dashboard');
     
-    // Accordion control
+    // Accordion control for drinks
     const [expandedBrands, setExpandedBrands] = useState<Set<string>>(new Set(['inca_kola']));
+
+    const toggleBrand = (brandKey: string) => {
+        setExpandedBrands(prev => {
+            const next = new Set(prev);
+            if (next.has(brandKey)) next.delete(brandKey);
+            else next.add(brandKey);
+            return next;
+        });
+    };
 
     // Historical records state
     const [historial, setHistorial] = useState<InventarioDiario[]>([]);
@@ -153,6 +175,15 @@ function InventarioContent() {
     const [loadingInsumos, setLoadingInsumos] = useState(false);
     const [busquedaInsumo, setBusquedaInsumo] = useState('');
     const [verSoloCritico, setVerSoloCritico] = useState(false);
+
+    // Recetas States
+    const [productos, setProductos] = useState<Producto[]>([]);
+    const [selectedProductoId, setSelectedProductoId] = useState<string>('');
+    const [recetaItems, setRecetaItems] = useState<Receta[]>([]);
+    const [loadingReceta, setLoadingReceta] = useState(false);
+    const [showAddIngredient, setShowAddIngredient] = useState(false);
+    const [ingredienteInsumoId, setIngredienteInsumoId] = useState('');
+    const [ingredienteCantidad, setIngredienteCantidad] = useState('');
 
     // Modals states for Insumos
     const [showNewInsumoModal, setShowNewInsumoModal] = useState(false);
@@ -230,21 +261,115 @@ function InventarioContent() {
         }
     };
 
+    // Fetch active products catalog
+    const cargarProductos = async () => {
+        try {
+            const { data, error: prodErr } = await supabase
+                .from('productos')
+                .select('*')
+                .eq('activo', true)
+                .order('nombre', { ascending: true });
+
+            if (prodErr) throw prodErr;
+            setProductos(data || []);
+            if (data && data.length > 0 && !selectedProductoId) {
+                setSelectedProductoId(data[0].id);
+            }
+        } catch (err) {
+            console.error('Error cargando productos:', err);
+        }
+    };
+
+    // Fetch recipes for the selected product
+    const cargarReceta = async (prodId: string) => {
+        if (!prodId) return;
+        setLoadingReceta(true);
+        try {
+            const { data, error: recErr } = await supabase
+                .from('recetas')
+                .select(`
+                    id,
+                    producto_id,
+                    insumo_id,
+                    cantidad,
+                    insumos (
+                        nombre,
+                        unidad_medida
+                    )
+                `)
+                .eq('producto_id', prodId);
+
+            if (recErr) throw recErr;
+            setRecetaItems(data as unknown as Receta[] || []);
+        } catch (err) {
+            console.error('Error cargando receta:', err);
+        } finally {
+            setLoadingReceta(false);
+        }
+    };
+
     useEffect(() => {
         if (activeTab === 'historial') {
             cargarHistorial();
         } else if (activeTab === 'insumos') {
             cargarInsumos();
+        } else if (activeTab === 'recetas') {
+            cargarInsumos(); // We need supply units
+            cargarProductos();
         }
     }, [activeTab]);
 
-    const toggleBrand = (brandKey: string) => {
-        setExpandedBrands(prev => {
-            const next = new Set(prev);
-            if (next.has(brandKey)) next.delete(brandKey);
-            else next.add(brandKey);
-            return next;
-        });
+    useEffect(() => {
+        if (selectedProductoId && activeTab === 'recetas') {
+            cargarReceta(selectedProductoId);
+        }
+    }, [selectedProductoId, activeTab]);
+
+    // Add ingredient formula mapping
+    const handleAddIngredient = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const cant = parseFloat(ingredienteCantidad);
+        if (!selectedProductoId || !ingredienteInsumoId || isNaN(cant) || cant <= 0) {
+            toast.error('Completa los campos con valores válidos');
+            return;
+        }
+
+        try {
+            const { error: addErr } = await supabase
+                .from('recetas')
+                .insert({
+                    producto_id: selectedProductoId,
+                    insumo_id: ingredienteInsumoId,
+                    cantidad: cant
+                });
+
+            if (addErr) throw addErr;
+
+            toast.success('Ingrediente agregado a la fórmula del plato');
+            setIngredienteInsumoId('');
+            setIngredienteCantidad('');
+            setShowAddIngredient(false);
+            cargarReceta(selectedProductoId);
+        } catch (err: any) {
+            toast.error('Este insumo ya está agregado a la receta de este plato.');
+        }
+    };
+
+    // Remove ingredient formula mapping
+    const handleRemoveIngredient = async (recetaId: string) => {
+        try {
+            const { error: delErr } = await supabase
+                .from('recetas')
+                .delete()
+                .eq('id', recetaId);
+
+            if (delErr) throw delErr;
+
+            toast.success('Ingrediente eliminado de la fórmula');
+            cargarReceta(selectedProductoId);
+        } catch (err) {
+            toast.error('Error al eliminar ingrediente');
+        }
     };
 
     // Quick inline adjustment for beverages
@@ -366,7 +491,7 @@ function InventarioContent() {
 
             if (updateErr) throw updateErr;
 
-            // 3. Registrar gasto en la tabla de gastos para el balance
+            // 3. Registrar Gasto
             await supabase.from('gastos').insert({
                 descripcion: `Compra Insumo: ${showCompraModal.nombre} (${cant} ${showCompraModal.unidad_medida})`,
                 monto: costo,
@@ -454,6 +579,8 @@ function InventarioContent() {
                         onClick={() => { 
                             if (activeTab === 'insumos') {
                                 cargarInsumos();
+                            } else if (activeTab === 'recetas') {
+                                cargarReceta(selectedProductoId);
                             } else if (activeTab === 'historial') {
                                 cargarHistorial();
                             } else {
@@ -470,7 +597,7 @@ function InventarioContent() {
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex bg-slate-100 p-1 rounded-2xl mb-6 shadow-inner max-w-xl overflow-x-auto scrollbar-none">
+            <div className="flex bg-slate-100 p-1 rounded-2xl mb-6 shadow-inner max-w-2xl overflow-x-auto scrollbar-none">
                 <button
                     onClick={() => setActiveTab('dashboard')}
                     className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shrink-0 ${
@@ -492,6 +619,17 @@ function InventarioContent() {
                 >
                     <Clipboard size={16} />
                     Insumos
+                </button>
+                <button
+                    onClick={() => setActiveTab('recetas')}
+                    className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shrink-0 ${
+                        activeTab === 'recetas'
+                            ? 'bg-white text-pocholo-brown shadow-md'
+                            : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                >
+                    <Utensils size={16} />
+                    Fórmulas / Recetas
                 </button>
                 <button
                     onClick={() => setActiveTab('ajustes')}
@@ -863,6 +1001,115 @@ function InventarioContent() {
                                 </div>
                             </>
                         )}
+                    </motion.div>
+                )}
+
+                {activeTab === 'recetas' && (
+                    <motion.div
+                        key="recetas"
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -15 }}
+                        className="space-y-6"
+                    >
+                        <div className="grid md:grid-cols-3 gap-6">
+                            
+                            {/* Product Selector Sidebar */}
+                            <div className="bg-white rounded-2xl p-5 shadow-3d border border-slate-100 h-[600px] flex flex-col">
+                                <h3 className="font-bold text-slate-800 text-sm md:text-base mb-3 pb-2 border-b flex items-center gap-2">
+                                    <Utensils className="text-pocholo-red" size={18} />
+                                    Seleccionar Plato
+                                </h3>
+                                <div className="space-y-1 overflow-y-auto flex-1 pr-1 custom-scrollbar">
+                                    {productos.map((prod) => (
+                                        <button
+                                            key={prod.id}
+                                            onClick={() => setSelectedProductoId(prod.id)}
+                                            className={`w-full text-left p-3 rounded-xl font-semibold text-xs md:text-sm transition-all border ${
+                                                selectedProductoId === prod.id
+                                                    ? 'bg-pocholo-cream border-pocholo-red/30 text-pocholo-red'
+                                                    : 'bg-white border-transparent text-slate-600 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            <p className="uppercase truncate">{prod.nombre}</p>
+                                            <p className="text-[10px] text-slate-400 capitalize mt-0.5">{prod.tipo}</p>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Recipe ingredients config panel */}
+                            <div className="md:col-span-2 bg-white rounded-2xl p-5 md:p-6 shadow-3d border border-slate-100 flex flex-col h-[600px]">
+                                {selectedProductoId ? (
+                                    <>
+                                        <div className="flex justify-between items-center mb-6 border-b pb-4 border-slate-100">
+                                            <div>
+                                                <span className="text-[10px] font-bold bg-slate-100 text-slate-500 uppercase px-2 py-0.5 rounded">Fórmula del plato</span>
+                                                <h3 className="font-black text-slate-800 text-lg md:text-xl uppercase mt-1">
+                                                    {productos.find(p => p.id === selectedProductoId)?.nombre}
+                                                </h3>
+                                            </div>
+                                            <button
+                                                onClick={() => setShowAddIngredient(true)}
+                                                className="px-4 py-2.5 bg-pocholo-red hover:bg-red-700 text-white font-bold text-xs md:text-sm rounded-xl shadow-md transition-all flex items-center gap-1.5"
+                                            >
+                                                <Plus size={16} />
+                                                Agregar Insumo
+                                            </button>
+                                        </div>
+
+                                        {/* Recipe Items List */}
+                                        {loadingReceta ? (
+                                            <div className="flex-1 flex items-center justify-center">
+                                                <RefreshCw className="animate-spin text-pocholo-red" size={28} />
+                                            </div>
+                                        ) : (
+                                            <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
+                                                {recetaItems.length > 0 ? (
+                                                    recetaItems.map((item) => {
+                                                        const insName = item.insumos?.nombre || 'Insumo Desconocido';
+                                                        const insUnit = item.insumos?.unidad_medida || '';
+                                                        return (
+                                                            <div 
+                                                                key={item.id} 
+                                                                className="flex justify-between items-center p-4 bg-slate-50 hover:bg-slate-100/50 border border-slate-200/50 rounded-2xl transition-all"
+                                                            >
+                                                                <div>
+                                                                    <p className="font-bold text-slate-800 text-sm uppercase">{insName}</p>
+                                                                    <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Deducción por plato vendido</p>
+                                                                </div>
+                                                                <div className="flex items-center gap-4">
+                                                                    <span className="font-black text-slate-800 text-base">
+                                                                        {item.cantidad.toFixed(3)} <span className="text-xs font-bold text-slate-400 uppercase">{insUnit}</span>
+                                                                    </span>
+                                                                    <button
+                                                                        onClick={() => handleRemoveIngredient(item.id)}
+                                                                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                                        title="Eliminar ingrediente de la receta"
+                                                                    >
+                                                                        <Trash2 size={16} />
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <div className="flex flex-col items-center justify-center h-full text-slate-400 italic text-sm">
+                                                        <Utensils size={40} className="mb-2 text-slate-300" />
+                                                        Este plato no descuenta insumos. Configure su receta en el botón de arriba.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <div className="flex-1 flex items-center justify-center text-slate-400 italic text-sm">
+                                        Selecciona un plato de la lista izquierda para ver su receta.
+                                    </div>
+                                )}
+                            </div>
+
+                        </div>
                     </motion.div>
                 )}
 
@@ -1438,6 +1685,81 @@ function InventarioContent() {
                                         className="flex-1 py-3 bg-slate-700 hover:bg-slate-800 text-white rounded-xl font-bold transition-all text-xs shadow-md"
                                     >
                                         {procesandoOperacion ? 'Procesando...' : 'Descontar Stock'}
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Modal: Agregar Ingrediente/Insumo a la Fórmula */}
+            <AnimatePresence>
+                {showAddIngredient && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
+                        >
+                            <div className="bg-pocholo-red text-white p-5">
+                                <h3 className="text-lg font-bold flex items-center gap-2">
+                                    <Plus size={18} />
+                                    Agregar a la Fórmula
+                                </h3>
+                                <p className="text-white/80 text-xs mt-0.5">Asigna qué insumo consume este plato al venderse</p>
+                            </div>
+                            <form onSubmit={handleAddIngredient} className="p-5 space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Seleccionar Insumo</label>
+                                    <select
+                                        value={ingredienteInsumoId}
+                                        onChange={(e) => setIngredienteInsumoId(e.target.value)}
+                                        className="w-full px-3 py-3 bg-slate-50 border border-slate-200 focus:border-pocholo-red rounded-xl text-sm focus:outline-none font-bold text-slate-700"
+                                        required
+                                    >
+                                        <option value="">-- Elige un insumo --</option>
+                                        {insumos.map((ins) => (
+                                            <option key={ins.id} value={ins.id}>
+                                                {ins.nombre.toUpperCase()} ({ins.unidad_medida})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Cantidad consumida por plato</label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            step="0.001"
+                                            placeholder="Ej: 0.3 para papas o 1 para taper"
+                                            value={ingredienteCantidad}
+                                            onChange={(e) => setIngredienteCantidad(e.target.value)}
+                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:border-pocholo-red rounded-xl text-sm focus:outline-none font-bold text-slate-800"
+                                            required
+                                        />
+                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xs uppercase">
+                                            {insumos.find(i => i.id === ingredienteInsumoId)?.unidad_medida || ''}
+                                        </span>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 mt-1 font-semibold leading-relaxed">
+                                        * Ejemplo: Si es arroz y consume 250g, ingresa `0.250`. Si es un táper descartable, ingresa `1`.
+                                    </p>
+                                </div>
+                                <div className="flex gap-2 pt-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => { setShowAddIngredient(false); setIngredienteInsumoId(''); setIngredienteCantidad(''); }}
+                                        className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl font-bold transition-all text-xs"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="flex-1 py-3 bg-pocholo-red hover:bg-red-700 text-white rounded-xl font-bold transition-all text-xs shadow-md"
+                                    >
+                                        Añadir Ingrediente
                                     </button>
                                 </div>
                             </form>
