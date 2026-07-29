@@ -22,7 +22,8 @@ import {
     Clipboard,
     ShoppingBag,
     Utensils,
-    Trash2
+    Trash2,
+    Edit
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInventario } from '@/hooks/useInventario';
@@ -196,6 +197,14 @@ function InventarioContent() {
     const [nuevaUnidad, setNuevaUnidad] = useState('Unidades');
     const [nuevoMinimo, setNuevoMinimo] = useState('');
     const [creandoInsumo, setCreandoInsumo] = useState(false);
+
+    // Edit insumo form fields
+    const [showEditModal, setShowEditModal] = useState<Insumo | null>(null);
+    const [editNombre, setEditNombre] = useState('');
+    const [editStock, setEditStock] = useState('');
+    const [editUnidad, setEditUnidad] = useState('Unidades');
+    const [editMinimo, setEditMinimo] = useState('');
+    const [guardandoEdicion, setGuardandoEdicion] = useState(false);
 
     // Compra / Consumo fields
     const [cantOperacion, setCantOperacion] = useState('');
@@ -454,6 +463,72 @@ function InventarioContent() {
             toast.error(err.message || 'Error al crear insumo. Verifica que el nombre no esté duplicado.');
         } finally {
             setCreandoInsumo(false);
+        }
+    };
+
+    // Delete insumo
+    const handleEliminarInsumo = async (insumoId: string, nombre: string) => {
+        if (!confirm(`¿Estás seguro de que deseas eliminar el insumo "${nombre}"?\nEsto borrará permanentemente el insumo, sus compras y sus recetas.`)) {
+            return;
+        }
+
+        try {
+            const { error } = await supabase
+                .from('insumos')
+                .delete()
+                .eq('id', insumoId);
+
+            if (error) throw error;
+            toast.success('Insumo eliminado correctamente');
+            cargarInsumos();
+        } catch (err) {
+            console.error(err);
+            toast.error('No se pudo eliminar el insumo');
+        }
+    };
+
+    // Open Edit modal and prefill data
+    const abrirEditarInsumo = (ins: Insumo) => {
+        setShowEditModal(ins);
+        setEditNombre(ins.nombre);
+        setEditStock(String(ins.stock_actual));
+        setEditUnidad(ins.unidad_medida);
+        setEditMinimo(String(ins.stock_minimo));
+    };
+
+    // Save edited insumo
+    const handleEditarInsumo = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!showEditModal) return;
+
+        if (!editNombre.trim()) {
+            toast.error('El nombre es obligatorio');
+            return;
+        }
+
+        setGuardandoEdicion(true);
+        try {
+            const { error } = await supabase
+                .from('insumos')
+                .update({
+                    nombre: editNombre.trim(),
+                    stock_actual: parseFloat(editStock) || 0.0,
+                    unidad_medida: editUnidad,
+                    stock_minimo: parseFloat(editMinimo) || 0.0,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', showEditModal.id);
+
+            if (error) throw error;
+
+            toast.success('Insumo actualizado correctamente');
+            setShowEditModal(null);
+            cargarInsumos();
+        } catch (err: any) {
+            console.error(err);
+            toast.error(err.message || 'Error al actualizar el insumo');
+        } finally {
+            setGuardandoEdicion(false);
         }
     };
 
@@ -895,14 +970,33 @@ function InventarioContent() {
                                                 >
                                                     <div>
                                                         <div className="flex justify-between items-start gap-2">
-                                                            <h3 className="font-bold text-slate-800 text-base uppercase truncate" title={ins.nombre}>
-                                                                {ins.nombre}
-                                                            </h3>
-                                                            {esCritico && (
-                                                                <span className="px-2 py-0.5 bg-red-100 border border-red-200 text-red-700 font-extrabold text-[9px] rounded-full uppercase tracking-wider animate-pulse flex items-center gap-1 shrink-0">
-                                                                    <AlertTriangle size={10} /> Abastecer
-                                                                </span>
-                                                            )}
+                                                            <div className="flex-1 min-w-0">
+                                                                <h3 className="font-bold text-slate-800 text-base uppercase truncate" title={ins.nombre}>
+                                                                    {ins.nombre}
+                                                                </h3>
+                                                                {esCritico && (
+                                                                    <span className="mt-1 inline-flex px-2 py-0.5 bg-red-100 border border-red-200 text-red-700 font-extrabold text-[9px] rounded-full uppercase tracking-wider animate-pulse items-center gap-1 shrink-0">
+                                                                        <AlertTriangle size={10} /> Abastecer
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            
+                                                            <div className="flex items-center gap-0.5 shrink-0">
+                                                                <button
+                                                                    onClick={() => abrirEditarInsumo(ins)}
+                                                                    className="p-1.5 text-slate-400 hover:text-pocholo-red hover:bg-slate-100 rounded-lg transition-all"
+                                                                    title="Editar insumo"
+                                                                >
+                                                                    <Edit size={14} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleEliminarInsumo(ins.id, ins.nombre)}
+                                                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                                    title="Eliminar insumo"
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                         <div className="mt-3">
                                                             <span className="text-3xl font-black text-slate-800">
@@ -1548,6 +1642,96 @@ function InventarioContent() {
                                         className="flex-1 py-3 bg-pocholo-red hover:bg-red-700 text-white rounded-xl font-bold transition-all text-xs shadow-md"
                                     >
                                         {creandoInsumo ? 'Registrando...' : 'Registrar'}
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Modal: Editar Insumo */}
+            <AnimatePresence>
+                {showEditModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
+                        >
+                            <div className="bg-pocholo-red text-white p-5">
+                                <h3 className="text-lg font-bold flex items-center gap-2">
+                                    <Edit size={18} />
+                                    Editar Insumo: {showEditModal.nombre}
+                                </h3>
+                                <p className="text-white/80 text-xs mt-0.5">Modifica los detalles del insumo</p>
+                            </div>
+                            <form onSubmit={handleEditarInsumo} className="p-5 space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nombre del Insumo</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Ej: Arroz Costeño"
+                                        value={editNombre}
+                                        onChange={(e) => setEditNombre(e.target.value)}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:border-pocholo-red rounded-xl text-sm focus:outline-none font-bold text-slate-800"
+                                        required
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Stock Actual</label>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            placeholder="0.0"
+                                            value={editStock}
+                                            onChange={(e) => setEditStock(e.target.value)}
+                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:border-pocholo-red rounded-xl text-sm focus:outline-none font-bold text-slate-800"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Unidad de Medida</label>
+                                        <select
+                                            value={editUnidad}
+                                            onChange={(e) => setEditUnidad(e.target.value)}
+                                            className="w-full px-3 py-3 bg-slate-50 border border-slate-200 focus:border-pocholo-red rounded-xl text-sm focus:outline-none font-bold text-slate-700"
+                                        >
+                                            <option value="Kg">Kilogramos (Kg)</option>
+                                            <option value="Sacos">Sacos</option>
+                                            <option value="Litros">Litros (L)</option>
+                                            <option value="Paquetes">Paquetes</option>
+                                            <option value="Unidades">Unidades</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Alerta de Stock Mínimo</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        placeholder="Alerta de repuesto"
+                                        value={editMinimo}
+                                        onChange={(e) => setEditMinimo(e.target.value)}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:border-pocholo-red rounded-xl text-sm focus:outline-none font-bold text-slate-800"
+                                    />
+                                </div>
+                                <div className="flex gap-2 pt-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowEditModal(null)}
+                                        className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl font-bold transition-all text-xs"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={guardandoEdicion}
+                                        className="flex-1 py-3 bg-pocholo-red hover:bg-red-700 text-white rounded-xl font-bold transition-all text-xs shadow-md"
+                                    >
+                                        {guardandoEdicion ? 'Guardando...' : 'Guardar Cambios'}
                                     </button>
                                 </div>
                             </form>
