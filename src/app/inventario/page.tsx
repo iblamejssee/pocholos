@@ -17,7 +17,10 @@ import {
     Calendar,
     Search,
     AlertTriangle,
-    CheckCircle
+    CheckCircle,
+    ShoppingCart,
+    Clipboard,
+    ShoppingBag
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInventario } from '@/hooks/useInventario';
@@ -96,6 +99,28 @@ const MARCAS_CONFIG = [
     },
 ] as const;
 
+interface Insumo {
+    id: string;
+    nombre: string;
+    stock_actual: number;
+    unidad_medida: string;
+    stock_minimo: number;
+    created_at: string;
+    updated_at: string;
+}
+
+interface CompraInsumo {
+    id: string;
+    insumo_id: string;
+    cantidad: number;
+    precio_compra: number;
+    fecha_compra: string;
+    insumos?: {
+        nombre: string;
+        unidad_medida: string;
+    };
+}
+
 export default function InventarioPage() {
     return (
         <ProtectedRoute requiredPermission="inventario">
@@ -106,9 +131,9 @@ export default function InventarioPage() {
 
 function InventarioContent() {
     const { stock, loading, error, refetch } = useInventario();
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'ajustes' | 'historial'>('dashboard');
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'ajustes' | 'insumos' | 'historial'>('dashboard');
     
-    // Beverage accordion states
+    // Accordion control
     const [expandedBrands, setExpandedBrands] = useState<Set<string>>(new Set(['inca_kola']));
 
     // Historical records state
@@ -117,10 +142,34 @@ function InventarioContent() {
     const [busquedaHistorial, setBusquedaHistorial] = useState('');
     const [selectedHistorial, setSelectedHistorial] = useState<InventarioDiario | null>(null);
 
-    // Form states for manual adjustments
+    // Form states for manual adjustments (Ajustes tab)
     const [tipoAjuste, setTipoAjuste] = useState<'pollos' | 'papas' | 'chicha' | 'caja_chica'>('pollos');
     const [montoAjuste, setMontoAjuste] = useState<string>('');
     const [isUpdating, setIsUpdating] = useState(false);
+
+    // Insumos States
+    const [insumos, setInsumos] = useState<Insumo[]>([]);
+    const [compras, setCompras] = useState<CompraInsumo[]>([]);
+    const [loadingInsumos, setLoadingInsumos] = useState(false);
+    const [busquedaInsumo, setBusquedaInsumo] = useState('');
+    const [verSoloCritico, setVerSoloCritico] = useState(false);
+
+    // Modals states for Insumos
+    const [showNewInsumoModal, setShowNewInsumoModal] = useState(false);
+    const [showCompraModal, setShowCompraModal] = useState<Insumo | null>(null);
+    const [showConsumoModal, setShowConsumoModal] = useState<Insumo | null>(null);
+
+    // New insumo form fields
+    const [nuevoNombre, setNuevoNombre] = useState('');
+    const [nuevoStock, setNuevoStock] = useState('');
+    const [nuevaUnidad, setNuevaUnidad] = useState('Unidades');
+    const [nuevoMinimo, setNuevoMinimo] = useState('');
+    const [creandoInsumo, setCreandoInsumo] = useState(false);
+
+    // Compra / Consumo fields
+    const [cantOperacion, setCantOperacion] = useState('');
+    const [costoCompra, setCostoCompra] = useState('');
+    const [procesandoOperacion, setProcesandoOperacion] = useState(false);
 
     // Fetch history
     const cargarHistorial = async () => {
@@ -141,9 +190,51 @@ function InventarioContent() {
         }
     };
 
+    // Fetch Insumos and Purchases
+    const cargarInsumos = async () => {
+        setLoadingInsumos(true);
+        try {
+            // Fetch insumos catalog
+            const { data: insData, error: insError } = await supabase
+                .from('insumos')
+                .select('*')
+                .order('nombre', { ascending: true });
+
+            if (insError) throw insError;
+            setInsumos(insData || []);
+
+            // Fetch recent purchases
+            const { data: compData, error: compError } = await supabase
+                .from('compras_insumos')
+                .select(`
+                    id,
+                    insumo_id,
+                    cantidad,
+                    precio_compra,
+                    fecha_compra,
+                    insumos (
+                        nombre,
+                        unidad_medida
+                    )
+                `)
+                .order('fecha_compra', { ascending: false })
+                .limit(20);
+
+            if (compError) throw compError;
+            setCompras(compData as unknown as CompraInsumo[] || []);
+        } catch (err) {
+            console.error('Error cargando insumos:', err);
+            toast.error('Carga las tablas de Insumos en Supabase antes de ingresar.');
+        } finally {
+            setLoadingInsumos(false);
+        }
+    };
+
     useEffect(() => {
         if (activeTab === 'historial') {
             cargarHistorial();
+        } else if (activeTab === 'insumos') {
+            cargarInsumos();
         }
     }, [activeTab]);
 
@@ -206,7 +297,137 @@ function InventarioContent() {
         }
     };
 
-    // Filter historical data
+    // Register a new supply/insumo in catalog
+    const handleCrearInsumo = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!nuevoNombre.trim()) {
+            toast.error('El nombre es obligatorio');
+            return;
+        }
+
+        setCreandoInsumo(true);
+        try {
+            const { error: insErr } = await supabase
+                .from('insumos')
+                .insert({
+                    nombre: nuevoNombre.trim(),
+                    stock_actual: parseFloat(nuevoStock) || 0.0,
+                    unidad_medida: nuevaUnidad,
+                    stock_minimo: parseFloat(nuevoMinimo) || 0.0
+                });
+
+            if (insErr) throw insErr;
+
+            toast.success('Insumo registrado correctamente');
+            setNuevoNombre('');
+            setNuevoStock('');
+            setNuevoMinimo('');
+            setShowNewInsumoModal(false);
+            cargarInsumos();
+        } catch (err: any) {
+            console.error(err);
+            toast.error(err.message || 'Error al crear insumo. Verifica que el nombre no esté duplicado.');
+        } finally {
+            setCreandoInsumo(false);
+        }
+    };
+
+    // Register supply purchase (adds stock)
+    const handleRegistrarCompra = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!showCompraModal) return;
+        const cant = parseFloat(cantOperacion);
+        const costo = parseFloat(costoCompra);
+
+        if (isNaN(cant) || cant <= 0 || isNaN(costo) || costo < 0) {
+            toast.error('Ingresa una cantidad y costo válidos');
+            return;
+        }
+
+        setProcesandoOperacion(true);
+        try {
+            // 1. Guardar en compras_insumos
+            const { error: compErr } = await supabase
+                .from('compras_insumos')
+                .insert({
+                    insumo_id: showCompraModal.id,
+                    cantidad: cant,
+                    precio_compra: costo
+                });
+
+            if (compErr) throw compErr;
+
+            // 2. Incrementar stock en insumos
+            const nuevoStockVal = showCompraModal.stock_actual + cant;
+            const { error: updateErr } = await supabase
+                .from('insumos')
+                .update({ stock_actual: nuevoStockVal, updated_at: new Date().toISOString() })
+                .eq('id', showCompraModal.id);
+
+            if (updateErr) throw updateErr;
+
+            // 3. Registrar gasto en la tabla de gastos para el balance
+            await supabase.from('gastos').insert({
+                descripcion: `Compra Insumo: ${showCompraModal.nombre} (${cant} ${showCompraModal.unidad_medida})`,
+                monto: costo,
+                fecha: new Date().toISOString().split('T')[0],
+                metodo_pago: 'efectivo'
+            });
+
+            toast.success('Abastecimiento registrado y descontado de caja');
+            setCantOperacion('');
+            setCostoCompra('');
+            setShowCompraModal(null);
+            cargarInsumos();
+        } catch (err: any) {
+            console.error(err);
+            toast.error('Error al registrar compra');
+        } finally {
+            setProcesandoOperacion(false);
+        }
+    };
+
+    // Register supply consumption (subtracts stock)
+    const handleRegistrarConsumo = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!showConsumoModal) return;
+        const cant = parseFloat(cantOperacion);
+
+        if (isNaN(cant) || cant <= 0) {
+            toast.error('Ingresa una cantidad válida');
+            return;
+        }
+
+        setProcesandoOperacion(true);
+        try {
+            const nuevoStockVal = Math.max(0, showConsumoModal.stock_actual - cant);
+            const { error: updateErr } = await supabase
+                .from('insumos')
+                .update({ stock_actual: nuevoStockVal, updated_at: new Date().toISOString() })
+                .eq('id', showConsumoModal.id);
+
+            if (updateErr) throw updateErr;
+
+            toast.success('Consumo registrado correctamente');
+            setCantOperacion('');
+            setShowConsumoModal(null);
+            cargarInsumos();
+        } catch (err: any) {
+            console.error(err);
+            toast.error('Error al registrar consumo');
+        } finally {
+            setProcesandoOperacion(false);
+        }
+    };
+
+    // Filters insumos on catalog
+    const insumosFiltrados = insumos.filter(ins => {
+        const matchBusqueda = ins.nombre.toLowerCase().includes(busquedaInsumo.toLowerCase());
+        const matchCritico = verSoloCritico ? (ins.stock_actual <= ins.stock_minimo) : true;
+        return matchBusqueda && matchCritico;
+    });
+
+    // Filters historical data (snapshots)
     const historialFiltrado = historial.filter(item => 
         item.fecha.includes(busquedaHistorial) || 
         (item.estado === 'cerrado' ? 'cerrado' : 'abierto').includes(busquedaHistorial.toLowerCase())
@@ -230,7 +451,16 @@ function InventarioContent() {
                 {/* Refresh and status */}
                 <div className="flex items-center gap-2">
                     <button 
-                        onClick={() => { refetch(); toast.success('Stock actualizado'); }}
+                        onClick={() => { 
+                            if (activeTab === 'insumos') {
+                                cargarInsumos();
+                            } else if (activeTab === 'historial') {
+                                cargarHistorial();
+                            } else {
+                                refetch();
+                            }
+                            toast.success('Inventario actualizado');
+                        }}
                         className="p-2.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 rounded-xl transition-colors shadow-sm flex items-center gap-2 text-sm font-semibold"
                     >
                         <RefreshCw size={16} />
@@ -240,10 +470,10 @@ function InventarioContent() {
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex bg-slate-100 p-1 rounded-2xl mb-6 shadow-inner max-w-md">
+            <div className="flex bg-slate-100 p-1 rounded-2xl mb-6 shadow-inner max-w-xl overflow-x-auto scrollbar-none">
                 <button
                     onClick={() => setActiveTab('dashboard')}
-                    className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                    className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shrink-0 ${
                         activeTab === 'dashboard'
                             ? 'bg-white text-pocholo-brown shadow-md'
                             : 'text-slate-500 hover:text-slate-800'
@@ -253,8 +483,19 @@ function InventarioContent() {
                     Stock en Vivo
                 </button>
                 <button
+                    onClick={() => setActiveTab('insumos')}
+                    className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shrink-0 ${
+                        activeTab === 'insumos'
+                            ? 'bg-white text-pocholo-brown shadow-md'
+                            : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                >
+                    <Clipboard size={16} />
+                    Insumos
+                </button>
+                <button
                     onClick={() => setActiveTab('ajustes')}
-                    className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                    className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shrink-0 ${
                         activeTab === 'ajustes'
                             ? 'bg-white text-pocholo-brown shadow-md'
                             : 'text-slate-500 hover:text-slate-800'
@@ -265,7 +506,7 @@ function InventarioContent() {
                 </button>
                 <button
                     onClick={() => setActiveTab('historial')}
-                    className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                    className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shrink-0 ${
                         activeTab === 'historial'
                             ? 'bg-white text-pocholo-brown shadow-md'
                             : 'text-slate-500 hover:text-slate-800'
@@ -450,6 +691,181 @@ function InventarioContent() {
                     </motion.div>
                 )}
 
+                {activeTab === 'insumos' && (
+                    <motion.div
+                        key="insumos"
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -15 }}
+                        className="space-y-6"
+                    >
+                        {/* Catalog Toolbar */}
+                        <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto flex-1">
+                                <div className="relative flex-1 max-w-md">
+                                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                    <input
+                                        type="text"
+                                        placeholder="Buscar insumo (ej: Arroz)..."
+                                        value={busquedaInsumo}
+                                        onChange={(e) => setBusquedaInsumo(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-pocholo-red font-semibold text-slate-700"
+                                    />
+                                </div>
+                                <label className="flex items-center gap-2 cursor-pointer select-none py-2 px-3 border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors">
+                                    <input
+                                        type="checkbox"
+                                        checked={verSoloCritico}
+                                        onChange={(e) => setVerSoloCritico(e.target.checked)}
+                                        className="rounded text-pocholo-red focus:ring-pocholo-red border-slate-300"
+                                    />
+                                    <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+                                        <AlertTriangle size={14} className="text-red-500" />
+                                        Ver solo Stock Bajo
+                                    </span>
+                                </label>
+                            </div>
+                            <button
+                                onClick={() => setShowNewInsumoModal(true)}
+                                className="w-full sm:w-auto px-5 py-3 bg-pocholo-red hover:bg-red-700 text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 shrink-0"
+                            >
+                                <Plus size={16} />
+                                Registrar Insumo
+                            </button>
+                        </div>
+
+                        {/* Insumos catalog grid */}
+                        {loadingInsumos ? (
+                            <div className="flex justify-center p-20">
+                                <RefreshCw className="animate-spin text-pocholo-red" size={32} />
+                            </div>
+                        ) : (
+                            <>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                    {insumosFiltrados.length > 0 ? (
+                                        insumosFiltrados.map((ins) => {
+                                            const esCritico = ins.stock_actual <= ins.stock_minimo;
+                                            return (
+                                                <motion.div
+                                                    key={ins.id}
+                                                    layout
+                                                    className={`glass-card p-5 rounded-2xl shadow-sm border transition-all flex flex-col justify-between min-h-[170px] ${
+                                                        esCritico 
+                                                            ? 'border-red-200 bg-red-50/20' 
+                                                            : 'border-slate-200 bg-white'
+                                                    }`}
+                                                >
+                                                    <div>
+                                                        <div className="flex justify-between items-start gap-2">
+                                                            <h3 className="font-bold text-slate-800 text-base uppercase truncate" title={ins.nombre}>
+                                                                {ins.nombre}
+                                                            </h3>
+                                                            {esCritico && (
+                                                                <span className="px-2 py-0.5 bg-red-100 border border-red-200 text-red-700 font-extrabold text-[9px] rounded-full uppercase tracking-wider animate-pulse flex items-center gap-1 shrink-0">
+                                                                    <AlertTriangle size={10} /> Abastecer
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="mt-3">
+                                                            <span className="text-3xl font-black text-slate-800">
+                                                                {ins.stock_actual.toFixed(1)}
+                                                            </span>
+                                                            <span className="text-sm font-bold text-slate-400 ml-1.5 uppercase">
+                                                                {ins.unidad_medida}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-[11px] text-slate-400 font-semibold mt-1">
+                                                            Límite mínimo: {ins.stock_minimo.toFixed(1)} {ins.unidad_medida}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Card buttons */}
+                                                    <div className="flex gap-2 mt-5 border-t border-slate-100 pt-3">
+                                                        <button
+                                                            onClick={() => setShowCompraModal(ins)}
+                                                            className="flex-1 py-2 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all"
+                                                        >
+                                                            <ShoppingCart size={14} />
+                                                            Comprar
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setShowConsumoModal(ins)}
+                                                            className="flex-1 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all"
+                                                        >
+                                                            <Minus size={14} />
+                                                            Consumo
+                                                        </button>
+                                                    </div>
+                                                </motion.div>
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="col-span-full bg-white rounded-2xl p-12 text-center text-slate-400 border border-slate-100 shadow-sm">
+                                            <Clipboard className="mx-auto mb-3 text-slate-300" size={40} />
+                                            <p className="font-bold">No se encontraron insumos.</p>
+                                            <p className="text-xs text-slate-400 mt-1">
+                                                {busquedaInsumo ? 'Prueba cambiando los filtros.' : 'Comienza registrando tu primer insumo en el botón de arriba.'}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Purchases history ("Cada cuánto compro") */}
+                                <div className="bg-white rounded-2xl p-5 md:p-6 shadow-3d mt-8">
+                                    <h3 className="font-bold text-slate-800 text-base md:text-lg mb-4 flex items-center gap-2 border-b pb-3 border-slate-100">
+                                        <History className="text-pocholo-red" size={20} />
+                                        Historial de Abastecimiento (¿Cada cuánto compro?)
+                                    </h3>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left text-sm whitespace-nowrap">
+                                            <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs border-b border-slate-100">
+                                                <tr>
+                                                    <th className="p-3">Fecha Compra</th>
+                                                    <th className="p-3">Insumo</th>
+                                                    <th className="p-3">Cantidad Adquirida</th>
+                                                    <th className="p-3">Inversión Total</th>
+                                                    <th className="p-3">Costo Unitario Promedio</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 text-slate-600 font-semibold text-xs md:text-sm">
+                                                {compras.length > 0 ? (
+                                                    compras.map((comp) => {
+                                                        const insName = comp.insumos?.nombre || 'Insumo Eliminado';
+                                                        const insUnit = comp.insumos?.unidad_medida || '';
+                                                        const unitCost = comp.precio_compra / comp.cantidad;
+                                                        return (
+                                                            <tr key={comp.id} className="hover:bg-slate-50/50">
+                                                                <td className="p-3">
+                                                                    <span className="flex items-center gap-1.5 font-bold text-slate-800">
+                                                                        <Calendar size={13} className="text-slate-400" />
+                                                                        {new Date(comp.fecha_compra).toLocaleDateString('es-PE', {
+                                                                            day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                                                                        })}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="p-3 uppercase font-extrabold text-slate-800">{insName}</td>
+                                                                <td className="p-3">{comp.cantidad.toFixed(1)} {insUnit}</td>
+                                                                <td className="p-3 font-bold text-green-600">S/ {comp.precio_compra.toFixed(2)}</td>
+                                                                <td className="p-3 text-slate-400 italic">S/ {unitCost.toFixed(2)} por {insUnit}</td>
+                                                            </tr>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan={5} className="p-6 text-center text-slate-400 italic">
+                                                            No hay compras de abastecimiento registradas en el sistema.
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </motion.div>
+                )}
+
                 {activeTab === 'ajustes' && (
                     <motion.div
                         key="ajustes"
@@ -589,7 +1005,7 @@ function InventarioContent() {
                         ) : (
                             <div className="bg-white rounded-2xl overflow-hidden shadow-3d border border-slate-100">
                                 <div className="overflow-x-auto">
-                                    <table className="w-full text-left text-sm">
+                                    <table className="w-full text-left text-sm whitespace-nowrap">
                                         <thead className="bg-slate-50 text-slate-500 font-bold uppercase border-b border-slate-100">
                                             <tr>
                                                 <th className="p-4 text-xs tracking-wider">Fecha</th>
@@ -800,6 +1216,236 @@ function InventarioContent() {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* Modal: Registrar Nuevo Insumo */}
+            <AnimatePresence>
+                {showNewInsumoModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
+                        >
+                            <div className="bg-pocholo-red text-white p-5">
+                                <h3 className="text-lg font-bold flex items-center gap-2">
+                                    <Clipboard size={18} />
+                                    Registrar Nuevo Insumo
+                                </h3>
+                                <p className="text-white/80 text-xs mt-0.5">Agrégalo al catálogo del restaurante</p>
+                            </div>
+                            <form onSubmit={handleCrearInsumo} className="p-5 space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nombre del Insumo</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Ej: Arroz Costeño, Taper de 1/4 Pollo"
+                                        value={nuevoNombre}
+                                        onChange={(e) => setNuevoNombre(e.target.value)}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:border-pocholo-red rounded-xl text-sm focus:outline-none font-bold text-slate-800"
+                                        required
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Stock Inicial</label>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            placeholder="0.0"
+                                            value={nuevoStock}
+                                            onChange={(e) => setNuevoStock(e.target.value)}
+                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:border-pocholo-red rounded-xl text-sm focus:outline-none font-bold text-slate-800"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Unidad de Medida</label>
+                                        <select
+                                            value={nuevaUnidad}
+                                            onChange={(e) => setNuevaUnidad(e.target.value)}
+                                            className="w-full px-3 py-3 bg-slate-50 border border-slate-200 focus:border-pocholo-red rounded-xl text-sm focus:outline-none font-bold text-slate-700"
+                                        >
+                                            <option value="Kg">Kilogramos (Kg)</option>
+                                            <option value="Sacos">Sacos</option>
+                                            <option value="Litros">Litros (L)</option>
+                                            <option value="Paquetes">Paquetes</option>
+                                            <option value="Unidades">Unidades</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Alerta de Stock Mínimo</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        placeholder="Alerta de repuesto (ej: 10)"
+                                        value={nuevoMinimo}
+                                        onChange={(e) => setNuevoMinimo(e.target.value)}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:border-pocholo-red rounded-xl text-sm focus:outline-none font-bold text-slate-800"
+                                    />
+                                    <p className="text-[10px] text-slate-400 mt-1 font-semibold">
+                                        * El sistema te avisará en rojo si el stock actual cae por debajo de esta cantidad.
+                                    </p>
+                                </div>
+                                <div className="flex gap-2 pt-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowNewInsumoModal(false)}
+                                        className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl font-bold transition-all text-xs"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={creandoInsumo}
+                                        className="flex-1 py-3 bg-pocholo-red hover:bg-red-700 text-white rounded-xl font-bold transition-all text-xs shadow-md"
+                                    >
+                                        {creandoInsumo ? 'Registrando...' : 'Registrar'}
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Modal: Registrar Compra/Abastecimiento */}
+            <AnimatePresence>
+                {showCompraModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
+                        >
+                            <div className="bg-green-600 text-white p-5">
+                                <h3 className="text-lg font-bold flex items-center gap-2">
+                                    <ShoppingCart size={18} />
+                                    Abastecer Insumo: {showCompraModal.nombre}
+                                </h3>
+                                <p className="text-white/80 text-xs mt-0.5">Agrega stock al inventario por una compra</p>
+                            </div>
+                            <form onSubmit={handleRegistrarCompra} className="p-5 space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Cantidad Adquirida</label>
+                                        <div className="relative">
+                                            <input
+                                                type="number"
+                                                step="0.1"
+                                                placeholder="0.0"
+                                                value={cantOperacion}
+                                                onChange={(e) => setCantOperacion(e.target.value)}
+                                                className="w-full pr-12 pl-4 py-3 bg-slate-50 border border-slate-200 focus:border-green-500 rounded-xl text-sm focus:outline-none font-bold text-slate-800"
+                                                required
+                                            />
+                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xs uppercase">
+                                                {showCompraModal.unidad_medida}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Inversión (Total S/)</label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xs">S/</span>
+                                            <input
+                                                type="number"
+                                                step="0.5"
+                                                placeholder="0.00"
+                                                value={costoCompra}
+                                                onChange={(e) => setCostoCompra(e.target.value)}
+                                                className="w-full pl-8 pr-3 py-3 bg-slate-50 border border-slate-200 focus:border-green-500 rounded-xl text-sm focus:outline-none font-bold text-slate-800"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                                <p className="text-[10px] text-slate-400 font-semibold leading-relaxed">
+                                    * Nota: Al registrar esta compra, el stock subirá de forma automática. Además, el costo se registrará como un **Gasto del día** en caja de manera automatizada.
+                                </p>
+                                <div className="flex gap-2 pt-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => { setShowCompraModal(null); setCantOperacion(''); setCostoCompra(''); }}
+                                        className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl font-bold transition-all text-xs"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={procesandoOperacion}
+                                        className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold transition-all text-xs shadow-md"
+                                    >
+                                        {procesandoOperacion ? 'Procesando...' : 'Completar Compra'}
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Modal: Registrar Consumo / Merma */}
+            <AnimatePresence>
+                {showConsumoModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
+                        >
+                            <div className="bg-slate-700 text-white p-5">
+                                <h3 className="text-lg font-bold flex items-center gap-2">
+                                    <Minus size={18} />
+                                    Registrar Consumo: {showConsumoModal.nombre}
+                                </h3>
+                                <p className="text-white/80 text-xs mt-0.5">Descuenta stock de manera manual</p>
+                            </div>
+                            <form onSubmit={handleRegistrarConsumo} className="p-5 space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Cantidad Utilizada / Merma</label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            placeholder="0.0"
+                                            value={cantOperacion}
+                                            onChange={(e) => setCantOperacion(e.target.value)}
+                                            className="w-full pr-12 pl-4 py-3 bg-slate-50 border border-slate-200 focus:border-slate-500 rounded-xl text-sm focus:outline-none font-bold text-slate-800"
+                                            required
+                                        />
+                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xs uppercase">
+                                            {showConsumoModal.unidad_medida}
+                                        </span>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 mt-2 font-semibold">
+                                        * El stock actual del insumo bajará inmediatamente tras guardar.
+                                    </p>
+                                </div>
+                                <div className="flex gap-2 pt-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => { setShowConsumoModal(null); setCantOperacion(''); }}
+                                        className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl font-bold transition-all text-xs"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={procesandoOperacion}
+                                        className="flex-1 py-3 bg-slate-700 hover:bg-slate-800 text-white rounded-xl font-bold transition-all text-xs shadow-md"
+                                    >
+                                        {procesandoOperacion ? 'Procesando...' : 'Descontar Stock'}
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
         </div>
     );
 }
