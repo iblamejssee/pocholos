@@ -138,3 +138,67 @@ export async function ajustarStockPapas(cantidad: number): Promise<{ success: bo
         return { success: false, message: error.message || 'Error al actualizar el stock.' };
     }
 }
+
+import type { BebidasDetalle } from './database.types';
+
+/**
+ * Ajusta el stock de una bebida específica sumando la cantidad proporcionada.
+ */
+export async function ajustarStockBebidas(
+    marca: keyof BebidasDetalle,
+    tipo: string,
+    cantidad: number
+): Promise<{ success: boolean; message: string }> {
+    try {
+        const fechaHoy = obtenerFechaHoy();
+
+        // 1. Obtener registro actual
+        const { data, error: fetchError } = await supabase
+            .from('inventario_diario')
+            .select('bebidas_detalle, gaseosas')
+            .eq('fecha', fechaHoy)
+            .single();
+
+        if (fetchError || !data) {
+            return { success: false, message: 'No se encontró la apertura del día.' };
+        }
+
+        const detalle: BebidasDetalle = data.bebidas_detalle 
+            ? (data.bebidas_detalle as BebidasDetalle) 
+            : {};
+        
+        if (!detalle[marca]) {
+            detalle[marca] = {} as any;
+        }
+
+        const actual = (detalle[marca] as any)[tipo] || 0;
+        (detalle[marca] as any)[tipo] = Math.max(0, actual + cantidad);
+
+        // Calcular nuevo total de gaseosas sumando todo el JSON
+        let totalGaseosas = 0;
+        Object.values(detalle).forEach((brand: any) => {
+            if (brand) {
+                Object.values(brand).forEach((qty: any) => {
+                    totalGaseosas += qty || 0;
+                });
+            }
+        });
+
+        // 2. Actualizar
+        const { error: updateError } = await supabase
+            .from('inventario_diario')
+            .update({ 
+                bebidas_detalle: detalle,
+                gaseosas: totalGaseosas
+            })
+            .eq('fecha', fechaHoy);
+
+        if (updateError) throw updateError;
+
+        return { success: true, message: `Stock de bebida actualizado.` };
+    } catch (error: any) {
+        console.error('Error al ajustar stock de bebidas:', error);
+        return { success: false, message: error.message || 'Error al actualizar el stock de bebida.' };
+    }
+}
+

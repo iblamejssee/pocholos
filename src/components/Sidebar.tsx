@@ -45,6 +45,7 @@ const menuSections: MenuSection[] = [
         items: [
             { icon: Package, label: 'Caja', href: '/ventas', permission: 'ventas' },
             { icon: FileText, label: 'Generar Boleta', href: '/boletas', permission: 'boletas' },
+            { icon: Boxes, label: 'Inventario', href: '/inventario', permission: 'inventario' },
         ]
     },
     {
